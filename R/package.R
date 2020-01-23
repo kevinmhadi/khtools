@@ -412,6 +412,119 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @export
+loop_grep = function(pattern, x, ignore.case = FALSE) {
+    ## for (i in unique(pattern)) {
+    ## matches = integer(0)
+    ## for (i in seq_along(pattern)) {
+    ##     this_id = grep(pattern = pattern[i], x)
+    ##     matches = unique(c(matches, this_id))
+    ## }
+    pattern = unique(pattern)
+    ind = unlist(lapply(pattern, function(this_pattern) {
+        grep(pattern = this_pattern, x, ignore.case = ignore.case)
+    }))
+    return(ind)
+}
+
+#' @export
+loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
+    lg = logical(length(vec_char))
+    ind = loop_grep(patterns, vec_char, ignore.case = ignore.case)
+    lg[ind] = TRUE
+    lg
+}
+
+
+#' @name within
+#' @title within on GRanges
+#' @description
+#'
+#'
+#' @return GRanges
+#' @rdname gr.within
+#' @exportMethod within
+#' @aliases within,GRanges-method
+#' @author Kevin Hadi
+setMethod("within", signature(data = "GRanges"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$granges <- granges(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(granges(data), e$granges)) {
+        granges(data) <- e$granges
+    }
+    data
+})
+
+
+setMethod("within", signature(data = "GRangesList"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$grangeslist <- gr.noval(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    ## reserved <- c("ranges", "start", "end", "width", "space")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(gr.noval(data), e$grangeslist)) {
+        stop("change in the grangeslist detected")
+        ## granges(data) <- e$granges
+    } ## else {
+    ##     if (!identical(start(data), start(e$grangeslist)))
+    ##         start(data) <- start(e$grangeslist)
+    ##     if (!identical(end(data), end(e$grangeslist)))
+    ##         end(data) <- end(e$grangeslist)
+    ##     if (!identical(width(data), width(e$grangeslist)))
+    ##         width(data) <- width(e$grangeslist)
+    ## }
+    data
+})
+
+setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$grangeslist <- gr.noval(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    ## reserved <- c("ranges", "start", "end", "width", "space")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(gr.noval(data), e$grangeslist)) {
+        stop("change in the grangeslist detected")
+        ## granges(data) <- e$granges
+    } ## else {
+    ##     if (!identical(start(data), start(e$grangeslist)))
+    ##         start(data) <- start(e$grangeslist)
+    ##     if (!identical(end(data), end(e$grangeslist)))
+    ##         end(data) <- end(e$grangeslist)
+    ##     if (!identical(width(data), width(e$grangeslist)))
+    ##         width(data) <- width(e$grangeslist)
+    ## }
+    data
+})
+
 
 #' @name rrrepeated
 #'
