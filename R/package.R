@@ -412,6 +412,19 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+
+
+#' @name good.file
+#'
+#' Does file exist and is its size greater than a threshold
+#'
+#' @return logical
+#' @export
+good.file = function(x, size.thresh = 0) {
+    (file.exists(x) & na2false(file.size(x) > size.thresh))
+}
+
+
 #' @export
 loop_grep = function(pattern, x, ignore.case = FALSE) {
     ## for (i in unique(pattern)) {
@@ -436,94 +449,6 @@ loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
 }
 
 
-#' @name within
-#' @title within on GRanges
-#' @description
-#'
-#'
-#' @return GRanges
-#' @rdname gr.within
-#' @exportMethod within
-#' @aliases within,GRanges-method
-#' @author Kevin Hadi
-setMethod("within", signature(data = "GRanges"), function(data, expr) {
-    e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
-    e$granges <- granges(data)
-    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
-    reserved <- c("seqnames", "start", "end", "width", "strand", "granges")
-    l <- mget(setdiff(ls(e), reserved), e)
-    l <- l[!sapply(l, is.null)]
-    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
-    if (nD) {
-        for (nm in del)
-            mcols(data)[[nm]] = NULL
-    }
-    if (!identical(granges(data), e$granges)) {
-        granges(data) <- e$granges
-    }
-    data
-})
-
-
-setMethod("within", signature(data = "GRangesList"), function(data, expr) {
-    e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
-    e$grangeslist <- gr.noval(data)
-    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
-    ## reserved <- c("ranges", "start", "end", "width", "space")
-    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
-    l <- mget(setdiff(ls(e), reserved), e)
-    l <- l[!sapply(l, is.null)]
-    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
-    if (nD) {
-        for (nm in del)
-            mcols(data)[[nm]] = NULL
-    }
-    if (!identical(gr.noval(data), e$grangeslist)) {
-        stop("change in the grangeslist detected")
-        ## granges(data) <- e$granges
-    } ## else {
-    ##     if (!identical(start(data), start(e$grangeslist)))
-    ##         start(data) <- start(e$grangeslist)
-    ##     if (!identical(end(data), end(e$grangeslist)))
-    ##         end(data) <- end(e$grangeslist)
-    ##     if (!identical(width(data), width(e$grangeslist)))
-    ##         width(data) <- width(e$grangeslist)
-    ## }
-    data
-})
-
-setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
-    e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
-    e$grangeslist <- gr.noval(data)
-    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
-    ## reserved <- c("ranges", "start", "end", "width", "space")
-    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
-    l <- mget(setdiff(ls(e), reserved), e)
-    l <- l[!sapply(l, is.null)]
-    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
-    if (nD) {
-        for (nm in del)
-            mcols(data)[[nm]] = NULL
-    }
-    if (!identical(gr.noval(data), e$grangeslist)) {
-        stop("change in the grangeslist detected")
-        ## granges(data) <- e$granges
-    } ## else {
-    ##     if (!identical(start(data), start(e$grangeslist)))
-    ##         start(data) <- start(e$grangeslist)
-    ##     if (!identical(end(data), end(e$grangeslist)))
-    ##         end(data) <- end(e$grangeslist)
-    ##     if (!identical(width(data), width(e$grangeslist)))
-    ##         width(data) <- width(e$grangeslist)
-    ## }
-    data
-})
 
 
 #' @name rrrepeated
@@ -673,6 +598,17 @@ getdat = function() { ## to be used within "with()" expr
     ## })
 }
 
+#' @name withv
+#'
+#' to be used for quick interactive programming
+#' withv(toolongtotypemeagain, x * sum(x))
+#'
+#' @export
+withv = function(x, expr) {
+    eval(substitute(expr), enclos = parent.frame())
+}
+
+
 
 with2 = function(data, expr, ...) {
     data = data
@@ -705,9 +641,17 @@ file.info2 = function(fn, col = NULL, include.all = FALSE) {
 #'
 #' @export
 subset2 = function(x, sub.expr, ...) {
-    this.sub = eval(as.list(match.call())$sub.expr)
+    if (!missing(sub.expr))
+        this.sub = eval(as.list(match.call())$sub.expr)
+    else if (missing(sub.expr)) {
+        if (!is.null(dim(x)))
+            this.sub = seq_len(nrow(x))
+        else
+            this.sub = seq_along(x)
+    }
     subset(x, this.sub, ...)
 }
+
 
 
 #' @name replace2
@@ -1640,6 +1584,96 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## Genomics / mskilab stuff
 ##############################
 ##############################
+
+#' @name within
+#' @title within on GRanges
+#' @description
+#'
+#'
+#' @return GRanges
+#' @rdname gr.within
+#' @exportMethod within
+#' @aliases within,GRanges-method
+#' @author Kevin Hadi
+setMethod("within", signature(data = "GRanges"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$granges <- granges(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(granges(data), e$granges)) {
+        granges(data) <- e$granges
+    }
+    data
+})
+
+
+setMethod("within", signature(data = "GRangesList"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$grangeslist <- gr.noval(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    ## reserved <- c("ranges", "start", "end", "width", "space")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(gr.noval(data), e$grangeslist)) {
+        stop("change in the grangeslist detected")
+        ## granges(data) <- e$granges
+    } ## else {
+    ##     if (!identical(start(data), start(e$grangeslist)))
+    ##         start(data) <- start(e$grangeslist)
+    ##     if (!identical(end(data), end(e$grangeslist)))
+    ##         end(data) <- end(e$grangeslist)
+    ##     if (!identical(width(data), width(e$grangeslist)))
+    ##         width(data) <- width(e$grangeslist)
+    ## }
+    data
+})
+
+setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$grangeslist <- gr.noval(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, S4Vectors:::top_prenv(expr))
+    ## reserved <- c("ranges", "start", "end", "width", "space")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(gr.noval(data), e$grangeslist)) {
+        stop("change in the grangeslist detected")
+        ## granges(data) <- e$granges
+    } ## else {
+    ##     if (!identical(start(data), start(e$grangeslist)))
+    ##         start(data) <- start(e$grangeslist)
+    ##     if (!identical(end(data), end(e$grangeslist)))
+    ##         end(data) <- end(e$grangeslist)
+    ##     if (!identical(width(data), width(e$grangeslist)))
+    ##         width(data) <- width(e$grangeslist)
+    ## }
+    data
+})
+
 
 #' @export
 en2DF = function(ed, nodes, from_field = "from", to_field = "to", strand_sign = NULL, from_strand_sign = NULL, to_strand_sign = NULL, from_strand = NULL, to_strand = NULL) {
