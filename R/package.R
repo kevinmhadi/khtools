@@ -604,6 +604,8 @@ getdat = function() { ## to be used within "with()" expr
 }
 
 #' @name gd
+#'
+#' alieas for getdat
 #' 
 #' @export
 gd = getdat
