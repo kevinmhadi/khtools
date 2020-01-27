@@ -413,6 +413,16 @@ lst.zerochar2empty = function(x) {
 ##################################################
 
 
+#' @name ne
+#'
+#' "no error"
+#'
+#' @return NULL, if error
+#' @export
+ne = function(...) {
+    return(tryCatch(..., error = function(e) NULL))
+}
+
 
 #' @name good.file
 #'
