@@ -1223,6 +1223,29 @@ gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.pa
 
 
 
+#' @name gg.hist
+#'
+#' generate ggplot histogram
+#' 
+#' @return A ggplot object
+#' @export
+gg.hist = function(dat.x, as.frac = FALSE, bins = 50, trans = "identity", print = TRUE, xlim = NULL, ylim = NULL, xlab = "", x_breaks = 20, y_breaks = 10) {
+    gg = ggplot(mapping = aes(x = dat.x))
+    if (isTRUE(as.frac))
+        gg = gg + geom_histogram(aes(y = ..count.. / sum(..count..)), bins = bins)
+    else
+        gg = gg + geom_histogram(bins = bins)
+    gg = gg + scale_x_continuous(trans = trans, limits = xlim, breaks = scales::pretty_breaks(n = x_breaks)) +
+        scale_y_continuous(breaks = pretty_breaks(n = y_breaks), limits = ylim)
+    if (!is.null(xlab) && any(!is.na(xlab)) && nzchar(xlab))
+        gg = gg + xlab(xlab)
+    if (print)
+        print(gg)
+    else
+        gg
+}
+
+
 
 ##############################
 ############################## htslib stuff
