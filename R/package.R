@@ -1206,15 +1206,18 @@ gg_mytheme = function(gg,
 #' 
 #' @return A ggplot object
 #' @export
-gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", print = TRUE, fill = NULL) {
+gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
     dat = data.table(frac = frac, conf.low = conf.low, conf.high = conf.high, group = group)
     if (is.null(fill)) fill.arg = group else fill.arg = fill
     dat[, fill.arg := fill.arg]
     gg = ggplot(dat, aes(x = group, fill = fill.arg, y = frac)) +
-        geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
-        geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
-    if (!is.null(wes)) 
+        geom_bar(stat = stat, position = position)
+    if (!is.na(conf.low) & !is.na(conf.high))
+        gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
+    if (!is.null(wes))
         gg = gg + scale_fill_manual(values = wesanderson::wes_palette(wes))
+    if (!is.null(other.palette))
+        gg = gg + scale_fill_manual(values = other.palette)
     if (print) print(gg) else gg
 }
 
