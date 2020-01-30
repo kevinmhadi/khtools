@@ -668,9 +668,11 @@ subset2 = function(x, sub.expr, ...) {
         this.sub = eval(as.list(match.call())$sub.expr)
     else if (missing(sub.expr)) {
         if (!is.null(dim(x)))
-            this.sub = seq_len(nrow(x))
+            ## this.sub = seq_len(nrow(x))
+            this.sub = logical(nrow(x)) | TRUE
         else
-            this.sub = seq_along(x)
+            this.sub = logical(length(x)) | TRUE
+            ## this.sub = seq_along(x)
     }
     subset(x, this.sub, ...)
 }
@@ -1229,14 +1231,14 @@ gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.pa
 #' 
 #' @return A ggplot object
 #' @export
-gg.hist = function(dat.x, as.frac = FALSE, bins = 50, trans = "identity", print = TRUE, xlim = NULL, ylim = NULL, xlab = "", x_breaks = 20, y_breaks = 10) {
+gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = NULL, trans = "identity", print = TRUE, xlim = NULL, ylim = NULL, xlab = "", x_breaks = 20, y_breaks = 10, expand = waiver(), ...) {
     gg = ggplot(mapping = aes(x = dat.x))
     if (isTRUE(as.frac))
-        gg = gg + geom_histogram(aes(y = ..count.. / sum(..count..)), bins = bins)
+        gg = gg + geom_histogram(aes(y = ..count.. / sum(..count..)), bins = bins, ...)
     else
-        gg = gg + geom_histogram(bins = bins)
+        gg = gg + geom_histogram(stat = stat_bin(bins = bins), ...)
     gg = gg + scale_x_continuous(trans = trans, limits = xlim, breaks = scales::pretty_breaks(n = x_breaks)) +
-        scale_y_continuous(breaks = pretty_breaks(n = y_breaks), limits = ylim)
+        scale_y_continuous(breaks = pretty_breaks(n = y_breaks), limits = ylim, expand = expand)
     if (!is.null(xlab) && any(!is.na(xlab)) && nzchar(xlab))
         gg = gg + xlab(xlab)
     if (print)
@@ -1640,7 +1642,7 @@ dt_f2char = function(dt, cols = NULL) {
 #'
 #'
 #' @return GRanges
-#' @rdname gr.within
+#' @rdname gr_within
 #' @exportMethod within
 #' @aliases within,GRanges-method
 #' @author Kevin Hadi
@@ -1659,6 +1661,11 @@ setMethod("within", signature(data = "GRanges"), function(data, expr) {
     e <- list2env(as.list(as(data, "DataFrame")))
     e$X = NULL
     e$data <- granges(data)
+    e$seqnames = as.integer(seqnames(e$data))
+    e$start = start(e$data)
+    e$end = end(e$data)
+    e$strand = as.character(strand(e$data))
+    e$width = as.integer(width(e$data))
     S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
     reserved <- c("seqnames", "start", "end", "width", "strand", "data")
     l <- mget(setdiff(ls(e), reserved), e)
@@ -1715,6 +1722,42 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
     ## }
     data
 })
+
+#' @name gr.within
+#' @title within on GRanges, S3
+#' @description
+#'
+#'
+#' @return GRanges
+#' @rdname gr.within
+#' @author Kevin Had
+#' @export
+gr.within = function(data, expr)  {
+    pf = parent.frame()
+    data2 = as(data, "DataFrame")
+    data2$X = NULL
+    data2$data <- granges(data)
+    data2$start = start(data2$data)
+    data2$end = end(data2$data)
+    data2$strand = as.character(strand(data2$data))
+    data2$width = as.integer(width(data2$data))
+    e = evalq(environment(), data2, pf)
+    eval(substitute(expr, pf), e)
+    reserved <- c("seqnames", "start", "end", "width", "strand", 
+                  "data")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del) mcols(data)[[nm]] = NULL
+    }
+    if (!identical(granges(data), e$data)) {
+        granges(data) <- e$data
+    }
+    data
+}
+
 
 
 #' @export
