@@ -413,6 +413,46 @@ lst.zerochar2empty = function(x) {
 ##################################################
 
 
+#' @name select.matrix
+#'
+#' wrapper to pick out rows and columns without erroring out
+#'
+#' @return matrix
+#' @export select.matrix
+select.matrix = function(x, rows = NULL, cols = NULL, int.rows = TRUE, int.cols = TRUE) {
+    errcol = ""
+    errrow = ""
+    if (!is.null(rows)) {
+        if (inherits(rows, "character")) {
+            if (int.rows) {
+                sel.row = intersect(rows, rownames(x))
+            } else {
+                sel.row = rows
+            }
+        } else if (!inherits(col, c("numeric", "integer"))) {
+            errrow = "incorrect column specification"
+        }
+    } else {
+        sel.row = seq_len(dim(x)[1])
+    }
+    if (!is.null(cols)) {
+        if (inherits(cols, "character")) {
+            if (int.cols) {
+                sel.col = intersect(cols, colnames(x))
+            } else {
+                sel.row = rows
+            }
+        } else if (!inherits(col, c("numeric", "integer"))) {
+            errcol = "incorrect column specification"
+        }
+    } else  {
+        sel.col = seq_len(dim(x)[2])
+    }
+    x[sel.row, sel.col, drop = FALSE]
+}
+
+
+
 #' @name ne
 #'
 #' "no error"
@@ -1722,6 +1762,84 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
     ## }
     data
 })
+
+
+setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
+    top_prenv1 = function (x, where = parent.frame()) 
+    {
+        sym <- substitute(x, where)
+        if (!is.name(sym)) {
+            stop("'x' did not substitute to a symbol")
+        }
+        if (!is.environment(where)) {
+            stop("'where' must be an environment")
+        }
+        .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
+    }
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$data <- gr.noval(data)
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
+    ## reserved <- c("ranges", "start", "end", "width", "space")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "data")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(gr.noval(data), e$data)) {
+        stop("change in the grangeslist detected")
+        ## granges(data) <- e$granges
+    } ## else {
+    ##     if (!identical(start(data), start(e$grangeslist)))
+    ##         start(data) <- start(e$grangeslist)
+    ##     if (!identical(end(data), end(e$grangeslist)))
+    ##         end(data) <- end(e$grangeslist)
+    ##     if (!identical(width(data), width(e$grangeslist)))
+    ##         width(data) <- width(e$grangeslist)
+    ## }
+    data
+})
+
+
+
+setMethod("within", signature(data = "IRanges"), function(data, expr) {
+    top_prenv1 = function (x, where = parent.frame()) 
+    {
+        sym <- substitute(x, where)
+        if (!is.name(sym)) {
+            stop("'x' did not substitute to a symbol")
+        }
+        if (!is.environment(where)) {
+            stop("'where' must be an environment")
+        }
+        .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
+    }
+    e <- list2env(as.list(as(data, "DataFrame")))
+    e$X = NULL
+    e$data <- ranges(data)
+    e$start = start(e$data)
+    e$end = end(e$data)
+    e$width = as.integer(width(e$data))
+    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
+    reserved <- c("start", "end", "width", "data")
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    mcols(data) = l
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    if (!identical(ranges(data), e$data)) {
+        ranges(data) <- e$data
+    }
+    data
+})
+
 
 #' @name gr.within
 #' @title within on GRanges, S3
