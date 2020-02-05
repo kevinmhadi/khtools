@@ -1294,7 +1294,7 @@ gg_mytheme = function(gg,
 #' 
 #' @return A ggplot object
 #' @export gg.sline
-gg.sline = function(x, y, group = "x", smethod = "lm", facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE) {
+gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE, hex_par = list(bins = 50)) {
     if (is.null(facet1)) {
         facet1 = facet2
         facet2 = NULL
@@ -1307,7 +1307,15 @@ gg.sline = function(x, y, group = "x", smethod = "lm", facet1 = NULL, facet2 = N
             facet2 = factor(facet2, unique(facet2))
     dat = data.table(x, y, group, facet1 = facet1, facet2 = facet2)
     gg = ggplot(dat, mapping = aes(x = x, y = y, group = group))
-    gg = gg + geom_point(size = 0.1) +
+    if (identical(dens_type, c("point", "hex"))) {
+        message("selecting geom_point() as default")
+        dens_type = "point"
+    }
+    if (identical(dens_type, "hex"))
+        gg = gg + geom_hex(bins = hex_par$bin)
+    else if (identical(dens_type, "point"))
+        gg = gg + geom_point(size = 0.1)
+    gg = gg + 
         ## geom_smooth(method = lm, se = TRUE) +
         geom_smooth(method = smethod, size = 1, formula = formula)
     ## xlim(0, 1.5e5)
