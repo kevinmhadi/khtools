@@ -412,6 +412,39 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name dcast.wrap
+#'
+#' A convenience wrapper around dcast to make formula generation more
+#' programmatic
+#'
+#' @return A data frame or data.table
+#' @export dcast.wrap
+dcast.wrap = function(x, lh, rh, dcast.fun, ...) {
+    if (missing(dcast.fun)) {
+        if (inherits(x, "data.table"))
+            dcast.fun = dcast.data.table
+        else
+            dcast.fun = dcast
+    }
+    if (!isTRUE(is.function(dcast.fun)))
+        stop("provided dcast argument is not a function")
+    dcast_form = formula(paste(paste(lh, collapse = "+"), paste(rh, collapse = "+"), sep = "~"))
+    return(dcast.fun(x, formula = dcast_form, ...))
+}
+
+
+#' @name normv
+#'
+#' normalize a vector
+#' i.e. rescale to have values between 0 and 1
+#'
+#' @return vector
+#' @export 
+normv = function(x) {
+    (x - min(x, na.rm = T)) / (max(x, na.rm = T) - min(x, na.rm = T))
+}
+
+
 
 #' @name select.matrix
 #'
@@ -469,12 +502,17 @@ ne = function(...) {
 #' Does file exist and is its size greater than a threshold
 #'
 #' @return logical
-#' @export
+#' @export good.file
 good.file = function(x, size.thresh = 0) {
     (file.exists(x) & na2false(file.size(x) > size.thresh))
 }
 
 
+#' @name loop_grep
+#'
+#' A wrapper around grep to identify string matches across multiple patterns
+#'
+#' @return integer vector of indices
 #' @export
 loop_grep = function(pattern, x, ignore.case = FALSE) {
     ## for (i in unique(pattern)) {
@@ -490,6 +528,11 @@ loop_grep = function(pattern, x, ignore.case = FALSE) {
     return(ind)
 }
 
+#' @name loop_grepl
+#'
+#' Generating a logical vector from loop_grep
+#'
+#' @return logical vector of all matches
 #' @export
 loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
     lg = logical(length(vec_char))
@@ -1245,13 +1288,55 @@ gg_mytheme = function(gg,
 }
 
 
+#' @name gg.sline
+#'
+#' a wrapper around geom_smooth to fit dot plot with lm line
+#' 
+#' @return A ggplot object
+#' @export gg.sline
+gg.sline = function(x, y, group = "x", smethod = "lm", facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE) {
+    if (is.null(facet1)) {
+        facet1 = facet2
+        facet2 = NULL
+    }
+    if (!is.null(facet1)) 
+        if (!is.factor(facet1)) 
+            facet1 = factor(facet1, unique(facet1))
+    if (!is.null(facet2)) 
+        if (!is.factor(facet2)) 
+            facet2 = factor(facet2, unique(facet2))
+    dat = data.table(x, y, group, facet1 = facet1, facet2 = facet2)
+    gg = ggplot(dat, mapping = aes(x = x, y = y, group = group))
+    gg = gg + geom_point(size = 0.1) +
+        ## geom_smooth(method = lm, se = TRUE) +
+        geom_smooth(method = smethod, size = 1, formula = formula)
+    ## xlim(0, 1.5e5)
+    if (!is.null(dat$facet1)) {
+        if (!is.null(dat$facet2)) {
+            if (transpose) 
+                g = g + facet_grid(facet2 ~ facet1, scales = facet_scales)
+            else g = g + facet_grid(facet1 ~ facet2, scales = facet_scales)
+        }
+        else {
+            if (transpose) 
+                g = g + facet_grid(. ~ facet1, scales = facet_scales)
+            else g = g + facet_grid(facet1 ~ ., scales = facet_scales)
+        }
+    }
+    if (print)
+        print(gg)
+    else
+        gg
+}
+
+
 #' @name gbar.error
 #'
 #' A barplot of fractions with confidence intervals. To be used with
 #' binom.conf.
 #' 
 #' @return A ggplot object
-#' @export
+#' @export gbar.error
 gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
     dat = data.table(frac = frac, conf.low = conf.low, conf.high = conf.high, group = group)
     if (is.null(fill)) fill.arg = group else fill.arg = fill
@@ -1274,7 +1359,7 @@ gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.pa
 #' generate ggplot histogram
 #' 
 #' @return A ggplot object
-#' @export
+#' @export gg.hist
 gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = NULL, trans = "identity", print = TRUE, xlim = NULL, ylim = NULL, xlab = "", x_breaks = 20, y_breaks = 10, expand = waiver(), ...) {
     gg = ggplot(mapping = aes(x = dat.x))
     if (isTRUE(as.frac))
