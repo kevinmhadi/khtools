@@ -412,6 +412,33 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+
+#' @name %inn%
+#'
+#' Same as %in% but keeps NA values as NA
+#'
+#' @return a logical vector
+#' @export 
+`%inn%` = function(x, table) {
+    vec = match(x, table, nomatch = 0L) > 0L
+    vec[is.na(x)] = NA
+    vec
+}
+
+
+#' @name dcast.count
+#'
+#' Counting up occurrences in a table while taking factor levels into account
+#'
+#' @return A data frame or data.table
+#' @export dcast.count
+dcast.count = function(tbl, lh, rh = NULL, ...) {
+    if (is.null(rh))
+        rh = "dummy"
+    dcast.wrap(within(tbl, {dummy = "count"}), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = length, fill = 0, ...)
+}
+
+
 #' @name dcast.wrap
 #'
 #' A convenience wrapper around dcast to make formula generation more
@@ -1039,11 +1066,14 @@ make_chunks = function(vec, num_per_chunk = 100) {
 #' @export
 globasn = function(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv, verbose = TRUE)
 {
+    var = as.list(match.call())$var
     if (is.null(var)) {
         globx = as.character(substitute(obj))
     } else {
-        if (!is.character(var)) {
-            stop("var must be specified as character")
+        if (is.name(var))
+            var = as.character(var)
+        else if (!is.character(var)) {
+            stop("var must be coercible to a character")
         }
         if (inherits(var, "character")) {
             ## if (var != as.character(substitute(var))) {
@@ -2138,19 +2168,25 @@ pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_v
 
 
 #' @export plot.jabba
-plot.jabba = function(pairs, win, filename, use.jab.cov = TRUE, field.name = "jabba_rds", cov.field.name = "cbs_cov_rds", cov.y.field = "ratio", title = "", ...) {
-    gg = gG(jabba = pairs[[field.name]])
-    if (isTRUE(use.jab.cov))
-        cov = readRDS(inputs(readRDS(pairs[[field.name]] %>% dig_dir("Job.rds$")))$CovFile)
-    else
-        cov = readRDS(pairs[[cov.field.name]])
-    gcov = gTrack(cov, cov.y.field, circles = TRUE, lwd.border = 0.0001)
+plot.jabba = function(pairs, win, filename, use.jab.cov = TRUE, field.name = "jabba_rds", cov.field.name = "cbs_cov_rds", cov.y.field = "ratio", title = "", doplot = TRUE, gt, ...) {
+    if (missing(gt)) {
+        gg = gG(jabba = pairs[[field.name]])
+        if (isTRUE(use.jab.cov))
+            cov = readRDS(inputs(readRDS(pairs[[field.name]] %>% dig_dir("Job.rds$")))$CovFile)
+        else
+            cov = readRDS(pairs[[cov.field.name]])
+        gcov = gTrack(cov, cov.y.field, circles = TRUE, lwd.border = 0.0001)
+        gt = c(gcov, gg$gtrack())
+    }
     if (missing(win))
-        win = si2gr(gg) %>% keepStandardChromosomes(pruning.mode = "coarse") %>% gr.sort
-    if (missing(filename))
-        ppng(plot(c(gcov, gg$gtrack()), win = win, ...), res = 200, title = title)
-    else
-        ppng(plot(c(gcov, gg$gtrack()), win = win, ...), filename = filename, res = 200, title = title)
+        win = si2gr(hg_seqlengths()) %>% keepStandardChromosomes(pruning.mode = "coarse") %>% gr.sort
+    if (isTRUE(doplot)) {
+        if (missing(filename))
+            ppng(plot(gt, win = win, ...), res = 200, title = title)
+        else
+            ppng(plot(gt, win = win, ...), filename = filename, res = 200, title = title)
+    }
+    return(gt)
 }
 
 #' @export pairs.plot.jabba
@@ -2159,11 +2195,12 @@ pairs.plot.jabba = function(pairs, dirpath = "~/public_html/jabba_output", jabba
     iter.fun = function(x, tbl) {
         ent = tbl[get(jabba.field) == x]
         ttl = ent[[id.field]]
-        plot.jabba(ent, use.jab.cov = TRUE, filename = paste0(dirpath, "/", ent[[id.field]], ".png"), cov.y.field = cov.y.field, y.quantile = 0.01, title = ttl)
+        plot.jabba(ent, use.jab.cov = TRUE, field.name = jabba.field, filename = paste0(dirpath, "/", ent[[id.field]], ".png"), cov.y.field = cov.y.field, y.quantile = 0.01, title = ttl)
     }
     mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores)
     NULL
 }
+
 
 #' @export pairs.process.events
 pairs.process.events = function(pairs, events.field = "complex", id.field = "pair", mc.cores = 1) {
