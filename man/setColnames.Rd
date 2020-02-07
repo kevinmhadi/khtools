@@ -4,8 +4,7 @@
 \alias{setColnames}
 \title{convenience function to set column names}
 \usage{
-setColnames(object = nm, nm = NULL, pattern = NULL,
-  replacement = "")
+setColnames(object = nm, nm = NULL, pattern = NULL, replacement = "")
 }
 \arguments{
 \item{object}{tabled object}

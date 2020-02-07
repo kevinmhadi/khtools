@@ -4,8 +4,7 @@
 \alias{ret_na_err}
 \title{using check_lst to return}
 \usage{
-ret_na_err(lst, class_condition = c("try-error", "error", "errored",
-  "err"))
+ret_na_err(lst, class_condition = c("try-error", "error", "errored", "err"))
 }
 \arguments{
 \item{lst}{A list (usually the output of lapply(... , function(x) try({}))}

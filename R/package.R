@@ -1,6 +1,3 @@
-
-
-
 #' match x indices in terms of y
 #'
 #' @param x A vector
@@ -78,7 +75,7 @@ undup = function(obj, fromLast = FALSE, nmax = NA) {
 
 
 
-#' name a character vector to itself 
+#' name a character vector to itself
 #'
 #' @title selfname
 #' @param char A character vector
@@ -413,12 +410,45 @@ lst.zerochar2empty = function(x) {
 ##################################################
 
 
+#' @name dynget
+#'
+#' slight modification of base::dynGet()
+#'
+#' @export
+dynget = function (x, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
+    domain = NA), minframe = 1L, inherits = FALSE)
+{
+    tmp_x = as.list(match.call())$x
+    if (is.name(tmp_x))
+        x = as.character(tmp_x)
+    else if (!is.character(tmp_x))
+        stop("x must be a character or a name of a variable")
+    n <- sys.nframe()
+    myObj <- structure(list(.b = as.raw(7)), foo = 47L)
+    while (n > minframe) {
+        n <- n - 1L
+        env <- sys.frame(n)
+        r <- get0(x, envir = env, inherits = inherits, ifnotfound = myObj)
+        if (!identical(r, myObj))
+            return(r)
+    }
+    ifnotfound
+}
+
+#' @name dg
+#'
+#' convenience wrapper around dynget
+#'
+#' @export
+dg = dynget
+
+
 #' @name %inn%
 #'
 #' Same as %in% but keeps NA values as NA
 #'
 #' @return a logical vector
-#' @export 
+#' @export
 `%inn%` = function(x, table) {
     vec = match(x, table, nomatch = 0L) > 0L
     vec[is.na(x)] = NA
@@ -466,7 +496,7 @@ dcast.wrap = function(x, lh, rh, dcast.fun, ...) {
 #' i.e. rescale to have values between 0 and 1
 #'
 #' @return vector
-#' @export 
+#' @export
 normv = function(x) {
     (x - min(x, na.rm = T)) / (max(x, na.rm = T) - min(x, na.rm = T))
 }
@@ -575,7 +605,7 @@ loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
 #'
 #' Recursively repeat a function
 #' Found on stackoverflow
-#' 
+#'
 #' @return Same as .x
 #' @export
 rrrepeated <- function(.x, .reps = 1, .f, ...) {
@@ -726,7 +756,7 @@ getdat = function() { ## to be used within "with()" expr
 #' @name gd
 #'
 #' alieas for getdat
-#' 
+#'
 #' @export
 gd = getdat
 
@@ -805,7 +835,7 @@ replace2 = function(x, repl.expr, values) {
 
 #' @export
 ave2 = function(x, ..., FUN = mean) {
-    if (missing(...)) 
+    if (missing(...))
         x[] <- FUN(x)
     else {
         g <- interaction(...)
@@ -848,9 +878,9 @@ file.mat.exists = function(x) {
 #' @name `%nin%`
 #'
 #' Not match
-#' 
+#'
 #' @export
-`%nin%` = function (x, table) 
+`%nin%` = function (x, table)
 {
     match(x, table, nomatch = 0L) == 0L
 }
@@ -865,7 +895,7 @@ f2int = function(this_factor) {
     if (inherits(this_factor, "factor")) {
         lvl = levels(this_factor)
         if (inherits(lvl, c("numeric", "integer"))) {
-            as.integer(levels(this_factor))[this_factor]   
+            as.integer(levels(this_factor))[this_factor]
         } else if (inherits(lvl, "character")) {
             match(as.character(this_factor), lvl)
         }
@@ -881,19 +911,19 @@ f2int = function(this_factor) {
 #' or stdout to console or flexibly return to a path.
 #'
 #' @export
-system3 = function (command, args = character(), stdout = "", stderr = "", 
-    stdin = "", input = NULL, env = character(), wait = TRUE, 
-    minimized = FALSE, invisible = TRUE, timeout = 0) 
+system3 = function (command, args = character(), stdout = "", stderr = "",
+    stdin = "", input = NULL, env = character(), wait = TRUE,
+    minimized = FALSE, invisible = TRUE, timeout = 0)
 {
-    if (!missing(minimized) || !missing(invisible)) 
+    if (!missing(minimized) || !missing(invisible))
         message("arguments 'minimized' and 'invisible' are for Windows only")
-    if (!is.logical(wait) || is.na(wait)) 
+    if (!is.logical(wait) || is.na(wait))
         stop("'wait' must be TRUE or FALSE")
     intern <- FALSE
     command <- paste(c(env, shQuote(command), args), collapse = " ")
-    if (is.null(stdout)) 
+    if (is.null(stdout))
         stdout <- FALSE
-    if (is.null(stderr)) 
+    if (is.null(stderr))
         stderr <- FALSE
     if (isTRUE(stdout) || isTRUE(stderr))
         intern <- TRUE
@@ -924,29 +954,29 @@ system3 = function (command, args = character(), stdout = "", stderr = "",
             command = paste(command, "2>", shQuote(stderr))
         }
     } else if (is.character(stderr) & is.character(stdout)) {
-        if (length(stdout) != 1L) 
+        if (length(stdout) != 1L)
             stop("'stdout' must be of length 1")
         if (nzchar(stdout)) {
-            command <- if (identical(stdout, stderr)) 
+            command <- if (identical(stdout, stderr))
                            paste(command, ">", shQuote(stdout), "2>&1")
                        else paste(command, ">", shQuote(stdout))
         }
-        if (length(stderr) != 1L) 
+        if (length(stderr) != 1L)
             stop("'stderr' must be of length 1")
-        if (nzchar(stderr) && !identical(stdout, stderr)) 
+        if (nzchar(stderr) && !identical(stdout, stderr))
             command <- paste(command, "2>", shQuote(stderr))
     }
     if (!is.null(input)) {
-        if (!is.character(input)) 
+        if (!is.character(input))
             stop("'input' must be a character vector or 'NULL'")
         f <- tempfile()
         on.exit(unlink(f))
         writeLines(input, f)
         command <- paste(command, "<", shQuote(f))
     }
-    else if (nzchar(stdin)) 
+    else if (nzchar(stdin))
         command <- paste(command, "<", stdin)
-    if (!wait && !intern) 
+    if (!wait && !intern)
         command <- paste(command, "&")
     .Internal(system(command, intern, timeout))
 }
@@ -1160,7 +1190,7 @@ reset.job = function(x, ..., jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores,
 #' @return A character
 #' @export
 getcache = function(object) {
-      path = paste(object@rootdir, "/", task(object)@name, 
+      path = paste(object@rootdir, "/", task(object)@name,
                    ".rds", sep = "")
       return(path)
 }
@@ -1321,7 +1351,7 @@ gg_mytheme = function(gg,
 #' @name gg.sline
 #'
 #' a wrapper around geom_smooth to fit dot plot with lm line
-#' 
+#'
 #' @return A ggplot object
 #' @export gg.sline
 gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE, hex_par = list(bins = 50)) {
@@ -1329,11 +1359,11 @@ gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "h
         facet1 = facet2
         facet2 = NULL
     }
-    if (!is.null(facet1)) 
-        if (!is.factor(facet1)) 
+    if (!is.null(facet1))
+        if (!is.factor(facet1))
             facet1 = factor(facet1, unique(facet1))
-    if (!is.null(facet2)) 
-        if (!is.factor(facet2)) 
+    if (!is.null(facet2))
+        if (!is.factor(facet2))
             facet2 = factor(facet2, unique(facet2))
     dat = data.table(x, y, group, facet1 = facet1, facet2 = facet2)
     gg = ggplot(dat, mapping = aes(x = x, y = y, group = group))
@@ -1345,18 +1375,18 @@ gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "h
         gg = gg + geom_hex(bins = hex_par$bin)
     else if (identical(dens_type, "point"))
         gg = gg + geom_point(size = 0.1)
-    gg = gg + 
+    gg = gg +
         ## geom_smooth(method = lm, se = TRUE) +
         geom_smooth(method = smethod, size = 1, formula = formula)
     ## xlim(0, 1.5e5)
     if (!is.null(dat$facet1)) {
         if (!is.null(dat$facet2)) {
-            if (transpose) 
+            if (transpose)
                 g = g + facet_grid(facet2 ~ facet1, scales = facet_scales)
             else g = g + facet_grid(facet1 ~ facet2, scales = facet_scales)
         }
         else {
-            if (transpose) 
+            if (transpose)
                 g = g + facet_grid(. ~ facet1, scales = facet_scales)
             else g = g + facet_grid(facet1 ~ ., scales = facet_scales)
         }
@@ -1372,7 +1402,7 @@ gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "h
 #'
 #' A barplot of fractions with confidence intervals. To be used with
 #' binom.conf.
-#' 
+#'
 #' @return A ggplot object
 #' @export gbar.error
 gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
@@ -1395,7 +1425,7 @@ gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.pa
 #' @name gg.hist
 #'
 #' generate ggplot histogram
-#' 
+#'
 #' @return A ggplot object
 #' @export gg.hist
 gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = NULL, trans = "identity", print = TRUE, xlim = NULL, ylim = NULL, xlab = "", x_breaks = 20, y_breaks = 10, expand = waiver(), ...) {
@@ -1423,7 +1453,7 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 #' @name read.bam.header
 #'
 #' Read in a bam header into tabular format
-#' 
+#'
 #' @return A data.table
 #' @export
 read.bam.header = function(bam, trim = FALSE) {
@@ -1445,7 +1475,7 @@ read.bam.header = function(bam, trim = FALSE) {
 #' @name grep_order
 #'
 #' order text based on the supplied order of multiple patterns
-#' 
+#'
 #' @return A character vector
 #' @export
 grep_order = function(patterns, text, return_na = FALSE, first_only = FALSE, perl = TRUE, fixed = FALSE) {
@@ -1469,7 +1499,7 @@ grep_order = function(patterns, text, return_na = FALSE, first_only = FALSE, per
 #'
 #' order columns of a data.frame/data.table based on the supplied
 #' order of multiple character patterns.
-#' 
+#'
 #' @return A data.frame/data.table
 #' @export
 grep_col_sort = function(patterns, df, all_cols = TRUE, match_first = TRUE, perl = TRUE, fixed = FALSE) {
@@ -1501,7 +1531,7 @@ grep_col_sort = function(patterns, df, all_cols = TRUE, match_first = TRUE, perl
 #' @name merge.repl
 #'
 #' Merge two data tables
-#' 
+#'
 #' @return A data.table
 #' @export merge.repl
 merge.repl = function(dt.x,
@@ -1814,7 +1844,7 @@ dt_f2char = function(dt, cols = NULL) {
 #' @aliases within,GRanges-method
 #' @author Kevin Hadi
 setMethod("within", signature(data = "GRanges"), function(data, expr) {
-    top_prenv1 = function (x, where = parent.frame()) 
+    top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
         if (!is.name(sym)) {
@@ -1851,7 +1881,7 @@ setMethod("within", signature(data = "GRanges"), function(data, expr) {
 
 
 setMethod("within", signature(data = "GRangesList"), function(data, expr) {
-    top_prenv1 = function (x, where = parent.frame()) 
+    top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
         if (!is.name(sym)) {
@@ -1892,7 +1922,7 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
 
 
 setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
-    top_prenv1 = function (x, where = parent.frame()) 
+    top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
         if (!is.name(sym)) {
@@ -1934,7 +1964,7 @@ setMethod("within", signature(data = "CompressedGRangesList"), function(data, ex
 
 
 setMethod("within", signature(data = "IRanges"), function(data, expr) {
-    top_prenv1 = function (x, where = parent.frame()) 
+    top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
         if (!is.name(sym)) {
@@ -1988,7 +2018,7 @@ gr.within = function(data, expr)  {
     data2$width = as.integer(width(data2$data))
     e = evalq(environment(), data2, pf)
     eval(substitute(expr, pf), e)
-    reserved <- c("seqnames", "start", "end", "width", "strand", 
+    reserved <- c("seqnames", "start", "end", "width", "strand",
                   "data")
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
@@ -2079,7 +2109,7 @@ map_fus2unfus = function(ed, nodes, exact = TRUE) {
 #' @name ra.overlaps6
 #'
 #' One of the many rewrites of ra.overlaps
-#' 
+#'
 #' @export
 ra.overlaps6 = function(ra1, ra2, pad = 0) {
     ra1 = gr.noval(ra1)
@@ -2222,7 +2252,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     paths = subset2(pairs[[jn.field]], file.exists(x))
     mask = rtracklayer::import(mask)
     iter.fun = function(x, tbl) {
-        ent = tbl[get(jn.field) == x]   
+        ent = tbl[get(jn.field) == x]
         .fun = function(gg) {
             ## dd.ov = gr.sum(gg$edges[type == "ALT"][class %in% c("DEL-like", "DUP-like")]$shadow) %Q% (score > 1)
             gg.alt.edge = gg$edges[type == "ALT"]
@@ -2358,5 +2388,3 @@ pairs.get.jabba.pp = function(pairs, jabba.field = "jabba_rds", id.field = "pair
     }
     setkeyv(rbindlist(mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores), fill = TRUE), id.field)
 }
-
-

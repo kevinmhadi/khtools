@@ -4,8 +4,7 @@
 \alias{globasn}
 \title{assign an object to global environment}
 \usage{
-globasn(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv,
-  verbose = TRUE)
+globasn(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv, verbose = TRUE)
 }
 \arguments{
 \item{obj}{The object to assign to the global environment}
