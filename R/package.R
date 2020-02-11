@@ -1921,6 +1921,7 @@ dt_f2char = function(dt, cols = NULL) {
 #'
 #' @return GRanges or GRangesList
 #' @author Kevin Hadi
+#' @export
 gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
     if (is.null(keep.col) & is.null(drop.col)) {
         select_col = NULL
