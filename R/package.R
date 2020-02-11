@@ -1474,8 +1474,8 @@ read.bam.header = function(bam, trim = FALSE) {
 #' @export
 bcfindex = function(vcf, force = TRUE) {
     if (!force) {
-        if (!grepl(".vcf.gz$|.vcf$", vcf)) {
-            stop("check if you have a valid vcf file")
+        if (!grepl(".[bv]cf(.gz)?$", vcf)) {
+            stop("check if you have a valid bcf/vcf file")
         }
     }
     if (!file.exists(paste0(vcf, ".tbi")) & !file.exists(paste0(vcf, ".csi"))) {
