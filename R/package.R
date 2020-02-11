@@ -1126,6 +1126,21 @@ globasn = function(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv, verbo
 }
 
 
+#' @name reassign
+#'
+#' ONLY USE IF YOU KNOW WHAT YOU ARE DOING
+#' this function takes a list of named objects and assigns them to the calling environment
+#'
+#' @param variables_lst A named list of variables
+#' @return the input list
+#' @export
+reassign = function(variables_lst, calling_env = parent.frame()) {
+    for (i in 1:length(variables_lst)) {
+        assign(names(variables_lst[i]), variables_lst[[i]], envir = calling_env)
+    }
+    return(variables_lst)
+}
+
 
 ##############################
 ############################## factor helpers / forcats wrappers
@@ -1447,7 +1462,7 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 
 
 ##############################
-############################## htslib stuff
+############################## htslib / skidb stuff
 ##############################
 
 #' @name read.bam.header
@@ -1483,6 +1498,51 @@ bcfindex = function(vcf, force = TRUE) {
     }
     vcf
 }
+
+
+
+#' @name read_vcf2
+#'
+#' read in a vcf file to granges with additional processing with bcftools
+#'
+#' @return GRanges
+#' @export
+read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg19', geno = NULL, swap.header = NULL, verbose = FALSE, add.path = FALSE, tmp.dir = tempdir(), ...) {
+    if (any(!type %in% c("snps", "indels", "all"))) {
+        stop("type must be one of \"snps\", \"indels\", \"all\"")
+    }
+    if (!missing(type)) {
+        if ("all" %in% type) {
+            v_query = ""
+            message("grabbing all variants")
+        } else if (all(c("snps", "indels") %in% type)) {
+            v_query = "-v snps,indels"
+            message("grabbing snps and indels")
+        } else {
+            v_query = sprintf("-v %s", type)
+            message(sprintf("grabbing %s", type))
+        }
+    } else {
+        v_query = ""
+        message("Assuming all variants should be grabbed")
+    }
+    tmp.vcf = tempfile("tmp", fileext = ".vcf")
+    if (!is.null(gr))
+        grs = paste(gr.string(gr.stripstrand(gr)), collapse = " ")
+    else
+        grs = ""
+    cmd = sprintf("(bcftools view %s -i 'FILTER==\"PASS\"' %s %s | bcftools norm -Ov -m-any) > %s", v_query, fn, grs, tmp.vcf)
+    system(cmd)
+    vars = gr.nochr(unname(read_vcf(tmp.vcf, gr = gr, hg = hg, geno = geno, swap.header = swap.header, verbose = verbose, add.path = add.path, tmp.dir = tmp.dir, ...)))
+    vars$REF = as.character(vars$REF)
+    vars$ALT = as.character(unstrsplit(vars$ALT))
+    vars$type = with(mcols(vars), ifelse(nchar(REF) < nchar(ALT), "INS",
+                                  ifelse(nchar(REF) > nchar(ALT), "DEL",
+                                  ifelse(nchar(REF) == 1 & nchar(ALT) == 1, "SNV", NA_character_))))
+    vars = sort(sortSeqlevels(vars), ignore.strand = FALSE)
+    return(vars)
+}
+
 
 
 
@@ -2142,6 +2202,43 @@ ra.overlaps6 = function(ra1, ra2, pad = 0) {
     ix2 = ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))]
     ix2[, cbind(grl.ix.x, grl.ix.y)]
 }
+
+
+
+#' @name grl2bedpe
+#'
+#' converting grl to bedpe-like table
+#' also shifts coordinates to half closed 0 based
+#'
+#' @export
+grl2bedpe = function(grl) {
+    df = as.data.frame(S4Vectors::zipdown(grl))
+    df = select(df, -matches("(first|second)\\.width"), -one_of("names"))
+    ## df = rename_at(df, vars(matches("(\\.X)")), ~gsub("(\\.X)?", "", .))
+    colnames(df) = withv(colnames(df), gsub("(\\.X)?", "", x))
+    df = df[,!duplicated(colnames(df))]
+    df = df %>% rename_at(vars(matches("(first|second)\\.seqnames")), ~gsub("seqnames", "chr", .)) %>%
+        rename_at(vars(matches("^first\\.(chr$|start$|end$|strand$)")), ~gsub("(first\\.)(.*)", "\\21", .)) %>%
+        rename_at(vars(matches("^second\\.(chr$|start$|end$|strand$)")), ~gsub("(second\\.)(.*)", "\\22", .))
+    df = mutate_at(df, vars(matches("start(1|2)")), ~(. - 1))
+    df = mutate(df, name = "dummy", score = 0)
+    select(df, chr1, start1, end1, chr2, start2, end2, name, score, strand1, strand2, everything())
+}
+
+#' @name bedpe2grl
+#'
+#' converting bedpe to grl
+#'
+#' @export
+bedpe2grl = function(bdpe) {
+    pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "id"), names_pattern = "([A-Za-z]+)([12]$)")%>%
+        mutate_at(vars(matches("^start(1|2)$")), ~(. + 1)) %>%
+        dt2gr %>%
+        split(.$name) %>%
+        gr.fix(hg_seqlengths())
+}
+
+
 
 
 
