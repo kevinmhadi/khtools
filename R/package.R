@@ -2203,6 +2203,15 @@ ra.overlaps6 = function(ra1, ra2, pad = 0) {
     ix2[, cbind(grl.ix.x, grl.ix.y)]
 }
 
+#' @name gr2bed
+#'
+#' converting gr to bed like table
+#' also shifts coordinates to half closed 0 based
+#'
+#' @export
+gr2bed = function(gr) {
+    df = gr2dt(gr) %>% select(-one_of("chr")) %>% rename_at(1:3, ~c("chr", "start", "end")) %>% mutate(chr = as.character(chr), start = start - 1) %>% select(-one_of("width"))
+}
 
 
 #' @name grl2bedpe
