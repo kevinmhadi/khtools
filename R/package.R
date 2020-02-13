@@ -1079,9 +1079,9 @@ stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE
 #'
 #' @return A list
 #' @export
-make_chunks = function(vec, num_per_chunk = 100) {
-    ind = parallel::splitIndices(length(case_id), max(length(case_id) / max_per_chunk))
-    split(case_id, rep(seq_along(ind), times = elementNROWS(ind)))
+make_chunks = function(vec, max_per_chunk = 100) {
+    ind = parallel::splitIndices(length(vec), ceiling(length(vec) / max_per_chunk))
+    split(vec, rep(seq_along(ind), times = base::lengths(ind)))
 }
 
 
