@@ -1195,16 +1195,24 @@ reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$m
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
+    if (!all(names(args) %in% names(new.ent)))
+        stop("adding additional column to entities... this function is just for resetting with new arguments")
     for (j in seq_along(args))
     {
-        if (!names(args)[j] %in% names(new.ent)) stop("adding additional column to entities... this function is just for resetting with new arguments")
         data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
     }
     these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
-    if ("time" %in% names(these.forms))
-        jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
-    else
-        jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+    if ("time" %in% names(these.forms)) {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)            
+    } else {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+    }
     return(jb)
 }
 
@@ -1971,6 +1979,9 @@ gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
     return(gr)
 }
 
+
+setGeneric('within')
+
 #' @name within
 #' @title within on GRanges
 #' @description
@@ -1981,6 +1992,7 @@ gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
 #' @exportMethod within
 #' @aliases within,GRanges-method
 #' @author Kevin Hadi
+#' @export
 setMethod("within", signature(data = "GRanges"), function(data, expr) {
     top_prenv1 = function (x, where = parent.frame())
     {
