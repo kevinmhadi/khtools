@@ -328,7 +328,8 @@ ws2und = function(df)
 #' @return A list
 #' @export
 lst.empty = function(x) {
-    S4Vectors::elementNROWS(x) == 0
+    lengths(x) == 0
+    ## S4Vectors::elementNROWS(x) == 0
 }
 
 #' @name lst.empty2zero
@@ -338,7 +339,9 @@ lst.empty = function(x) {
 #' @return A logical vector of length(x)
 #' @export
 lst.empty2zero = function(x) {
-    x[S4Vectors::elementNROWS(x) == 0] = 0
+    x[lengths(x) == 0] = 0
+    ## x[S4Vectors::elementNROWS(x) == 0] = 0
+    x
 }
 
 
@@ -349,7 +352,8 @@ lst.empty2zero = function(x) {
 #' @return A list
 #' @export
 lst.empty2na = function(x) {
-    x[S4Vectors::elementNROWS(x) == 0] = NA
+    x[lengths(x) == 0] = NA
+    ## x[S4Vectors::elementNROWS(x) == 0] = NA
     ## x[x == "character(0)"] = NA
     ## x[x == "numeric(0)"] = NA
     ## x[x == "logical(0)"] = NA
@@ -363,8 +367,10 @@ lst.empty2na = function(x) {
 #'
 #' @return A list
 #' @export
+
 lst.empty2null = function(x) {
-    x[S4Vectors::elementNROWS(x) == 0] = NULL
+    x[lengths(x) == 0] = NULL
+    ## x[S4Vectors::elementNROWS(x) == 0] = NULL
     ## x[x == "character(0)"] = NULL
     ## x[x == "numeric(0)"] = NULL
     ## x[x == "logical(0)"] = NULL
