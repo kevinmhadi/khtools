@@ -397,8 +397,33 @@ lst.null2na = function(x) {
 #' @return A list
 #' @export
 lst.emptychar2null = function(x) {
-    x[x == ""] = list(NULL)
+    x[!nzchar(x)] = NULL
+    x
 }
+
+#' @name lst.emptychar2null
+#'
+#' set empty character to null
+#'
+#' @return A list
+#' @export
+lst.emptychar2null = function(x) {
+    x[!nzchar(x)] = NULL
+    x
+}
+
+
+#' @name lst.emptychar2na
+#'
+#' set empty character to NA
+#'
+#' @return A list
+#' @export
+lst.emptychar2na = function(x) {
+    x[!nzchar(x)] = NA_character_
+    x
+}
+
 
 #' @name lst.zerochar2empty
 #'
@@ -408,6 +433,7 @@ lst.emptychar2null = function(x) {
 #' @export
 lst.zerochar2empty = function(x) {
     x[x == "character(0)"] = list("")
+    x
 }
 
 
@@ -415,15 +441,46 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name rg_sub
+#'
+#' extract the first portion of matched substring
+#'
+#' @export
+rg_sub = function(pattern, text, ...) {
+    rg = regexpr(pattern, text, ...)
+    out = substr(text, rg, rg + attributes(rg)$match.length - 1)
+    return(replace2(out, !nzchar(x), NA_character_) %>% trimws)
+}
+
+#' @name grg_sub
+#'
+#' extract all portions of matched substring
+#' and collapse
+#'
+#' @export
+grg_sub = function(pattern, text, colsep = " ", ...) {
+    grg = gregexpr(pattern, text, ...)
+    rg = unlist(grg)
+    m.len = unlist(lapply(grg, attr, "match.length"))
+    lens = lengths(grg)
+    dt = data.table(text = rep(text, times = lens),
+                    ix = rep(seq_along(text), times = lens),
+                    iix = unlist(lapply(lens, seq_len)),
+                    dummy = "out_str")
+    dt[, out_str := substr(text, rg, rg + m.len - 1)]
+    out = dcast.wrap(dt, lh = "ix", rh = "dummy", value.var = "out_str", fun.aggregate = function(x) paste(x, collapse = colsep))[[2]]
+    return(replace2(out, !nzchar(x), NA_character_) %>% trimws)
+}
 
 #' @name dynget
 #'
 #' slight modification of base::dynGet()
 #' minframe set to 0 to also look in global environment
+#' and it's robust to using within functions
 #'
 #' @export
 dynget = function (x, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
-    domain = NA), minframe = 0L, inherits = FALSE)
+    domain = NA), minframe = 0L, inherits = FALSE) ## modification of base::dynGet()
 {
     tmp_x = as.list(match.call())$x
     if (is.name(tmp_x))
@@ -435,7 +492,7 @@ dynget = function (x, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
     while (n > minframe) {
         n <- n - 1L
         env <- sys.frame(n)
-        r <- get0(x, envir = env, inherits = inherits, ifnotfound = myObj)
+        r <- tryCatch(get0(x, envir = env, inherits = inherits, ifnotfound = myObj), error = function(e) return(myObj))
         if (!identical(r, myObj))
             return(r)
     }
@@ -792,6 +849,9 @@ with2 = function(data, expr, ...) {
 #' @return data.frame/data.table
 #' @export
 file.info2 = function(fn, col = NULL, include.all = FALSE) {
+    lst.call = as.list(match.call())
+    if (is.null(eval(lst.call$col)) & grepl("/", as.character(substitute(fn))))
+        col = "path"
     if (is.null(col)) col = as.character(substitute(fn))
     fif = file.info(unique(subset2(fn, file.exists(x)))) %>% rownames_to_column(col) %>% as.data.table
     if (include.all) {
@@ -1088,7 +1148,7 @@ stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE
 make_chunks = function(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_chunk) {
     lst.call = as.list(match.call())
     if (!is.null(lst.call$num_chunk) && is.null(lst.call$max_per_chunk)) {
-        max_per_chunk = !lst.call$num_chunk
+        max_per_chunk = !eval(lst.call$num_chunk)
     }
     if ((isTRUE(max_per_chunk) & isTRUE(num_chunk)) ||
         (isFALSE(max_per_chunk) & isFALSE(num_chunk)) ||
