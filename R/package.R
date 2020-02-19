@@ -496,13 +496,14 @@ grg_sub = function(pattern, text, colsep = " ", ...) {
 #' and it's robust to using within functions
 #'
 #' @export
-dynget = function (x, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
+dynget = function (x, px = TRUE, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
     domain = NA), minframe = 0L, inherits = FALSE) ## modification of base::dynGet()
 {
     tmp_x = as.list(match.call())$x
-    if (is.name(tmp_x))
-        x = as.character(tmp_x)
-    else if (!is.character(tmp_x))
+    if (is.name(tmp_x)) {
+        if (isTRUE(px))
+            x = as.character(tmp_x)
+    } else if (!is.character(tmp_x))
         stop("x must be a character or a name of a variable")
     n <- sys.nframe()
     myObj <- structure(list(.b = as.raw(7)), foo = 47L)
@@ -548,6 +549,43 @@ dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
     if (is.null(rh))
         rh = "dummy"
     dcast.wrap(within(tbl, {dummy = this.env$countcol}), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = length, fill = 0, ...)
+}
+
+#' @name dcast.count2
+#'
+#' Counting up occurrences in a table while taking factor levels into account
+#' Also allows for weighting the counts using flexible argument parsing
+#' Can either provide a weight as a name of a column,
+#' as values themselves, or don't provide at all, and the function looks for a
+#' column named "wt" for its values
+#'
+#' @return A data frame or data.table
+#' @export dcast.count2
+dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, ...) {
+    lst.call = as.list(match.call())
+    if ("wt" %in% names(lst.call))
+        if (is.character(wt) && wt %in% colnames(tbl)) {
+            expr = expression(within(tbl, {dummy = 1 * dg(wt, FALSE)}))
+        } else if (is.numeric(wt)) {
+            expr = expression(within(tbl, {wt = NULL; dummy = 1 * dg(wt)}))
+        } else {
+            stop("wt argument must be either a numeric vector, a name of a column, or a column that exists in the table")
+        }
+    else if (is.null(wt) || isFALSE(wt) || is.na(wt) || length(wt) == 0)
+        expr = expression(within(tbl, {dummy = 1}))
+    else if (!"wt" %in% names(lst.call)) {
+        if ("wt" %in% colnames(tbl)) {
+            message("column named \"wt\" found, will weight counts using values in this field")
+        }
+        expr = expression(within(tbl, {dummy = 1 * dg(wt)}))    
+    }
+    this.env = environment()
+    if (is.null(rh))
+        rh = "dummy"
+    out = dcast.wrap(eval(expr), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = sum, fill = 0, ...)
+    if ("1" %in% colnames(out))
+        setnames(out, "1", countcol)
+    return(out)
 }
 
 
