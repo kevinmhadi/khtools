@@ -896,12 +896,12 @@ subset2 = function(x, sub.expr, ...) {
             if (any(this.sub %% 1))
                 stop("subset must be integer")
             if (!is.null(dim(x))) {
-                if (!length(intersect(seq_len(nrow(x)), this.sub)))
+                if (!all(this.sub %in% seq_len(nrow(x))))
                     stop("subset must be indexed within rows of x")
                 else
                     this.sub = replace(logical(nrow(x)), this.sub, TRUE)
             } else {
-                if (!length(intersect(seq_along(x), this.sub)))
+                if (!all(this.sub %in% seq_along(x)))
                     stop("subset must be indexed within x")
                 else
                     this.sub = replace(logical(length(x)), this.sub, TRUE)
