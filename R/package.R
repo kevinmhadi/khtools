@@ -441,6 +441,23 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name lens
+#'
+#' figure out length or nrows of a list
+#' if there are dimensions in the list element,
+#' find out the number of rows
+#'
+#' @export
+lens = function(x, use.names = TRUE) {
+    dlst = lapply(x, dim)
+    out = lengths(x, use.names = use.names)
+    ix = which(!dlst == "NULL")
+    if (length(ix))
+        out[ix] = vapply(x[ix], nrow, 1L, USE.NAMES=use.names)
+    out
+}
+
+
 #' @name rg_sub
 #'
 #' extract the first portion of matched substring
@@ -526,11 +543,13 @@ dg = dynget
 #'
 #' @return A data frame or data.table
 #' @export dcast.count
-dcast.count = function(tbl, lh, rh = NULL, ...) {
+dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
+    this.env = environment()
     if (is.null(rh))
         rh = "dummy"
-    dcast.wrap(within(tbl, {dummy = "count"}), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = length, fill = 0, ...)
+    dcast.wrap(within(tbl, {dummy = this.env$countcol}), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = length, fill = 0, ...)
 }
+
 
 
 #' @name dcast.wrap
@@ -871,9 +890,24 @@ file.info2 = function(fn, col = NULL, include.all = FALSE) {
 #'
 #' @export
 subset2 = function(x, sub.expr, ...) {
-    if (!missing(sub.expr))
+    if (!missing(sub.expr)) {
         this.sub = eval(as.list(match.call())$sub.expr)
-    else if (missing(sub.expr)) {
+        if (is.numeric(this.sub)) {
+            if (any(this.sub %% 1))
+                stop("subset must be integer")
+            if (!is.null(dim(x))) {
+                if (!length(intersect(seq_len(nrow(x)), this.sub)))
+                    stop("subset must be indexed within rows of x")
+                else
+                    this.sub = replace(logical(nrow(x)), this.sub, TRUE)
+            } else {
+                if (!length(intersect(seq_along(x), this.sub)))
+                    stop("subset must be indexed within x")
+                else
+                    this.sub = replace(logical(length(x)), this.sub, TRUE)
+            }
+        }
+    } else if (missing(sub.expr)) {
         if (!is.null(dim(x)))
             ## this.sub = seq_len(nrow(x))
             this.sub = logical(nrow(x)) | TRUE
@@ -883,6 +917,7 @@ subset2 = function(x, sub.expr, ...) {
     }
     subset(x, this.sub, ...)
 }
+
 
 
 
@@ -1286,7 +1321,7 @@ reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$m
         if ("update_cores" %in% names(these.forms))
             jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
         else
-            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)            
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
     } else {
         if ("update_cores" %in% names(these.forms))
             jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
@@ -1465,7 +1500,7 @@ gg_mytheme = function(gg,
 #'
 #' convenience wrapper around gg_mytheme
 #' to automatically print the output
-#' 
+#'
 #' @return A ggplot object
 #' @export
 pg_mytheme = function(..., print = TRUE) gg_mytheme(..., print = TRUE)
