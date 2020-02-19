@@ -441,6 +441,40 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name rleseq
+#'
+#' numbers up within repeating elements of a vector
+#'
+#' @param vec a vector
+#' @param clump a logical specifying if duplicates are to be counted together
+#' @param recurs a logical that is meant to only be set by the function when using clump
+#' @return a list of idx and seq
+#'
+#' @export
+rleseq = function(vec, clump = FALSE, recurs = FALSE) {
+    vec = setNames(paste(as.character(vec)), seq_along(vec))
+    rlev = rle(paste(as.character(vec)))
+    if (!isTRUE(clump)) {
+        if (isTRUE(recurs)) {
+            return(unlist(unname(lapply(rlev$lengths, seq_len))))
+        } else {
+            return(
+                list(
+                    idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
+                    seq = unlist(unname(lapply(rlev$lengths, seq_len)))))
+        }
+    } else {
+        vec = setNames(paste(as.character(vec)), seq_along(vec))
+        lst = split(vec, factor(vec, levels = unique(vec)))
+        ord = as.integer(names(unlist(unname(lst))))
+        idx = rep(seq_along(lst), times = lengths(lst))
+        return(list(
+            idx = idx[order(ord)],
+            seq = rleseq(idx, clump = FALSE, recurs = TRUE)[order(ord)]))
+    }   
+}
+
+
 #' @name lens
 #'
 #' figure out length or nrows of a list
