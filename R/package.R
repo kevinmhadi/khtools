@@ -442,17 +442,20 @@ lst.zerochar2empty = function(x) {
 ##################################################
 
 #' @name rleseq
+#' @title numbers up within repeating elements of a vector
 #'
-#' numbers up within repeating elements of a vector
+#' @description
+#' returns unique id within each unique element of a vector or set of provided vectors
+#' and also a running id within each unique element
 #'
-#' @param vec a vector
+#' @param ... Vector(s) to identify with unique id and a running id within each unique id
 #' @param clump a logical specifying if duplicates are to be counted together
 #' @param recurs a logical that is meant to only be set by the function when using clump = TRUE
 #' @return a list of idx and seq
 #'
 #' @export
-rleseq = function(vec, clump = FALSE, recurs = FALSE) {
-    vec = setNames(paste(as.character(vec)), seq_along(vec))
+rleseq = function(..., clump = FALSE, recurs = FALSE) {
+    vec = setNames(paste(as.character(...)), seq_along(vec))
     rlev = rle(paste(as.character(vec)))
     if (!isTRUE(clump)) {
         if (isTRUE(recurs)) {
@@ -493,9 +496,12 @@ lens = function(x, use.names = TRUE) {
 
 
 #' @name rg_sub
+#' @title extracting substring match using regexpr
 #'
+#' @description
 #' extract the first portion of matched substring
 #'
+#' @return Character vector of the regex matched portions of the input string vector
 #' @export
 rg_sub = function(pattern, text, ...) {
     rg = regexpr(pattern, text, ...)
@@ -524,6 +530,7 @@ grg_sub = function(pattern, text, colsep = " ", ...) {
 }
 
 #' @name dynget
+#' @title modification of base::dynGet()
 #'
 #' slight modification of base::dynGet()
 #' minframe set to 0 to also look in global environment
@@ -552,9 +559,11 @@ dynget = function (x, px = TRUE, ifnotfound = stop(gettextf("%s not found", sQuo
 }
 
 #' @name dg
+#' @title alias of dynget
 #'
+#' @description
 #' convenience wrapper around dynget
-#'
+#' 
 #' @export
 dg = dynget
 
@@ -586,7 +595,9 @@ dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
 }
 
 #' @name dcast.count2
+#' @title Counts up occurrences from a melted table
 #'
+#' @description
 #' Counting up occurrences in a table while taking factor levels into account
 #' Also allows for weighting the counts using flexible argument parsing
 #' Can either provide a weight as a name of a column,
@@ -595,8 +606,14 @@ dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
 #'
 #' @return A data frame or data.table
 #' @export dcast.count2
-dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, ...) {
+dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggregate = "sum", ...) {
     lst.call = as.list(match.call())
+    if (is.name(lst.call$fun.aggregate))
+        fun.aggregate = get(as.character(lst.call$fun.aggregate))
+    else if (is.character(lst.call$fun.aggregate))
+        fun.aggregate = get(lst.call$fun.aggregate)
+    else if (is.call(lst.call$fun.aggregate))
+        fun.aggregate
     if ("wt" %in% names(lst.call))
         if (is.character(wt) && wt %in% colnames(tbl)) {
             expr = expression(within(tbl, {dummy = 1 * dg(wt, FALSE)}))
@@ -616,7 +633,7 @@ dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, ...) {
     this.env = environment()
     if (is.null(rh))
         rh = "dummy"
-    out = dcast.wrap(eval(expr), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = sum, fill = 0, ...)
+    out = dcast.wrap(eval(expr), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = fun.aggregate, fill = 0, ...)
     if ("1" %in% colnames(out))
         setnames(out, "1", countcol)
     return(out)
@@ -886,7 +903,8 @@ binom.conf = function(n, tot, alpha = 0.025) {
 
 
 #' @name getdat
-#'
+#' @title a method to get the "data" argument from a with/within expression
+#' 
 #' to be used within "with()" within the expression
 #'
 #' @return data.frame/data.table
@@ -909,15 +927,18 @@ getdat = function() { ## to be used within "with()" expr
 }
 
 #' @name gd
+#' @title alias for getdat
 #'
-#' alieas for getdat
+#' @description
+#' alias for getdat function
 #'
 #' @export
 gd = getdat
 
 
 #' @name withv
-#'
+#' @title withv
+#' 
 #' to be used for quick interactive programming
 #' withv(toolongtotypemeagain, x * sum(x))
 #'
@@ -1264,10 +1285,11 @@ dig_dir = function(x, pattern = NULL, full.names = TRUE, mc.cores = 1, unlist = 
 
 
 #' @name stack.dt
+#' @title collapse a named list of vectors into a data.table
 #'
 #' Collapse a named list with vectors as each element into a data.table
 #'
-#' @export
+#' @export stack.dt
 stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE) {
     if (!length(lst) == 0) {
         dt = setDT(stack(lst))
@@ -1283,6 +1305,7 @@ stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE
 #' @name make_chunks
 #'
 #' Create chunks from a vector with a certain number of elements per chunk
+#' OR create a certain number of chunks from a vector
 #'
 #' @return A list
 #' @export
@@ -1306,11 +1329,13 @@ make_chunks = function(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_
 
 
 
-#' assign an object to global environment
+#' @name globasn
+#' @title assign an object to global environment
 #'
+#' @description 
 #' ONLY USE IF YOU KNOW WHAT YOU ARE DOING
 #' This function forces assignment of a variable/function
-#' to the global environment
+#' to the global environment, or an environment of your choosing
 #'
 #' @param obj The object to assign to the global environment
 #' @param var Optional name of variable, specified as string
@@ -1539,8 +1564,10 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
-#' @name summ_glm
+#' @name gt.fix
+#' @title fix gtrack metadata elements for plotting
 #'
+#' @description
 #' Parse a tabular summary of a glm model
 #'
 #' @return A data.frame/data.table

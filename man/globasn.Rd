@@ -17,5 +17,5 @@ either NULL or the object being assigned
 \description{
 ONLY USE IF YOU KNOW WHAT YOU ARE DOING
 This function forces assignment of a variable/function
-to the global environment
+to the global environment, or an environment of your choosing
 }
