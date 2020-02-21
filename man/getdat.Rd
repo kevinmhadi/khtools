@@ -6,7 +6,7 @@
 
 to be used within "with()" within the expression}
 \usage{
-getdat()
+getdat(n = 0L)
 }
 \value{
 data.frame/data.table

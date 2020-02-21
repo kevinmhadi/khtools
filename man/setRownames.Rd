@@ -2,7 +2,9 @@
 % Please edit documentation in R/package.R
 \name{setRownames}
 \alias{setRownames}
-\title{convenience function to set row names}
+\title{convenience function to set row names
+
+sets rownames of an object}
 \usage{
 setRownames(object = nm, nm)
 }
@@ -16,4 +18,6 @@ rownamed object
 }
 \description{
 convenience function to set row names
+
+sets rownames of an object
 }

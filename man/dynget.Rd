@@ -2,11 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dynget}
 \alias{dynget}
-\title{modification of base::dynGet()
-
-slight modification of base::dynGet()
-minframe set to 0 to also look in global environment
-and it's robust to using within functions}
+\title{modification of base::dynGet()}
 \usage{
 dynget(
   x,
@@ -17,9 +13,9 @@ dynget(
 )
 }
 \description{
-modification of base::dynGet()
-
 slight modification of base::dynGet()
 minframe set to 0 to also look in global environment
 and it's robust to using within functions
+also takes the variable name without quotes as default
+but can supply a character, and set px to FALSE
 }

@@ -4,7 +4,7 @@
 \alias{gd}
 \title{alias for getdat}
 \usage{
-gd()
+gd(n = 0L)
 }
 \description{
 alias for getdat function

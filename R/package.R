@@ -143,8 +143,11 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
 }
 
 
-#' convenience function to set row names
+#' @name setRownames
+#' @title convenience function to set row names
 #'
+#' sets rownames of an object
+#' 
 #' @param object tabled object
 #' @param nm names of the new columns
 #' @return rownamed object
@@ -152,6 +155,25 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
 setRownames = function(object = nm, nm) {
     base::rownames(object) = nm
     object
+}
+
+#' @name setAllNames
+#' @title setAllNames
+#' convenience function to set all names of a vector
+#'
+#' @param vec vector
+#' @param nm character 
+#' @return named vector
+#' @export
+setAllNames = function(vec, nm) {
+    if (is.null(nm)) {
+        return(setNames(vec, "NULL"))
+    } else {
+        if (length(nm) < length(vec)) {
+            nm = rep(nm, length.out = length(vec))
+        }
+    }
+    return(setNames(vec, nm))
 }
 
 
@@ -441,6 +463,62 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+forceall = function(invisible = TRUE, nframe) {
+    if (missing(nframe)) {
+        nframe = 1L
+        envir = parent.frame(nframe)
+    }
+    if (invisible)  {
+    invisible(eval(as.list(envir), envir = envir))
+    invisible(eval(eapply(envir, force, all.names = TRUE), envir = envir))
+    } else {
+        eval(as.list(envir), envir = envir)
+        eval(eapply(envir, force, all.names = TRUE), envir = envir)
+    }
+}
+
+
+#' @name process_tbl
+#' @title flexibly read in a field and append an id to the output
+#'
+#' @description
+#' 
+#'
+#' @param tbl table with fields to read in
+#' @param field field to read in
+#' @param id.field field with id to append to output
+#' @param read.fun function to read in, will try to guess based on extension, but may need to provide
+#' @param remove_ext
+#' @param mc.cores
+#' @return a list of idx and seq
+#'
+#' @export
+process_tbl = function(tbl, field = "jabba_rds", id.field = "pair", read.fun, remove_ext = c(".gz", ".zip"), mc.cores = 1) {
+    forceall()
+    ## invisible(eapply(environment(), force, all.names = TRUE))
+    tbl = tbl[file.exists(get(field))]
+    lst = with(tbl, {
+        mclapply(mc.cores = mc.cores, subset2(dg(field,F), file.exists(x)), function(x, field = field, id.field = id.field, read.fun = read.fun, ...) {
+            id.field = dg(id.field)
+            field = dg(field)
+            remove_ext = dg(remove_ext)
+            if (missing(read.fun)) {
+                remove_expr = paste(paste0(remove_ext, "$"), collapse = "|")
+                fext = file_ext(gsub(remove_expr, "", x))
+                read.fun = switch(fext, "vcf" = read_vcf, "rds" = readRDS, "txt" = fread,
+                                  "csv" = fread, "tab" = fread)
+                ##if expression isn't missing, eval expression
+            }
+            out = read.fun(x, ...)
+            if (inherits(out, c("data.frame", "GRanges", "list")))
+                out$pair = g2()[get(field) == x]$pair
+            return(out)
+        })})
+    names(lst) = tbl[[id.field]]
+    return(lst)
+}
+
+
 #' @name rleseq
 #' @title numbers up within repeating elements of a vector
 #'
@@ -532,19 +610,28 @@ grg_sub = function(pattern, text, colsep = " ", ...) {
 #' @name dynget
 #' @title modification of base::dynGet()
 #'
+#' @description
 #' slight modification of base::dynGet()
 #' minframe set to 0 to also look in global environment
 #' and it's robust to using within functions
+#' also takes the variable name without quotes as default
+#' but can supply a character, and set px to FALSE
 #'
 #' @export
-dynget = function (x, px = TRUE, ifnotfound = stop(gettextf("%s not found", sQuote(x)),
-    domain = NA), minframe = 0L, inherits = FALSE) ## modification of base::dynGet()
+dynget = function(x, px = TRUE,
+                  ifnotfound = stop(gettextf("%s not found", sQuote(x)),
+                                    domain = NA),
+                  minframe = 0L,
+                  inherits = FALSE) ## modification of base::dynGet()
 {
     tmp_x = as.list(match.call())$x
     if (is.name(tmp_x)) {
         if (isTRUE(px))
             x = as.character(tmp_x)
-    } else if (!is.character(tmp_x))
+        else
+            x = eval(tmp_x, parent.frame())
+    }
+    if (!is.character(x))
         stop("x must be a character or a name of a variable")
     n <- sys.nframe()
     myObj <- structure(list(.b = as.raw(7)), foo = 47L)
@@ -557,6 +644,7 @@ dynget = function (x, px = TRUE, ifnotfound = stop(gettextf("%s not found", sQuo
     }
     ifnotfound
 }
+
 
 #' @name dg
 #' @title alias of dynget
@@ -892,9 +980,11 @@ pinch.frac = function(x, fmin = 0.01, fmax = 0.99) {
 }
 
 #' @name binom.conf
+#' @title Get confidence intervals around fractions
 #'
+#' @description
 #' A convenience function to get confidence intervals around
-#' proportions. Useful for beta regression (library(betareg)).
+#' proportions. To be used with gbar.error
 #'
 #' @return A vector
 #' @export
@@ -912,8 +1002,8 @@ binom.conf = function(n, tot, alpha = 0.025) {
 #'
 #' @return data.frame/data.table
 #' @export
-getdat = function() { ## to be used within "with()" expr
-    pf = parent.frame(3)
+getdat = function(n = 0L) { ## to be used within "with()" expr
+    pf = parent.frame(3 + n)
     if (identical(environmentName(pf), "R_GlobalEnv"))
         return(invisible(NULL))
     if ("data" %in% names(pf))
@@ -938,6 +1028,27 @@ getdat = function() { ## to be used within "with()" expr
 #' @export
 gd = getdat
 
+#' @name getdat2
+#' @title getdat2
+#'
+#' @description
+#' another function to use inside the expression argument of "with/within" family
+#' to grab the enclosing data environment
+#'
+#' @export
+getdat2 = function(nm = "data") { ## to be used within "with()" expr
+    this.environment = environment()
+    return(dg(nm, F))
+}
+
+#' @name g2
+#' @title alias for getdat2
+#'
+#' @description
+#' alias for getdat2 function
+#'
+#' @export
+g2 = getdat2
 
 #' @name withv
 #' @title withv
@@ -1073,10 +1184,11 @@ ave2 = function(x, ..., FUN = mean) {
         x[] <- FUN(x)
     else {
         g <- interaction(...)
-        x = lapply(split(x, g), FUN)
+        x = unlist(lapply(split(x, g), FUN))
     }
     x
 }
+
 
 #' @name rematch
 #'
