@@ -2949,3 +2949,6 @@ pairs.get.jabba.pp = function(pairs, jabba.field = "jabba_rds", id.field = "pair
     }
     setkeyv(rbindlist(mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores), fill = TRUE), id.field)
 }
+
+
+forceall(envir = environment(), evalenvir = globalenv())
