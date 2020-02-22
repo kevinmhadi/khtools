@@ -75,9 +75,9 @@ undup = function(obj, fromLast = FALSE, nmax = NA) {
 
 
 
-#' name a character vector to itself
+#' @name selfname
 #'
-#' @title selfname
+#' @title name a character vector to itself
 #' @param char A character vector
 #' @return A named character vector
 #' @export
@@ -488,8 +488,8 @@ forceall = function(invisible = TRUE, nframe) {
 #' @param field field to read in
 #' @param id.field field with id to append to output
 #' @param read.fun function to read in, will try to guess based on extension, but may need to provide
-#' @param remove_ext
-#' @param mc.cores
+#' @param remove_ext extension strings to remove from file
+#' @param mc.cores number of cores
 #' @return a list of idx and seq
 #'
 #' @export
@@ -2951,4 +2951,88 @@ pairs.get.jabba.pp = function(pairs, jabba.field = "jabba_rds", id.field = "pair
 }
 
 
-forceall(envir = environment(), evalenvir = globalenv())
+#' @name forceload
+#' @title force functions to load from all libraries
+#'
+#' @description
+#' A function to evaluate all functions in all loaded
+#' and attached packages to prevent errors upon reinstallation of
+#' a package
+#' 
+#' @param envir environment to evaluate in (probably doesn't matter)
+#' @export
+forceload = function(envir = globalenv()) {
+    pkgs = gsub("package:", "", grep('package:', search(), value = TRUE))
+    pkgs = c(pkgs, names(sessionInfo()$loadedOnly))
+    for (pkg in pkgs) {
+        tryCatch( {
+            message("force loading ", pkg)
+            invisible(eval(as.list((asNamespace(pkg))), envir = envir))
+            invisible(eval(eapply(asNamespace(pkg), base::force, all.names = TRUE), envir = envir))
+        }, error = function(e) message("could not force load ", pkg))
+    }
+}
+
+#' @name forcefun
+#' @title force functions to load
+#'
+#' @description
+#' A function to evaluate all functions in a single environment
+#' 
+#' @param envir environment to grab all functions from
+#' @param evalenvir environment to evaluate in (probably doesn't matter)
+#' @export
+forcefun = function(envir = globalenv(), evalenvir = globalenv()) {
+    funnames = as.character(lsf.str(envir = envir))
+    for (fun in funnames) {
+        tryCatch( {
+            message("force loading ", fun)
+            eval(force(get(fun, envir = envir)), envir = evalenvir)
+        }, error = function(e) message("could not force load ", fun))
+    }
+}
+
+#' @name forceall
+#' @title force objects (including functions) to evaluate from environment
+#'
+#' @description
+#' A function to evaluate all objects in an environment
+#' to be used within a function or some other environment
+#'
+#' @param invisible logical whether to print the objects in the environmnet or not
+#' @param envir environment with objects to evaluate
+#' @param evalenvir environment to evaluate in (probably doesn't matter)
+#' 
+#' @export
+forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
+    if (invisible)  {
+        invisible(eval(as.list(envir), envir = evalenvir))
+        invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+    } else {
+        print(eval(as.list(envir), envir = evalenvir))
+        print(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+    }
+}
+
+.onLoad = function(libname, pkgname) {    
+
+    message("khtools forcing functions to load...")
+    forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
+}
+
+.onAttach = function(libname, pkgname) {    
+    forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
+        if (invisible)  {
+            invisible(eval(as.list(envir), envir = evalenvir))
+            invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+        } else {
+            eval(as.list(envir), envir = evalenvir)
+            eval(eapply(envir, force, all.names = TRUE), envir = evalenvir)
+        }
+    }
+    ## globasn("randomblabla", "foobar")
+    message("khtools functions are being forced to evaluate...")
+    forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
+}
+
+

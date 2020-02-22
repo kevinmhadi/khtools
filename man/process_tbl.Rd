@@ -21,6 +21,10 @@ process_tbl(
 \item{id.field}{field with id to append to output}
 
 \item{read.fun}{function to read in, will try to guess based on extension, but may need to provide}
+
+\item{remove_ext}{extension strings to remove from file}
+
+\item{mc.cores}{number of cores}
 }
 \value{
 a list of idx and seq

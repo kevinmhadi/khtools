@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{selfname}
 \alias{selfname}
-\title{selfname}
+\title{name a character vector to itself}
 \usage{
 selfname(char)
 }
