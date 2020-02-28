@@ -1003,16 +1003,29 @@ binom.conf = function(n, tot, alpha = 0.025) {
 #' @return data.frame/data.table
 #' @export
 getdat = function(n = 0L) { ## to be used within "with()" expr
+    tmpfun = function() {
+        current.n = sys.nframe()
+        myObj <- structure(list(.b = as.raw(7)), foo = 47L)
+        while (current.n >= 0) {
+            out = tryCatch(mget("envir", sys.frame(current.n), mode = "list", ifnotfound = myObj), error = function(e) myObj)
+            if (inherits(out[[1]], "data.table"))
+                return(out[[1]])
+            current.n = current.n - 1
+        }
+    }
     pf = parent.frame(3 + n)
     if (identical(environmentName(pf), "R_GlobalEnv"))
         return(invisible(NULL))
     if ("data" %in% names(pf))
         data = get("data", pf)
+    else if ("envir" %in% names(parent.frame(2)) &&
+             inherits(tmpfun(), "data.table")) ## recent addition
+        data = tmpfun()
     else
         data = get("envir", pf)
     if (is.environment(data))
         data = get("data", data)
-        ## data = data$data
+    ## data = data$data
     data
     ## with(, {
     ##     data = get("data", parent.frame(2))
@@ -3015,8 +3028,7 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
 }
 
 .onLoad = function(libname, pkgname) {    
-
-    message("khtools forcing functions to load...")
+    message("khtools forcing functions to evaluate on load...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
 
@@ -3031,7 +3043,7 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
         }
     }
     ## globasn("randomblabla", "foobar")
-    message("khtools functions are being forced to evaluate...")
+    message("khtools forcing functions to evaluate on attach...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
 
