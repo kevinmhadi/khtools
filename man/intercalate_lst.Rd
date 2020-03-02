@@ -13,7 +13,7 @@ intercalate_lst(...)
 a lists with elements collated together
 }
 \description{
-collate lists together
+interleave multiple vectors
 }
 \examples{
 intercalate(list(paste0(1:5, "_A")), list(paste0(1:3, "_B")), list(paste0(1:6, "_C")))

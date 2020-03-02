@@ -196,6 +196,10 @@ intercalate = function(...) {
 }
 
 
+#' @name matrify
+#' @title take a data.table/frame, shave first column into rownames, make a matrix
+#'
+#' @description
 #' convenience function to convert to matrix
 #' and optionally filter out the first column
 #' which may be rownames that are not relevant to further data analysis
@@ -218,7 +222,11 @@ matrify = function(obj, rm_col1 = TRUE, use.c1.rownames = TRUE) {
 }
 
 
-#' collate lists together
+#' @name intercalate_lst
+#' @title collate lists together
+#'
+#' @description
+#' interleave multiple vectors
 #'
 #' @param ... A set of lists to collate
 #' @return a lists with elements collated together
@@ -235,7 +243,9 @@ intercalate_lst = function(...) {
 
 
 #' @name ix_sdiff
+#' @title subset out indices
 #'
+#' @description
 #' A function that subsets out indices and is robust to
 #' if filt_out indices are integer(0)
 #'
@@ -251,7 +261,9 @@ ix_sdiff = function(obj, filt_out) {
 }
 
 #' @name na2false
+#' @title replace logical vector with NA to FALSE
 #'
+#' @description
 #' A convenience function to set a logical vector with NAs to false
 #'
 #' @return A logical vector with NAs set to FALSE
@@ -265,7 +277,9 @@ na2false = function(v)
 
 
 #' @name na2true
+#' @title replace logical vector with NA to TRUE
 #'
+#' @description
 #' A convenience function to set a logical vector with NAs to TRUE
 #'
 #' @return A logical vector with NAs set to TRUE
@@ -278,6 +292,7 @@ na2true = function(v)
 }
 
 #' @name na2zero
+#' @title na2zero
 #'
 #' A convenience function to set a numeric vector with NAs to zero
 #'
@@ -290,6 +305,7 @@ na2zero = function(v) {
 }
 
 #' @name nan2zero
+#' @title nan2zero
 #'
 #' A convenience function to set a numeric vector with NaNs to zero
 #'
@@ -302,6 +318,7 @@ nan2zero = function(v) {
 
 
 #' @name na2empty
+#' @title na2empty
 #'
 #' A convenience function to set a character vector with NAs to an
 #' empty character
@@ -462,20 +479,6 @@ lst.zerochar2empty = function(x) {
 ################################################## general R utilities
 ##################################################
 ##################################################
-
-forceall = function(invisible = TRUE, nframe) {
-    if (missing(nframe)) {
-        nframe = 1L
-        envir = parent.frame(nframe)
-    }
-    if (invisible)  {
-    invisible(eval(as.list(envir), envir = envir))
-    invisible(eval(eapply(envir, force, all.names = TRUE), envir = envir))
-    } else {
-        eval(as.list(envir), envir = envir)
-        eval(eapply(envir, force, all.names = TRUE), envir = envir)
-    }
-}
 
 
 #' @name process_tbl
@@ -703,7 +706,7 @@ dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
 #' @return A data frame or data.table
 #' @export dcast.count2
 dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggregate = "sum", ...) {
-    tbl$dummy = NULL
+    suppressWarnings({tbl$dummy = NULL})
     lst.call = as.list(match.call())
     if (is.name(lst.call$fun.aggregate))
         fun.aggregate = get(as.character(lst.call$fun.aggregate))
@@ -762,8 +765,8 @@ dcast.wrap = function(x, lh, rh, dcast.fun, ...) {
 
 
 #' @name normv
-#'
-#' normalize a vector
+#' @title normalize a vector
+#' 
 #' i.e. rescale to have values between 0 and 1
 #'
 #' @return vector
@@ -772,6 +775,21 @@ normv = function(x) {
     (x - min(x, na.rm = T)) / (max(x, na.rm = T) - min(x, na.rm = T))
 }
 
+#' @name normv_sep
+#' @title normalize a vector, treating positives and negatives separately
+#' 
+#' i.e. rescale negatives to be between 0-0.5
+#' rescale positives to be between 0.5-1
+#'
+#' @return vector
+#' @export
+normv_sep = function(x) {
+    if (any(x < 0, na.rm = T))
+        x[which(x < 0)] = -normv(-(x[which(x < 0)])) - 0.05
+    if (any(x >= 0, na.rm = T))
+        x[which(x >= 0)] = normv((x[which(x >= 0)])) + 0.05
+    return(normv(x))
+}
 
 
 #' @name select.matrix

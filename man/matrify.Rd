@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{matrify}
 \alias{matrify}
-\title{convenience function to convert to matrix
-and optionally filter out the first column
-which may be rownames that are not relevant to further data analysis}
+\title{take a data.table/frame, shave first column into rownames, make a matrix}
 \usage{
 matrify(obj, rm_col1 = TRUE, use.c1.rownames = TRUE)
 }
