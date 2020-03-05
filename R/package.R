@@ -2342,8 +2342,39 @@ dt_f2char = function(dt, cols = NULL) {
 ##############################
 ##############################
 ############################## Genomics / mskilab stuff
+############################## gUtils stuff
 ##############################
-##############################
+
+
+#' @name gr.spreduce
+#' @title reduce based on a field(s) to split by in elementMetadata of GRanges, or given vector
+#' @description
+#'
+#' split and reduce GRanges by field(s)
+#' if providing a variable not already within the GRanges,
+#' may need to use dynget(variable_name)
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export
+gr.spreduce = function(gr,  ..., pad = 0, sep = " ") {
+  lst = as.list(match.call())[-1]
+  ix = which(names(lst) != "gr")
+  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+  tmpix = factor(tmpix, levels = unique(tmpix))
+  grl = gr %>% split(tmpix)
+  dt = as.data.table(reduce(grl + pad))
+  nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
+  nm = lapply(lst[ix], toString)
+  rmix = which(unlist(nm) %in% colnames(dt))
+  nm[rmix] = list(character(0))
+  if (length(rmix))
+    nmix = nmix[-rmix]
+  nm[-nmix] = list(character(0))
+  dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
+  return(dt2gr(dt))
+}
+
 
 #' @name gr.noval
 #' @title get rid of mcols on GRanges/GRangesLists
@@ -2422,7 +2453,7 @@ setMethod("within", signature(data = "GRanges"), function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
+    mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -2455,7 +2486,7 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
+    mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -2540,7 +2571,7 @@ setMethod("within", signature(data = "IRanges"), function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
+    mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
