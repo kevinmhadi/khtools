@@ -533,14 +533,32 @@ process_tbl = function(tbl, field = "jabba_rds", id.field = "pair", read.fun, re
 #' @param clump a logical specifying if duplicates are to be counted together
 #' @param recurs a logical that is meant to only be set by the function when using clump = TRUE
 #' @return a list of idx and seq
-#'
+#' @author Kevin Hadi
 #' @export
-rleseq = function(..., clump = FALSE, recurs = FALSE) {
-    lns = lengths(as.list(...))
+rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE) {
+    if (isTRUE(na.clump))
+        paste = base::paste
+    else
+        paste = function(..., sep = " ") stringr::str_c(..., sep = sep)
+    lns = lengths(list(...))
     if (!all(lns == lns[1]))
         warning("not all vectors provided have same length")
-    vec = setNames(paste(as.character(...)), seq_along(max(lns, na.rm = T)))
-    rlev = rle(paste(as.character(vec)))
+    fulllens = max(lns, na.rm = T)
+    vec = setNames(paste(...), seq_len(fulllens))
+    ## rlev = rle(paste(as.character(vec)))
+    rlev = rle(vec)
+    if (na.ignore) {
+        isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
+        out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), lns = rep(NA, fulllens))
+        if (length(isnotna))
+            vec = vec[isnotna]
+        tmpout = do.call(rleseq, c(alist(... = vec),
+                                   alist(clump = clump, recurs = recurs, na.clump = na.clump, na.ignore = FALSE)))
+        ## tmpout = rleseq(..., clump = clump, recurs = recurs, na.clump = FALSE, na.ignore = FALSE)
+        for (i in seq_along(out))
+            out[[i]][isnotna] = tmpout[[i]]
+        return(out)
+    }    
     if (!isTRUE(clump)) {
         if (isTRUE(recurs)) {
             return(unlist(unname(lapply(rlev$lengths, seq_len))))
@@ -549,10 +567,13 @@ rleseq = function(..., clump = FALSE, recurs = FALSE) {
                     idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
                 seq = unlist(unname(lapply(rlev$lengths, seq_len))))
             out$lns = ave(out[[1]], out[[1]], FUN = length)
+            ## if (na.ignore)
+            ##     complete.cases(as.data.frame(lapply(list(...), is.na)))
             return(out)                
         }
     } else {
-        vec = setNames(paste(as.character(vec)), seq_along(vec))
+        ## vec = setNames(paste(as.character(vec)), seq_along(vec))
+        vec = setNames(vec, seq_along(vec))
         lst = split(vec, factor(vec, levels = unique(vec)))
         ord = as.integer(names(unlist(unname(lst))))
         idx = rep(seq_along(lst), times = lengths(lst))
@@ -561,18 +582,20 @@ rleseq = function(..., clump = FALSE, recurs = FALSE) {
             seq = rleseq(idx, clump = FALSE, recurs = TRUE)[order(ord)])
         out$lns = ave(out[[1]], out[[1]], FUN = length)
         return(out)
-    }   
+    }
 }
 
 
-
-
 #' @name lens
+#' @title similar to lengths except gets nrows for those items that have dimensions
 #'
+#' @description
 #' figure out length or nrows of a list
 #' if there are dimensions in the list element,
 #' find out the number of rows
 #'
+#' @param x A list
+#' @return A numeric vector of lengths of each list
 #' @export
 lens = function(x, use.names = TRUE) {
     dlst = lapply(x, dim)
@@ -2345,6 +2368,25 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name gr.split
+#' @title split a gr by field(s) in elementMetadata of GRanges or a given vector
+#' @description
+#'
+#' split GRanges by field(s)
+#' if providing a variable not already within the GRanges,
+#' may need to use dynget(variable_name)
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export
+gr.split = function(gr, ..., sep = " ") {
+  lst = as.list(match.call())[-1]
+  ix = which(names(lst) != "gr")
+  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+  tmpix = factor(tmpix, levels = unique(tmpix))
+  grl = gr %>% split(tmpix)
+  return(grl)
+}
 
 #' @name gr.spreduce
 #' @title reduce based on a field(s) to split by in elementMetadata of GRanges, or given vector
@@ -2358,21 +2400,21 @@ dt_f2char = function(dt, cols = NULL) {
 #' @author Kevin Hadi
 #' @export
 gr.spreduce = function(gr,  ..., pad = 0, sep = " ") {
-  lst = as.list(match.call())[-1]
-  ix = which(names(lst) != "gr")
-  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
-  tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% split(tmpix)
-  dt = as.data.table(reduce(grl + pad))
-  nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
-  nm = lapply(lst[ix], toString)
-  rmix = which(unlist(nm) %in% colnames(dt))
-  nm[rmix] = list(character(0))
-  if (length(rmix))
-    nmix = nmix[-rmix]
-  nm[-nmix] = list(character(0))
-  dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
-  return(dt2gr(dt))
+    lst = as.list(match.call())[-1]
+    ix = which(names(lst) != "gr")
+    tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+    tmpix = factor(tmpix, levels = unique(tmpix))
+    grl = gr %>% split(tmpix)
+    dt = as.data.table(reduce(grl + pad))
+    nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
+    nm = lapply(lst[ix], toString)
+    rmix = which(unlist(nm) %in% colnames(dt))
+    nm[rmix] = list(character(0))
+    if (length(rmix))
+        nmix = nmix[-rmix]
+    nm[-nmix] = list(character(0))
+    dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
+    return(dt2gr(dt))
 }
 
 
@@ -2608,7 +2650,7 @@ gr.within = function(data, expr)  {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
+    mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del) mcols(data)[[nm]] = NULL
     }

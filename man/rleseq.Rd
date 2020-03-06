@@ -4,7 +4,7 @@
 \alias{rleseq}
 \title{numbers up within repeating elements of a vector}
 \usage{
-rleseq(..., clump = FALSE, recurs = FALSE)
+rleseq(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE)
 }
 \arguments{
 \item{...}{Vector(s) to identify with unique id and a running id within each unique id}
@@ -19,4 +19,7 @@ a list of idx and seq
 \description{
 returns unique id within each unique element of a vector or set of provided vectors
 and also a running id within each unique element
+}
+\author{
+Kevin Hadi
 }
