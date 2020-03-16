@@ -521,6 +521,28 @@ process_tbl = function(tbl, field = "jabba_rds", id.field = "pair", read.fun, re
     return(lst)
 }
 
+#' @name dedup
+#' @title dedup
+#'
+#' @description
+#' stolen from skitools
+#'
+#' @param x vector to dedup
+#' @param suffix character separator
+#' @return a vector
+#' @author Marcin Imielinski
+dedup = function(x, suffix = ".") {
+    dup = duplicated(x)
+    udup = setdiff(unique(x[dup]), NA)
+    udup.ix = lapply(udup, function(y) which(x == y))
+    udup.suffices = lapply(udup.ix, function(y) c("", paste(suffix, 
+        2:length(y), sep = "")))
+    out = x
+    out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices), 
+        sep = "")
+    return(out)
+}
+
 
 #' @name rleseq
 #' @title numbers up within repeating elements of a vector
@@ -539,14 +561,13 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
     if (isTRUE(na.clump))
         paste = base::paste
     else
-        paste = function(..., sep = " ") stringr::str_c(..., sep = sep)
+        paste = function(..., sep = " ") base::paste(stringr::str_c(..., sep = sep))
     lns = lengths(list(...))
     if (!all(lns == lns[1]))
         warning("not all vectors provided have same length")
     fulllens = max(lns, na.rm = T)
     vec = setNames(paste(...), seq_len(fulllens))
     ## rlev = rle(paste(as.character(vec)))
-    rlev = rle(vec)
     if (na.ignore) {
         isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
         out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), lns = rep(NA, fulllens))
@@ -560,6 +581,7 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
         return(out)
     }    
     if (!isTRUE(clump)) {
+        rlev = rle(vec)
         if (isTRUE(recurs)) {
             return(unlist(unname(lapply(rlev$lengths, seq_len))))
         } else {
@@ -572,6 +594,9 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
             return(out)                
         }
     } else {
+        if (!isTRUE(na.clump)) {
+            vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == "NA"]))
+        }
         ## vec = setNames(paste(as.character(vec)), seq_along(vec))
         vec = setNames(vec, seq_along(vec))
         lst = split(vec, factor(vec, levels = unique(vec)))
@@ -584,6 +609,8 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
         return(out)
     }
 }
+
+
 
 
 #' @name lens
@@ -728,7 +755,7 @@ dcast.count = function(tbl, lh, rh = NULL, countcol = "count", ...) {
 #'
 #' @return A data frame or data.table
 #' @export dcast.count2
-dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggregate = "sum", ...) {
+dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggregate = "sum", value.var = "dummy", ...) {
     suppressWarnings({tbl$dummy = NULL})
     lst.call = as.list(match.call())
     if (is.name(lst.call$fun.aggregate))
@@ -739,24 +766,24 @@ dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggr
         fun.aggregate = get(fun.aggregate)
     if ("wt" %in% names(lst.call))
         if (is.character(wt) && wt %in% colnames(tbl)) {
-            expr = expression(within(tbl, {dummy = NULL; dummy = 1 * dg(wt, FALSE)}))
+            expr = expression(within(tbl, {dummy = 1 * dg(wt, FALSE)}))
         } else if (is.numeric(wt)) {
-            expr = expression(within(tbl, {dummy = NULL; wt = NULL; dummy = 1 * dg(wt)}))
+            expr = expression(within(tbl, {wt = NULL; dummy = 1 * dg(wt)}))
         } else {
             stop("wt argument must be either a numeric vector, a name of a column, or a column that exists in the table")
         }
     else if (is.null(wt) || isFALSE(wt) || is.na(wt) || length(wt) == 0)
-        expr = expression(within(tbl, {dummy = NULL; dummy = 1}))
+        expr = expression(within(tbl, {dummy = 1}))
     else if (!"wt" %in% names(lst.call)) {
         if ("wt" %in% colnames(tbl)) {
             message("column named \"wt\" found, will weight counts using values in this field")
         }
-        expr = expression(within(tbl, {dummy = NULL; dummy = 1 * dg(wt)}))    
+        expr = expression(within(tbl, {dummy = 1 * dg(wt)}))    
     }
     this.env = environment()
     if (is.null(rh))
         rh = "dummy"
-    out = dcast.wrap(eval(expr), lh = lh, rh = rh, value.var = "dummy", fun.aggregate = fun.aggregate, fill = 0, ...)
+    out = dcast.wrap(eval(expr), lh = lh, rh = rh, value.var = value.var, fun.aggregate = fun.aggregate, fill = 0, ...)
     if ("1" %in% colnames(out))
         setnames(out, "1", countcol)
     return(out)
@@ -1398,19 +1425,24 @@ is.empty = function(x) {
 }
 
 #' @name min.col.narm
+#' @title minimum column per row (removing NA)
 #'
 #' Return the index of the minimum column per row while removing NA
-#'
+#' 
+#' @author stackoverflow
 #' @export min.col.narm
 min.col.narm = function(mat, ties.method = "first") {
     ok = max.col(-replace(mat, is.na(mat), Inf), ties.method=ties.method) * NA ^ !rowSums(!is.na(mat))
     return(ok)
 }
 
-#' @name min.col.narm
+#' @name max.col.narm
+#' @title maximum column per row (removing NA)
 #'
+#' 
 #' Return the index of the maximum column per row while removing NA
-#'
+#' 
+#' @author Stackoverflow
 #' @export max.col.narm
 max.col.narm = function(mat, ties.method = "first") {
     ok = max.col(replace(mat, is.na(mat), -Inf), ties.method=ties.method) * NA ^ !rowSums(!is.na(mat))
@@ -1419,6 +1451,7 @@ max.col.narm = function(mat, ties.method = "first") {
 
 
 #' @name table2
+#' @title wrapper around table(), show NA counts if there are any
 #'
 #' Convenience wrapper around table to show NA if there are any
 #'
@@ -1428,6 +1461,7 @@ table2 = function(...) {
 }
 
 #' @name table3
+#' @title wrapper around table, always show NA counts
 #'
 #' Convenience function to always show NA counts
 #'
@@ -1437,6 +1471,7 @@ table3 = function(...) {
 }
 
 #' @name dig_dir
+#' @title dig into a file path's directory
 #'
 #' Convenience wrapper around dir() to pull out files from the same
 #' directory of a given file.
@@ -1482,7 +1517,9 @@ stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE
 }
 
 #' @name make_chunks
+#' @title make_chunks
 #'
+#' @description
 #' Create chunks from a vector with a certain number of elements per chunk
 #' OR create a certain number of chunks from a vector
 #'
@@ -1553,6 +1590,7 @@ globasn = function(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv, verbo
 
 
 #' @name reassign
+#' @title reassign elements of named list into environment
 #'
 #' ONLY USE IF YOU KNOW WHAT YOU ARE DOING
 #' this function takes a list of named objects and assigns them to the calling environment

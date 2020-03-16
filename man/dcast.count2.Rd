@@ -11,6 +11,7 @@
   countcol = "count",
   wt = 1,
   fun.aggregate = "sum",
+  value.var = "dummy",
   ...
 )
 }
