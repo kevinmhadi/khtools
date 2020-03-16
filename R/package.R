@@ -1611,6 +1611,7 @@ reassign = function(variables_lst, calling_env = parent.frame()) {
 ##############################
 
 #' @name refactor
+#' @title refactor
 #'
 #' Keep one level of a factor and set all others to a specified level
 #'
@@ -1636,6 +1637,7 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 
 
 #' @name idj
+#' @title idj
 #'
 #' Match up ids to a job
 #'
@@ -1646,11 +1648,12 @@ idj = function(x, these.ids) {
 }
 
 #' @name reset.job
+#' @title reset.job
 #'
 #' Reset a job with different params
 #'
 #' @return A Flow job object
-#' @export
+#' @export reset.job
 reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = "24", update_cores = 1) {
     args = list(...)
     new.ent = copy(entities(x))
@@ -1680,6 +1683,7 @@ reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$m
 }
 
 #' @name getcache
+#' @title getcache
 #'
 #' Get the path of a Flow job object's cache.
 #'
@@ -1697,12 +1701,13 @@ getcache = function(object) {
 ##############################
 ##############################
 #' @name glm.nb2
+#' @title glm.nb2
 #'
 #' Run a negative binomial regression.
 #' If it fails, run a poisson regression
 #'
 #' @return A GLM model
-#' @export
+#' @export glm.nb2
 glm.nb2 = function(...) {
     mod = tryCatch(glm.nb(...), error = function(e) {
         warning("glm.nb broke... using poisson")
@@ -1721,6 +1726,7 @@ glm.nb2 = function(...) {
 
 
 #' @name summ_glm
+#' @title tabular summary of glm model coefficients
 #'
 #' Parse a tabular summary of a glm model
 #'
@@ -1788,7 +1794,7 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 #' Parse a tabular summary of a glm model
 #'
 #' @return A data.frame/data.table
-#' @export
+#' @export gt.fix
 gt.fix = function(gt, lwd.scale = 1, lwd.border.scale = 1, ywid.scale = 1) {
     len = function(ob) if (length(ob) == 0) NULL else ob
     for(i in seq_along(gt@edges) ) {
@@ -1811,6 +1817,7 @@ gt.fix = function(gt, lwd.scale = 1, lwd.border.scale = 1, ywid.scale = 1) {
 ############################## ggplot2 stuff
 ##############################
 #' @name gg_mytheme
+#' @title custom theme for ggplot
 #'
 #' A custom theme for ggplots
 #'
@@ -1847,6 +1854,7 @@ gg_mytheme = function(gg,
 }
 
 #' @name pg_mytheme
+#' @title print gg_mytheme output
 #'
 #' convenience wrapper around gg_mytheme
 #' to automatically print the output
@@ -1857,12 +1865,17 @@ pg_mytheme = function(..., print = TRUE) gg_mytheme(..., print = TRUE)
 
 
 #' @name gg.sline
+#' @title wrapper around geom_point and geom_smooth
 #'
 #' a wrapper around geom_smooth to fit dot plot with lm line
 #'
+#' @param x numeric values
+#' @param y numeric values
+#' @param group vector parallel to x and y that specifies grouping
+#' @param colour vector that specifies colouring of points
 #' @return A ggplot object
 #' @export gg.sline
-gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE, hex_par = list(bins = 50)) {
+gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE, hex_par = list(bins = 50), wes = NULL, cex.scatter = 0.1) {
     if (is.null(facet1)) {
         facet1 = facet2
         facet2 = NULL
@@ -1879,26 +1892,29 @@ gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "h
         message("selecting geom_point() as default")
         dens_type = "point"
     }
+    gg = gg +
+        geom_smooth(method = smethod, size = 1, formula = formula)
     if (identical(dens_type, "hex"))
         gg = gg + geom_hex(bins = hex_par$bin)
     else if (identical(dens_type, "point"))
-        gg = gg + geom_point(size = 0.1)
-    gg = gg +
-        ## geom_smooth(method = lm, se = TRUE) +
-        geom_smooth(method = smethod, size = 1, formula = formula)
-    ## xlim(0, 1.5e5)
+        if (is.null(colour))
+            gg = gg + geom_point(size = 0.1)
+        else
+            gg = gg + geom_point(mapping = aes(colour = colour), size = cex.scatter)
     if (!is.null(dat$facet1)) {
         if (!is.null(dat$facet2)) {
             if (transpose)
-                g = g + facet_grid(facet2 ~ facet1, scales = facet_scales)
-            else g = g + facet_grid(facet1 ~ facet2, scales = facet_scales)
+                gg = gg + facet_grid(facet2 ~ facet1, scales = facet_scales)
+            else gg = gg + facet_grid(facet1 ~ facet2, scales = facet_scales)
         }
         else {
             if (transpose)
-                g = g + facet_grid(. ~ facet1, scales = facet_scales)
-            else g = g + facet_grid(facet1 ~ ., scales = facet_scales)
+                gg = gg + facet_grid(. ~ facet1, scales = facet_scales)
+            else gg = gg + facet_grid(facet1 ~ ., scales = facet_scales)
         }
     }
+    if (!is.null(wes) && is.character(wes))
+        gg = gg + scale_colour_manual(values = brewer.master(length(unique(colour)), wes = TRUE, palette = wes))
     if (print)
         print(gg)
     else
@@ -1907,10 +1923,12 @@ gg.sline = function(x, y, group = "x", smethod = "lm", dens_type = c("point", "h
 
 
 #' @name gbar.error
+#' @title barplot with errorbars
 #'
 #' A barplot of fractions with confidence intervals. To be used with
 #' binom.conf.
-#'
+#' 
+#' @param frac any numeric vector, does not have to be a fraction
 #' @return A ggplot object
 #' @export gbar.error
 gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
@@ -1931,6 +1949,7 @@ gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.pa
 
 
 #' @name gg.hist
+#' @title generate ggplot histogram
 #'
 #' generate ggplot histogram
 #'
@@ -1959,11 +1978,12 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 ##############################
 
 #' @name read.bam.header
+#' @title read.bam.header
 #'
 #' Read in a bam header into tabular format
 #'
 #' @return A data.table
-#' @export
+#' @export read.bam.header
 read.bam.header = function(bam, trim = FALSE) {
     cmd = sprintf("samtools view -H %s", bam)
     if (!trim) {
@@ -1975,6 +1995,7 @@ read.bam.header = function(bam, trim = FALSE) {
 
 
 #' @name bcfindex
+#' @title bcfindex
 #'
 #' index a bcf/vcf file
 #'
@@ -1995,6 +2016,7 @@ bcfindex = function(vcf, force = TRUE) {
 
 
 #' @name read_vcf2
+#' @title read_vcf2
 #'
 #' read in a vcf file to granges with additional processing with bcftools
 #'
