@@ -1787,6 +1787,24 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
+#' @name within
+#' @title within on gTrack
+#' @description
+#'
+#' @return gTrack
+#' @rdname gtrack_within
+#' @exportMethod within
+#' @aliases within,gTrack-method
+#' @author Kevin Hadi
+#' @export
+setMethod("within", signature(data = "gTrack"), function(data, expr) {
+    e = list2env(as.list(formatting(data)))
+    eval(substitute(expr, parent.frame()), e)
+    formatting(data) = as.data.frame(as.list(e))[, c(colnames(formatting(data))),drop = FALSE]
+    return(data)
+})
+
+
 #' @name gt.fix
 #' @title fix gtrack metadata elements for plotting
 #'
@@ -2066,6 +2084,24 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ############################## data.table and general data.frame utilities
 ##############################
 ##############################
+
+
+#' @name mstrsplit
+#' @title make matrix out of stringsplitted character vector
+#'
+#' split a vector by a delimiter,
+#' fill in to make same length
+#' bind into matrix
+#'
+#' @return a matrix
+#' @export
+mstrsplit = function(x, ...) {
+    lst = strsplit(x = x, ...)
+    mlen = max(lengths(lst))
+    lst = lapply(lst, "[", seq_len(mlen))
+    return(do.call(rbind, lst))
+}
+
 
 #' @name grep_order
 #'
