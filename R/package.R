@@ -2092,15 +2092,21 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 #' split a vector by a delimiter,
 #' fill in to make same length
 #' bind into matrix
+#' not as efficient as data.table::tstrsplit
+#' but this is entirely base R
 #'
 #' @return a matrix
 #' @export
 mstrsplit = function(x, ...) {
     lst = strsplit(x = x, ...)
     mlen = max(lengths(lst))
-    lst = lapply(lst, "[", seq_len(mlen))
+    unid = seq_len(mlen)
+    for (i in seq_along(lst)) {
+        length(lst[[i]]) = mlen
+    }
     return(do.call(rbind, lst))
 }
+
 
 
 #' @name grep_order
