@@ -1787,16 +1787,6 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
-#' @name within
-#' @title within on gTrack
-#' @description
-#'
-#' @return gTrack
-#' @rdname gtrack_within
-#' @exportMethod within
-#' @aliases within,gTrack-method
-#' @author Kevin Hadi
-#' @export
 setMethod("within", signature(data = "gTrack"), function(data, expr) {
     e = list2env(as.list(formatting(data)))
     eval(substitute(expr, parent.frame()), e)

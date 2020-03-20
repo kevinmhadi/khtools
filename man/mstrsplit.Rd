@@ -6,7 +6,9 @@
 
 split a vector by a delimiter,
 fill in to make same length
-bind into matrix}
+bind into matrix
+not as efficient as data.table::tstrsplit
+but this is entirely base R}
 \usage{
 mstrsplit(x, ...)
 }
@@ -19,4 +21,6 @@ make matrix out of stringsplitted character vector
 split a vector by a delimiter,
 fill in to make same length
 bind into matrix
+not as efficient as data.table::tstrsplit
+but this is entirely base R
 }
