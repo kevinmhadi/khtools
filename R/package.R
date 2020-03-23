@@ -2526,22 +2526,25 @@ gr.split = function(gr, ..., sep = " ") {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export
-gr.spreduce = function(gr,  ..., pad = 0, sep = " ") {
-    lst = as.list(match.call())[-1]
-    ix = which(names(lst) != "gr")
-    tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
-    tmpix = factor(tmpix, levels = unique(tmpix))
-    grl = gr %>% split(tmpix)
-    dt = as.data.table(reduce(grl + pad))
-    nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
-    nm = lapply(lst[ix], toString)
-    rmix = which(unlist(nm) %in% colnames(dt))
-    nm[rmix] = list(character(0))
-    if (length(rmix))
-        nmix = nmix[-rmix]
-    nm[-nmix] = list(character(0))
-    dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
-    return(dt2gr(dt))
+gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
+  lst = as.list(match.call())[-1]
+  ix = which(!names(lst) %in% c("gr", "sep"))
+  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+  tmpix = factor(tmpix, levels = unique(tmpix))
+  grl = gr %>% split(tmpix)
+  dt = as.data.table(reduce(grl + pad))
+  nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
+  nm = lapply(lst[ix], toString)
+  rmix = which(unlist(nm) %in% colnames(dt))
+  nm[rmix] = list(character(0))
+  if (length(rmix))
+    nmix = nmix[-rmix]
+  ## nm[lengths(nm) == 0] = list(character(0))
+  ## nm[-nmix] = character(0)
+  nm[-nmix] = list(character(0))
+  ## nmix = which(!nm == "NULL")
+  dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
+  return(dt2gr(dt))
 }
 
 

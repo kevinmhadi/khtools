@@ -4,7 +4,7 @@
 \alias{gr.spreduce}
 \title{reduce based on a field(s) to split by in elementMetadata of GRanges, or given vector}
 \usage{
-gr.spreduce(gr, ..., pad = 0, sep = " ")
+gr.spreduce(gr, ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " "))
 }
 \value{
 GRanges
