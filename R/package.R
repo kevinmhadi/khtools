@@ -544,6 +544,26 @@ dedup = function(x, suffix = ".") {
 }
 
 
+
+#' @name rand.string
+#' @title make a random string
+#'
+#' @return random string
+#' @author Someone from Stackoverflow
+#' @export rand.string
+rand.string <- function(n=1, length=12)
+{
+    randomString <- c(1:n)                  # initialize vector
+    for (i in 1:n)
+    {
+        randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                        length, replace=TRUE),
+                                 collapse="")
+    }
+    return(randomString)
+    }
+
+
 #' @name rleseq
 #' @title numbers up within repeating elements of a vector
 #'
@@ -557,16 +577,31 @@ dedup = function(x, suffix = ".") {
 #' @return a list of idx and seq
 #' @author Kevin Hadi
 #' @export
-rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE) {
+rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
+                  sep = paste0(" ", rand.string(length = 6), " ")) {
+    force(sep)
+    rand.string <- function(n=1, length=12)
+    {
+        randomString <- c(1:n)                  # initialize vector
+        for (i in 1:n)
+        {
+            randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                            length, replace=TRUE),
+                                     collapse="")
+        }
+        return(randomString)
+    }
     if (isTRUE(na.clump))
-        paste = base::paste
+        paste = function(...,
+                         sep) base::paste(..., sep = sep)
     else
-        paste = function(..., sep = " ") base::paste(stringr::str_c(..., sep = sep))
+        paste = function(...,
+                         sep) base::paste(stringr::str_c(..., sep = sep))
     lns = lengths(list(...))
     if (!all(lns == lns[1]))
         warning("not all vectors provided have same length")
     fulllens = max(lns, na.rm = T)
-    vec = setNames(paste(...), seq_len(fulllens))
+    vec = setNames(paste(..., sep = sep), seq_len(fulllens))
     ## rlev = rle(paste(as.character(vec)))
     if (na.ignore) {
         isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
@@ -586,7 +621,7 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
             return(unlist(unname(lapply(rlev$lengths, seq_len))))
         } else {
             out = list(
-                    idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
+                idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
                 seq = unlist(unname(lapply(rlev$lengths, seq_len))))
             out$lns = ave(out[[1]], out[[1]], FUN = length)
             ## if (na.ignore)

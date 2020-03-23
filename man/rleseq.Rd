@@ -4,7 +4,14 @@
 \alias{rleseq}
 \title{numbers up within repeating elements of a vector}
 \usage{
-rleseq(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE)
+rleseq(
+  ...,
+  clump = FALSE,
+  recurs = FALSE,
+  na.clump = TRUE,
+  na.ignore = FALSE,
+  sep = paste0(" ", rand.string(length = 6), " ")
+)
 }
 \arguments{
 \item{...}{Vector(s) to identify with unique id and a running id within each unique id}
