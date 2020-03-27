@@ -1308,10 +1308,11 @@ ave2 = function(x, ..., FUN = mean) {
         x[] <- FUN(x)
     else {
         g <- interaction(...)
-        x = unlist(lapply(split(x, g), FUN))
+        x = lapply(split(x, g), FUN)
     }
     x
 }
+
 
 
 #' @name rematch
@@ -2191,15 +2192,19 @@ grep_col_sort = function(patterns, df, all_cols = TRUE, match_first = TRUE, perl
 
 
 #' @name merge.repl
+#' @title merging data tables with collapsing columns with the same name
 #'
-#' Merge two data tables
+#' Merge two data tables with various replacing strategies
+#' for columns common between x and y that are not used to merge
+#' (i.e. not specified in the "by" argument)
 #'
+#' @param replace_NA logical, only use values in dt.y, any dt.x not in dt.y is clobbered (NA)
+#' @param force_y logical, should x and y common columns be merged?
+#' @param overwrite_x logical, if force_y = TRUE, should NA values in y replace x?
 #' @return A data.table
 #' @export merge.repl
 merge.repl = function(dt.x,
                       dt.y,
-                      replace_in_x = TRUE,
-                      suffix = NULL,
                       sep = "_",
                       replace_NA = TRUE,
                       force_y = TRUE,
@@ -2234,9 +2239,6 @@ merge.repl = function(dt.x,
     if (!inherits(dt.y, "data.table")) {
         dt.y = as.data.table(dt.y)
     }
-    ## data.table::set(dt.x, j = "tmp.2345098712340987", value = seq_len(nrow(dt.x)))
-    ## data.table::set(dt.x, j = "in.x.2345098712340987", value = TRUE)
-    ## data.table::set(dt.y, j = "in.y.2345098712340987", value = TRUE)
     if (keep_order == TRUE) {
         dt.x$tmp.2345098712340987 = seq_len(nrow(dt.x))
     }
@@ -2258,74 +2260,65 @@ merge.repl = function(dt.x,
     } else if (!is.null(by)) {
         x.cols = setdiff(names(dt.x), by)
         y.cols = setdiff(names(dt.y), by)
-        ## if (length(x.cols) == 0 | length(y.cols) == 0) {
         if (! all(by %in% colnames(dt.x)) | ! all(by %in% colnames(dt.y))) {
             stop("column ", by, " does not exist in one of the tables supplied \nCheck the column names")
         }
         new_ddd_args = new_ddd_args[setdiff(names(new_ddd_args), c("by.y", "by.x"))]
-
     }
     these_cols = intersect(x.cols, y.cols)
-    if (replace_in_x) {
-        if (!replace_NA) {
-            ## dt.x.tmp = copy(dt.x)[, eval(dc(these_cols)) := NULL]
-            dt.x.tmp = copy(dt.x)
-            for (this_col in these_cols) {
-                data.table::set(dt.x.tmp, i = NULL, j = this_col, value = NULL)
-            }
-            ## dt.repl = merge(dt.x.tmp, dt.y, all.x = all.x, ...)
-            dt.repl = do.call("merge", args = c(list(x = dt.x.tmp, y = dt.y), new_ddd_args))
-            dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
-        } else {
-            ## dt.repl = merge(dt.x, dt.y, all.x = all.x, ...)
-            dt.repl = do.call("merge", args = c(list(x = dt.x, y = dt.y), new_ddd_args))
-            dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
-            this_env = environment()
-            for (this_col in these_cols) {
-                x_cname = paste0(this_col, ".x")
-                y_cname = paste0(this_col, ".y")
-                ## x_col = as.data.frame(dt.repl)[, x_cname]
-                x_col = dt.repl[[x_cname]]
-                ## y_col = as.data.frame(dt.repl)[, y_cname]
-                y_col = dt.repl[[y_cname]]
-                if (force_y) {
-                    if (!overwrite_x) {
-                        if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
-                            new_col = factor(y_col, forcats::lvls_union(list(y_col, x_col)))
-                            new_col[is.na(new_col)] = x_col[is.na(new_col)]
-                        } else {
-                            new_col = ifelse(!is.na(y_col), y_col, x_col)
-                        }
+    ## if (replace_in_x) {
+    if (!replace_NA) {
+        dt.x.tmp = copy(dt.x)
+        for (this_col in these_cols) {
+            data.table::set(dt.x.tmp, i = NULL, j = this_col, value = NULL)
+        }
+        dt.repl = do.call("merge", args = c(list(x = dt.x.tmp, y = dt.y), new_ddd_args))
+        ## dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
+    } else {
+        dt.repl = do.call("merge", args = c(list(x = dt.x, y = dt.y), new_ddd_args))
+        dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
+        this_env = environment()
+        for (this_col in these_cols) {
+            x_cname = paste0(this_col, ".x")
+            y_cname = paste0(this_col, ".y")
+            x_col = dt.repl[[x_cname]]
+            y_col = dt.repl[[y_cname]]
+            if (force_y) {
+                if (!overwrite_x) {
+                    if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                        new_col = factor(y_col, forcats::lvls_union(list(y_col, x_col)))
+                        new_col[is.na(new_col)] = x_col[is.na(new_col)]
                     } else {
-                        if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
-                            new_col = factor(x_col, forcats::lvls_union(list(y_col, x_col)))
-                        } else {
-                            new_col = x_col
-                        }
-                        new_col[dt.repl$in.y.2345098712340987] = y_col[dt.repl$in.y.2345098712340987]
-                        ## new_col = y_col
+                        new_col = ifelse(!is.na(y_col), y_col, x_col)
                     }
                 } else {
                     if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
-                        new_col = factor(x_col, forcats::lvls_union(list(x_col, y_col)))
-                        new_col[is.na(new_col) & !is.na(y_col)] = y_col[is.na(new_col) & !is.na(y_col)]
+                        new_col = factor(x_col, forcats::lvls_union(list(y_col, x_col)))
                     } else {
-                        new_col = ifelse(is.na(x_col) & !is.na(y_col), y_col, x_col)
+                        new_col = x_col
                     }
+                    new_col[dt.repl$in.y.2345098712340987] = y_col[dt.repl$in.y.2345098712340987]
                 }
-                ## dt.repl[, eval(dc(c(x_cname, y_cname))) := NULL]
-                data.table::set(dt.repl, j = c(x_cname, y_cname, this_col), value = list(NULL, NULL, this_env[["new_col"]]))
+            } else {
+                if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                    new_col = factor(x_col, forcats::lvls_union(list(x_col, y_col)))
+                    new_col[is.na(new_col) & !is.na(y_col)] = y_col[is.na(new_col) & !is.na(y_col)]
+                } else {
+                    new_col = ifelse(is.na(x_col) & !is.na(y_col), y_col, x_col)
+                }
             }
+            data.table::set(dt.repl, j = c(x_cname, y_cname, this_col), value = list(NULL, NULL, this_env[["new_col"]]))
         }
-    } else if (!replace_in_x & !is.null(suffix)) {
-        y.suff.cols = paste0(y.cols, sep, suffix)
-        ## dt.y.tmp = copy(dt.y)[, eval(dc(y.suff.cols)) := eval(dl(y.cols))][, eval(dc(y.cols)) := NULL]
-        dt.y.tmp = copy(dt.y)
-        data.table::set(dt.y, j = y.suff.cols, value = dt.y[, y.cols, with = FALSE])
-        data.table::set(dt.y, j = y.cols, value = NULL)
-        ## dt.repl = merge(dt.x, dt.y.tmp, all.x = TRUE, ...)
-        dt.repl = do.call("merge", args = c(list(x = dt.x, y = dt.y.tmp), new_ddd_args))
     }
+    ## } else if (!replace_in_x & !is.null(suffix)) {
+    ##     y.suff.cols = paste0(y.cols, sep, suffix)
+    ##     ## dt.y.tmp = copy(dt.y)[, eval(dc(y.suff.cols)) := eval(dl(y.cols))][, eval(dc(y.cols)) := NULL]
+    ##     dt.y.tmp = copy(dt.y)
+    ##     data.table::set(dt.y, j = y.suff.cols, value = dt.y[, y.cols, with = FALSE])
+    ##     data.table::set(dt.y, j = y.cols, value = NULL)
+    ##     ## dt.repl = merge(dt.x, dt.y.tmp, all.x = TRUE, ...)
+    ##     dt.repl = do.call("merge", args = c(list(x = dt.x, y = dt.y.tmp), new_ddd_args))
+    ## }
     if (keep_order == TRUE) {
         data.table::setorderv(dt.repl, "tmp.2345098712340987")
         dt.repl$tmp.2345098712340987 = NULL
@@ -3210,10 +3203,21 @@ forceload = function(envir = globalenv()) {
         tryCatch( {
             message("force loading ", pkg)
             invisible(eval(as.list((asNamespace(pkg))), envir = envir))
-            invisible(eval(eapply(asNamespace(pkg), base::force, all.names = TRUE), envir = envir))
+            invisible(eval(eapply(asNamespace(pkg), base::force2, all.names = TRUE), envir = envir))
         }, error = function(e) message("could not force load ", pkg))
     }
 }
+
+#' @name force2
+#' @title force with a tryCatch
+#'
+#' @description
+#' evaluate with tryCatch
+#' 
+#' @param x an object
+#' @export
+force2 = function(x)
+    tryCatch(x, error = function(e) NULL)
 
 #' @name forcefun
 #' @title force functions to load
@@ -3249,10 +3253,10 @@ forcefun = function(envir = globalenv(), evalenvir = globalenv()) {
 forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
     if (invisible)  {
         invisible(eval(as.list(envir), envir = evalenvir))
-        invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+        invisible(eval(eapply(envir, force2, all.names = TRUE), envir = evalenvir))
     } else {
         print(eval(as.list(envir), envir = evalenvir))
-        print(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+        print(eval(eapply(envir, force2, all.names = TRUE), envir = evalenvir))
     }
 }
 
@@ -3262,15 +3266,15 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
 }
 
 .onAttach = function(libname, pkgname) {    
-    forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
-        if (invisible)  {
-            invisible(eval(as.list(envir), envir = evalenvir))
-            invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
-        } else {
-            eval(as.list(envir), envir = evalenvir)
-            eval(eapply(envir, force, all.names = TRUE), envir = evalenvir)
-        }
-    }
+    ## forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
+    ##     if (invisible)  {
+    ##         invisible(eval(as.list(envir), envir = evalenvir))
+    ##         invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
+    ##     } else {
+    ##         eval(as.list(envir), envir = evalenvir)
+    ##         eval(eapply(envir, force, all.names = TRUE), envir = evalenvir)
+    ##     }
+    ## }
     ## globasn("randomblabla", "foobar")
     message("khtools forcing functions to evaluate on attach...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
