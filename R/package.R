@@ -2488,6 +2488,57 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @export gr_calc_cov
+gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
+    win = GRanges("Anchor", IRanges(-abs(win), abs(win)))
+    library(plyranges)
+    grcov = gUtils::gr.sum(gr + PAD, field = field)
+    if (!is.null(field))
+        grcov = grcov %>% select(score = !!field)
+    ## mcols(grcov)[["score"]] = pmax(0, mcols(grcov)[["score"]], 0)
+    ## grcov2 = gr.tile(grcov, 1)
+    grcov2 = gr.tile(GRanges("Anchor", IRanges(-1e6, 1e6)) + PAD, 1)
+    ## grcov2 = gr.tile(GRanges("Anchor", IRanges(start(head(grcov, 1)), end(tail(grcov, 1)))), 1)
+    if (!is.empty(grcov)) {
+        ## grcov2$score = gr.eval(grcov2, grcov, score, 0)
+        grcov2 = within(plyranges::join_overlap_left(grcov2, grcov), {score = replace_na(score, 0)})
+        ## grcov2 = grcov2 %$% grcov
+        ## grcov2$score = grcov2$score %>% replace_na(0)
+    } else {
+        grcov2$score = 0
+    }
+    if (!is.null(normfactor)) {
+        if (!(length(normfactor) == length(grcov2) | length(normfactor == 1)))
+            stop("normfactor needs to be same length")
+        grcov2$score = get(normfun)(grcov2$score, normfactor)
+    }
+    if (is.null(baseline)) {
+        baseline = with(grcov2, {
+            ## this_subset = data.table::between(start, (abs(start.base) + PAD) * sign(start.base), ((abs(end.base) + PAD) * sign(end.base)) - 1)
+            this_subset = data.table::between(start, start.base - PAD, end.base + PAD - 1)
+            get(FUN)(score[this_subset])
+            ## sum(score[this_subset] * width[this_subset]) / sum(width[this_subset])
+        })
+    }
+    ## baseline = gr2dt(grcov2)[data.table::between(start, (abs(start.base) + PAD) * sign(start.base), ((abs(end.base) + PAD) * sign(end.base)) - 1)][, sum(score * width) / sum(width)]
+    score = grcov2$score
+    if (!(length(baseline) == length(score) | length(baseline == 1)))
+        stop("baseline needs to be same length as score or a length 1 vector")
+    rel = pmax(score, 0) / (baseline + 1e-12)
+    ## grcov2$rel = (grcov2$score) / (baseline + 1e-12)
+    grcov2$score = rel
+    grcov2$baseline = baseline
+    grcov2 %&% win
+}
+
+
+#' @export std.calc.cov
+std.calc.cov = function(anci, pad, field = NULL, baseline = NULL, FUN = "median") {
+    gr_calc_cov(anci %>% dt2gr, PAD = pad, start.base = -5e3, end.base = 0, FUN = FUN, field = field, win = 5e3, baseline = baseline)
+}
+
+
+
 #' @name gr.split
 #' @title split a gr by field(s) in elementMetadata of GRanges or a given vector
 #' @description
@@ -2498,10 +2549,10 @@ dt_f2char = function(dt, cols = NULL) {
 #'
 #' @return GRanges
 #' @author Kevin Hadi
-#' @export
+#' @export gr.split
 gr.split = function(gr, ..., sep = " ") {
   lst = as.list(match.call())[-1]
-  ix = which(names(lst) != "gr")
+  ix = which(names(lst) != c("gr", "sep"))
   tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
   grl = gr %>% split(tmpix)
@@ -2518,11 +2569,11 @@ gr.split = function(gr, ..., sep = " ") {
 #'
 #' @return GRanges
 #' @author Kevin Hadi
-#' @export
+#' @export gr.spreduce
 gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
-  ix = which(!names(lst) %in% c("gr", "sep"))
-  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+  ix = which(!names(lst) %in% c("gr", "sep", "pad"))
+  tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
   grl = gr %>% split(tmpix)
   dt = as.data.table(reduce(grl + pad))
@@ -2540,7 +2591,6 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
   return(dt2gr(dt))
 }
 
-
 #' @name gr.noval
 #' @title get rid of mcols on GRanges/GRangesLists
 #' @description
@@ -2549,7 +2599,7 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
 #'
 #' @return GRanges or GRangesList
 #' @author Kevin Hadi
-#' @export
+#' @export gr.noval
 gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
     if (is.null(keep.col) & is.null(drop.col)) {
         select_col = NULL
@@ -2579,21 +2629,16 @@ gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
     return(gr)
 }
 
-
-setGeneric('within')
-
-#' @name within
-#' @title within on GRanges
+#' @name gr.within
+#' @title within on GRanges, S3
 #' @description
 #'
 #'
 #' @return GRanges
-#' @rdname gr_within
-#' @exportMethod within
-#' @aliases within,GRanges-method
+#' @rdname gr.within
 #' @author Kevin Hadi
-#' @export
-setMethod("within", signature(data = "GRanges"), function(data, expr) {
+#' @export gr.within
+gr.within = function(data, expr) {
     top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
@@ -2627,10 +2672,26 @@ setMethod("within", signature(data = "GRanges"), function(data, expr) {
         granges(data) <- e$data
     }
     data
-})
+}
+
+setGeneric('within')
+
+#' @name within
+#' @title within on GRanges
+#' @description
+#'
+#'
+#' @return GRanges
+#' @rdname gr_within
+#' @exportMethod within
+#' @aliases within,GRanges-method
+#' @author Kevin Hadi
+#' @export
+setMethod("within", signature(data = "GRanges"), NULL)
+setMethod("within", signature(data = "GRanges"), gr.within)
 
 
-setMethod("within", signature(data = "GRangesList"), function(data, expr) {
+tmpgrlwithin = function(data, expr) {
     top_prenv1 = function (x, where = parent.frame())
     {
         sym <- substitute(x, where)
@@ -2644,10 +2705,10 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
     }
     e <- list2env(as.list(as(data, "DataFrame")))
     e$X = NULL
-    e$data <- gr.noval(data)
+    e$grangeslist <- gr.noval(data)
     S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
     ## reserved <- c("ranges", "start", "end", "width", "space")
-    reserved <- c("seqnames", "start", "end", "width", "strand", "data")
+    reserved <- c("seqnames", "start", "end", "width", "strand", "granges", "grangeslist")
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
@@ -2656,7 +2717,7 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
     }
-    if (!identical(gr.noval(data), e$data)) {
+    if (!identical(gr.noval(data), e$grangeslist)) {
         stop("change in the grangeslist detected")
         ## granges(data) <- e$granges
     } ## else {
@@ -2668,48 +2729,12 @@ setMethod("within", signature(data = "GRangesList"), function(data, expr) {
     ##         width(data) <- width(e$grangeslist)
     ## }
     data
-})
+}
 
-
-setMethod("within", signature(data = "CompressedGRangesList"), function(data, expr) {
-    top_prenv1 = function (x, where = parent.frame())
-    {
-        sym <- substitute(x, where)
-        if (!is.name(sym)) {
-            stop("'x' did not substitute to a symbol")
-        }
-        if (!is.environment(where)) {
-            stop("'where' must be an environment")
-        }
-        .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
-    }
-    e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
-    e$data <- gr.noval(data)
-    S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
-    ## reserved <- c("ranges", "start", "end", "width", "space")
-    reserved <- c("seqnames", "start", "end", "width", "strand", "data")
-    l <- mget(setdiff(ls(e), reserved), e)
-    l <- l[!sapply(l, is.null)]
-    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = l
-    if (nD) {
-        for (nm in del)
-            mcols(data)[[nm]] = NULL
-    }
-    if (!identical(gr.noval(data), e$data)) {
-        stop("change in the grangeslist detected")
-        ## granges(data) <- e$granges
-    } ## else {
-    ##     if (!identical(start(data), start(e$grangeslist)))
-    ##         start(data) <- start(e$grangeslist)
-    ##     if (!identical(end(data), end(e$grangeslist)))
-    ##         end(data) <- end(e$grangeslist)
-    ##     if (!identical(width(data), width(e$grangeslist)))
-    ##         width(data) <- width(e$grangeslist)
-    ## }
-    data
-})
+setMethod("within", signature(data = "CompressedGRangesList"), NULL)
+setMethod("within", signature(data = "GRangesList"), NULL)
+setMethod("within", signature(data = "CompressedGRangesList"), tmpgrlwithin)
+setMethod("within", signature(data = "GRangesList"), tmpgrlwithin)
 
 
 
@@ -2747,42 +2772,70 @@ setMethod("within", signature(data = "IRanges"), function(data, expr) {
     data
 })
 
+tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
+  seqlevels = seqlevels(x)
+  ## if (!is.null(names(start))) 
+  ##   start <- start[seqlevels]
+  ## if (!is.null(names(end))) 
+  ##   end <- end[seqlevels]
+  ## start <- S4Vectors:::recycleVector(start, length(seqlevels))
+  ## start <- rep(start, each = 3L)
+  ## end <- S4Vectors:::recycleVector(end, length(seqlevels))
+  ## end <- rep(end, each = 3L)
+  gr = GenomicRanges:::deconstructGRLintoGR(x)
+  grlix = formatC(seq_along(x), width = floor(log10(length(x))) + 1, format = "d", flag = "0")
+  slix = formatC(seq_along(seqlevels), width = floor(log10(length(seqlevels))) + 1, format = "d", flag = "0")
+  cdt = data.table::CJ(Var1 = grlix, Var2 = slix)[, oix := seq_len(.N)]
+  cdt = merge(cdt, data.frame(sl = seqlengths(x), Var2 = slix), by = "Var2")
+  setkey(cdt, oix)
+  nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
+  seqlevels(gr) = nseqlevels
+  seqlengths(gr) = cdt$sl
+  rgl = GenomicRanges:::deconstructGRintoRGL(gr)
+  ## rgl2 = gaps(rgl, start = rep(rep(start, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
+  rgl2 = gaps(rgl, start = rep(rep(1, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
+  GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)    
+}
 
-#' @name gr.within
-#' @title within on GRanges, S3
+#' @name gaps
+#' @title gaps on GRangesList
 #' @description
 #'
 #'
-#' @return GRanges
-#' @rdname gr.within
-#' @author Kevin Had
+#' @return GRangesList
+#' @rdname grl_gaps
+#' @exportMethod gaps
+#' @aliases gaps,GRangesList-method
+#' @author Kevin Hadi
 #' @export
-gr.within = function(data, expr)  {
-    pf = parent.frame()
-    data2 = as(data, "DataFrame")
-    data2$X = NULL
-    data2$data <- granges(data)
-    data2$start = start(data2$data)
-    data2$end = end(data2$data)
-    data2$strand = as.character(strand(data2$data))
-    data2$width = as.integer(width(data2$data))
-    e = evalq(environment(), data2, pf)
-    eval(substitute(expr, pf), e)
-    reserved <- c("seqnames", "start", "end", "width", "strand",
-                  "data")
-    l <- mget(setdiff(ls(e), reserved), e)
-    l <- l[!sapply(l, is.null)]
-    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = as(l, "DataFrame")
-    if (nD) {
-        for (nm in del) mcols(data)[[nm]] = NULL
-    }
-    if (!identical(granges(data), e$data)) {
-        granges(data) <- e$data
-    }
-    data
-}
+setMethod(f = "gaps", signature = signature(x = "CompressedGRangesList"), definition = NULL)
+setMethod(f = "gaps", signature = signature(x = "GRangesList"), definition = NULL)
+setMethod("gaps", signature(x = "GRangesList"), tmpgrlgaps)
+setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 
+#' @name gr.splgaps
+#' @title gaps on GRanges, splitting by values in a metadata field
+#' @description
+#'
+#'
+#' @return GRangesList
+#' @rdname gr.splgaps
+#' @author Kevin Hadi
+#' @export gr.splgaps
+gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
+  lst = as.list(match.call())[-1]
+  ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
+  tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
+  tmpix = factor(tmpix, levels = unique(tmpix))
+  grl = gr %>% split(tmpix)
+  ## out = tmpgrlgaps(grl, start = start, end = end)
+  out = gaps(grl, start = start, end = end)
+  mcols(out) = data.table::tstrsplit(names(out), sep)
+  colnames(mcols(out)) = unlist(strsplit(toString(lst[ix]), ", "))
+  if (cleannm)
+    names(out) = gsub(sep, " ", names(out))
+  out
+}
 
 
 #' @export

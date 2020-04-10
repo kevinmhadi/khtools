@@ -13,5 +13,5 @@ GRanges
 
 }
 \author{
-Kevin Had
+Kevin Hadi
 }
