@@ -2488,6 +2488,45 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name parse.gr2
+#' @title a robust version of parse.gr that is able to convert ranges with minus signs
+#' @description
+#'
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export parse.gr2
+parse.gr2 = function(...) {
+    grl.unlist(parse.grl2(...))
+}
+
+
+#' @name parse.grl2
+#' @title a robust version of parse.grl that is able to convert ranges with minus signs
+#' @description
+#'
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export parse.grl2
+parse.grl2 = function(str, meta = NULL) {
+    ## library(stringi)
+    tmp = stringi::stri_split_regex(str, pattern = ",|;")
+    grl.ix = rep(seq_along(tmp), lengths(tmp))
+    tmp = unlist(tmp)
+    tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)", "\\1 \\2 \\3 \\4 \\5 \\6", tmp)
+    mat = stringi::stri_split_fixed(tmp, pattern = " ", simplify = "TRUE")
+    gr = GRanges(seqnames = mat[,1],
+                 ranges = IRanges(as.integer(mat[,3]), as.integer(mat[,5])),
+                 strand = case_when(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-") ~ "*",
+                                    TRUE ~ mat[,6]),
+                 grl.ix = grl.ix)
+    gr = gr.noval(split(gr, gr$grl.ix))
+    if (!is.null(meta) && nrow(meta) == length(gr)) 
+        values(gr) = meta
+    return(gr)
+}
+
 #' @export gr_calc_cov
 gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
     win = GRanges("Anchor", IRanges(-abs(win), abs(win)))
