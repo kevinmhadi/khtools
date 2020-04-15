@@ -2715,7 +2715,7 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
   ix = which(!names(lst) %in% c("gr", "sep", "pad"))
   tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% split(tmpix)
+  grl = gr %>% GenomicRanges::split(tmpix)
   dt = as.data.table(reduce(grl + pad))
   nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
   nm = lapply(lst[ix], toString)
@@ -2727,9 +2727,10 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
   ## nm[-nmix] = character(0)
   nm[-nmix] = list(character(0))
   ## nmix = which(!nm == "NULL")
-  dt = dt[, cbind(.SD, setnames(as.data.table(tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
+  dt = dt[, cbind(.SD, setnames(as.data.table(data.table::tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
   return(dt2gr(dt))
 }
+
 
 #' @name gr.noval
 #' @title get rid of mcols on GRanges/GRangesLists
@@ -2967,7 +2968,7 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
   tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% split(tmpix)
+  grl = gr %>% GenomicRanges::split(tmpix)
   ## out = tmpgrlgaps(grl, start = start, end = end)
   out = gaps(grl, start = start, end = end)
   mcols(out) = data.table::tstrsplit(names(out), sep)
@@ -2976,6 +2977,7 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
     names(out) = gsub(sep, " ", names(out))
   out
 }
+
 
 
 #' @export
