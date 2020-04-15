@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{parse.grl2}
 \alias{parse.grl2}
-\title{a robust version of parse.grl that is able to convert ranges with minus signs}
+\title{a robust parse.grl}
 \usage{
 parse.grl2(str, meta = NULL)
 }
@@ -10,7 +10,7 @@ parse.grl2(str, meta = NULL)
 GRangesList
 }
 \description{
-
+version of parse.grl that is able to convert ranges with minus signs
 }
 \author{
 Kevin Hadi

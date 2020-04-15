@@ -481,6 +481,79 @@ lst.zerochar2empty = function(x) {
 ##################################################
 
 
+#' @name lapply_dt
+#' @title Flexibly apply function to columns of data.table/frame
+#'
+#' @description
+#' Convenience function to apply a function to columns of a data.table/frame.
+#' The syntax for the columns is flexible
+#' 
+#' lapply_dt(c(newcolname = colname), dt, dosomething)
+#' will give a data.table or list with the column name
+#' renamed to newcolname
+#' lapply_dt(.(newcolname = colname)...) also works as well.
+#' Note that no quotations are needed.
+#'
+#' @param x fields to apply function to
+#' @param dt data.table/frame
+#' @param LFUN either a character name of a function, or a function
+#' @param natype the type of NA which is to be specified as one of NA, NA_character_, NA_real_, or NA_integer_
+#' @param as.data.table a logical indicating whether to coerce the output to a data.table
+#' @return data.table/frame if as.data.table is TRUE, otherwise a list
+#' @export lapply_dt
+lapply_dt = function(x, dt, LFUN = "identity", natype = NA, as.data.table = T) {
+    if (!is.function(LFUN))
+        LFUN = base::mget(x = 'identity', mode = "function", inherits = T)[[1]]
+    expr = substitute(x)
+    if (is.name(expr))
+        x = x
+    else {
+        x = trimws(gsub(',', "", unlist(strsplit(toString(expr), " "))[-1]))
+        if (!is.null(names(expr)))
+            names(x) = names(expr)[-1]
+    }
+    if (!is.null(names(x)))
+        nm = names(x)
+    else
+        nm = x
+    out = setNames(lst.emptyreplace(lapply(x, function(x, dt) {
+        dt[[x]]
+    }, dt = dt), natype), nm)
+    out = lapply(out, LFUN)
+    if (as.data.table)
+        return(as.data.table(out))
+    else
+        return(out)
+}
+
+
+#' @name fix.cols
+#' @title Fix messed up data frame/table column names
+#'
+#' @description
+#' If there are any malformed columns 
+#' (e.g. those with numbers at the beginning
+#' or a dash) these column names are fixed
+#' 
+#'
+#' @param dt data.table/frame
+#' @param sep separator field
+#' @return data.table/frame
+#' @export fix.cols
+fix.cols = function(dt, sep = "_") {
+    this_sep = sep
+    cl = colnames(dt)
+    probs.num = grep("^[0-9]", cl)
+    probs.dash = grep("-", cl)
+    if (length(probs.num) | length(probs.dash)) {
+        cl[probs.num] = paste0("X", this_sep, cl[probs.num])
+        cl[probs.dash] = gsub("-", this_sep,  cl[probs.dash])
+    }
+    colnames(dt) = cl
+    return(dt)
+}
+
+
 #' @name process_tbl
 #' @title flexibly read in a field and append an id to the output
 #'
@@ -918,6 +991,7 @@ select.matrix = function(x, rows = NULL, cols = NULL, int.rows = TRUE, int.cols 
 
 
 #' @name ne
+#' @title "no error"
 #'
 #' "no error"
 #'
@@ -929,9 +1003,13 @@ ne = function(...) {
 
 
 #' @name good.file
+#' @title Does File exists and is file size greater than threshold
 #'
-#' Does file exist and is its size greater than a threshold
-#'
+#' Queries a set of file paths for whether the file exists AND
+#' if the file is greater than a size threshold
+#' 
+#' @param x character vector of file paths
+#' @param size.thresh threshold of minimum file size
 #' @return logical
 #' @export good.file
 good.file = function(x, size.thresh = 0) {
@@ -1339,10 +1417,11 @@ vmatch = function(x, y, ...) {
 }
 
 #' @name file.mat.exists
+#' @title file.mat.exists
 #'
-#' @export
-file.mat.exists = function(x) {
-    matrify(x) %>% {setRownames(apply(., 2, file.exists), rownames(.))}
+#' @export file.mat.exists
+file.mat.exists = function(x, rm_col1 = FALSE) {
+    matrify(x, rm_col1 = rm_col1) %>% {setRownames(apply(., 2, file.exists), rownames(.))}
 }
 
 
@@ -2489,9 +2568,10 @@ dt_f2char = function(dt, cols = NULL) {
 ##############################
 
 #' @name parse.gr2
-#' @title a robust version of parse.gr that is able to convert ranges with minus signs
+#' @title a robust parse.gr
 #' @description
 #'
+#' version of parse.gr that is able to convert ranges with minus signs
 #'
 #' @return GRanges
 #' @author Kevin Hadi
@@ -2502,10 +2582,11 @@ parse.gr2 = function(...) {
 
 
 #' @name parse.grl2
-#' @title a robust version of parse.grl that is able to convert ranges with minus signs
+#' @title a robust parse.grl
 #' @description
 #'
-#'
+#' version of parse.grl that is able to convert ranges with minus signs
+#' 
 #' @return GRangesList
 #' @author Kevin Hadi
 #' @export parse.grl2
@@ -2514,18 +2595,39 @@ parse.grl2 = function(str, meta = NULL) {
     tmp = stringi::stri_split_regex(str, pattern = ",|;")
     grl.ix = rep(seq_along(tmp), lengths(tmp))
     tmp = unlist(tmp)
-    tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)", "\\1 \\2 \\3 \\4 \\5 \\6", tmp)
+    tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)",
+               "\\1 \\2 \\3 \\4 \\5 \\6",
+               tmp)
     mat = stringi::stri_split_fixed(tmp, pattern = " ", simplify = "TRUE")
     gr = GRanges(seqnames = mat[,1],
                  ranges = IRanges(as.integer(mat[,3]), as.integer(mat[,5])),
-                 strand = case_when(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-") ~ "*",
-                                    TRUE ~ mat[,6]),
+                 strand = ifelse(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-"), "*", mat[,6]),
                  grl.ix = grl.ix)
     gr = gr.noval(split(gr, gr$grl.ix))
     if (!is.null(meta) && nrow(meta) == length(gr)) 
         values(gr) = meta
     return(gr)
 }
+
+
+
+## parse.grl2 = function(str, meta = NULL) {
+##     ## library(stringi)
+##     tmp = stringi::stri_split_regex(str, pattern = ",|;")
+##     grl.ix = rep(seq_along(tmp), lengths(tmp))
+##     tmp = unlist(tmp)
+##     tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)", "\\1 \\2 \\3 \\4 \\5 \\6", tmp)
+##     mat = stringi::stri_split_fixed(tmp, pattern = " ", simplify = "TRUE")
+##     gr = GRanges(seqnames = mat[,1],
+##                  ranges = IRanges(as.integer(mat[,3]), as.integer(mat[,5])),
+##                  strand = case_when(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-") ~ "*",
+##                                     TRUE ~ mat[,6]),
+##                  grl.ix = grl.ix)
+##     gr = gr.noval(split(gr, gr$grl.ix))
+##     if (!is.null(meta) && nrow(meta) == length(gr)) 
+##         values(gr) = meta
+##     return(gr)
+## }
 
 #' @export gr_calc_cov
 gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
