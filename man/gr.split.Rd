@@ -4,7 +4,7 @@
 \alias{gr.split}
 \title{split a gr by field(s) in elementMetadata of GRanges or a given vector}
 \usage{
-gr.split(gr, ..., sep = " ")
+gr.split(gr, ..., sep = paste0(" ", rand.string(length = 8), " "))
 }
 \value{
 GRanges

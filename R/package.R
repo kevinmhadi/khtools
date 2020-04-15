@@ -2690,12 +2690,12 @@ std.calc.cov = function(anci, pad, field = NULL, baseline = NULL, FUN = "median"
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.split
-gr.split = function(gr, ..., sep = " ") {
+gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
-  ix = which(names(lst) != c("gr", "sep"))
-  tmpix = with(gr, do.call(paste, c(lst[ix], list(sep = sep))))
+  ix = which(names(lst) != "gr", "sep")
+  tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% split(tmpix)
+  grl = gr %>% GenomicRanges::split(tmpix)
   return(grl)
 }
 
@@ -2716,7 +2716,7 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
   tmpix = with(gr, do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
   grl = gr %>% GenomicRanges::split(tmpix)
-  dt = as.data.table(reduce(grl + pad))
+  dt = as.data.table(GenomicRanges::reduce(grl + pad))
   nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
   nm = lapply(lst[ix], toString)
   rmix = which(unlist(nm) %in% colnames(dt))
