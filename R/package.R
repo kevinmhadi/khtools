@@ -2586,7 +2586,9 @@ parse.gr2 = function(...) {
 #' @description
 #'
 #' version of parse.grl that is able to convert ranges with minus signs
-#' 
+#'
+#' @param str A string that can be parsed as ranged data "A:1-10+"
+#' @param meta A table that will be added as metadata
 #' @return GRangesList
 #' @author Kevin Hadi
 #' @export parse.grl2
@@ -2713,23 +2715,41 @@ gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
 gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
   ix = which(!names(lst) %in% c("gr", "sep", "pad"))
-  tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
-  tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% GenomicRanges::split(tmpix)
-  dt = as.data.table(GenomicRanges::reduce(grl + pad))
-  nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
-  nm = lapply(lst[ix], toString)
-  rmix = which(unlist(nm) %in% colnames(dt))
-  nm[rmix] = list(character(0))
-  if (length(rmix))
-    nmix = nmix[-rmix]
-  ## nm[lengths(nm) == 0] = list(character(0))
-  ## nm[-nmix] = character(0)
-  nm[-nmix] = list(character(0))
-  ## nmix = which(!nm == "NULL")
-  dt = dt[, cbind(.SD, setnames(as.data.table(data.table::tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
-  return(dt2gr(dt))
+  tmpix = do.call(
+      function(...) paste(..., sep = sep),
+      as.list(mcols(gr)[
+         ,unlist(strsplit(toString(lst[ix]),", ")),
+          drop = F]))
+  unix = which(!duplicated(tmpix))
+  tmpix = factor(tmpix, levels = tmpix[unix])
+  grl = unname(gr.noval(gr) %>% GenomicRanges::split(tmpix))
+  grl = GenomicRanges::reduce(grl + pad)
+  out = unlist(grl)
+  mcols(out) = mcols(gr)[rep(unix, times = IRanges::width(grl@partitioning)),
+                         unlist(strsplit(toString(lst[ix]), ", ")),drop = F]
+  return(out)
 }
+
+## gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
+##   lst = as.list(match.call())[-1]
+##   ix = which(!names(lst) %in% c("gr", "sep", "pad"))
+##   tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
+##   tmpix = factor(tmpix, levels = unique(tmpix))
+##   grl = gr %>% GenomicRanges::split(tmpix)
+##   dt = as.data.table(GenomicRanges::reduce(grl + pad))
+##   nmix = which(unlist(lapply(lst[ix], function(x) is.name(x) & !is.call(x))))
+##   nm = lapply(lst[ix], toString)
+##   rmix = which(unlist(nm) %in% colnames(dt))
+##   nm[rmix] = list(character(0))
+##   if (length(rmix))
+##     nmix = nmix[-rmix]
+##   ## nm[lengths(nm) == 0] = list(character(0))
+##   ## nm[-nmix] = character(0)
+##   nm[-nmix] = list(character(0))
+##   ## nmix = which(!nm == "NULL")
+##   dt = dt[, cbind(.SD, setnames(as.data.table(data.table::tstrsplit(group_name, split = sep)), nmix, unlist(nm)))][, group_name := NULL]
+##   return(dt2gr(dt))
+## }
 
 
 #' @name gr.noval
@@ -2969,7 +2989,6 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
   tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
   grl = gr %>% GenomicRanges::split(tmpix)
-  ## out = tmpgrlgaps(grl, start = start, end = end)
   out = gaps(grl, start = start, end = end)
   mcols(out) = data.table::tstrsplit(names(out), sep)
   colnames(mcols(out)) = unlist(strsplit(toString(lst[ix]), ", "))
@@ -2977,6 +2996,22 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
     names(out) = gsub(sep, " ", names(out))
   out
 }
+
+
+## gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
+##   lst = as.list(match.call())[-1]
+##   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
+##   tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
+##   tmpix = factor(tmpix, levels = unique(tmpix))
+##   grl = gr %>% GenomicRanges::split(tmpix)
+##   ## out = tmpgrlgaps(grl, start = start, end = end)
+##   out = gaps(grl, start = start, end = end)
+##   mcols(out) = data.table::tstrsplit(names(out), sep)
+##   colnames(mcols(out)) = unlist(strsplit(toString(lst[ix]), ", "))
+##   if (cleannm)
+##     names(out) = gsub(sep, " ", names(out))
+##   out
+## }
 
 
 

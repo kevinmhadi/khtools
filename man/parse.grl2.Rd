@@ -6,6 +6,11 @@
 \usage{
 parse.grl2(str, meta = NULL)
 }
+\arguments{
+\item{str}{A string that can be parsed as ranged data "A:1-10+"}
+
+\item{meta}{A table that will be added as metadata}
+}
 \value{
 GRangesList
 }
