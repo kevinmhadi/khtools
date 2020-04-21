@@ -2715,18 +2715,23 @@ gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
 gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
   ix = which(!names(lst) %in% c("gr", "sep", "pad"))
+  vars = unlist(sapply(lst[ix], function(x) unlist(sapply(x, toString))))
+  if (length(vars) == 1) {
+    if (!vars %in% colnames(mcols(gr)))
+      vars = tryCatch(unlist(list(...)), error = function(e) vars)
+  }
+  if (!all(vars %in% colnames(mcols(gr))))
+    stop("Must specify valid metadata columns in gr")
   tmpix = do.call(
-      function(...) paste(..., sep = sep),
-      as.list(mcols(gr)[
-         ,unlist(strsplit(toString(lst[ix]),", ")),
-          drop = F]))
+    function(...) paste(..., sep = sep),
+    as.list(mcols(gr)[,vars, drop = F]))
   unix = which(!duplicated(tmpix))
   tmpix = factor(tmpix, levels = tmpix[unix])
   grl = unname(gr.noval(gr) %>% GenomicRanges::split(tmpix))
   grl = GenomicRanges::reduce(grl + pad)
   out = unlist(grl)
   mcols(out) = mcols(gr)[rep(unix, times = IRanges::width(grl@partitioning)),
-                         unlist(strsplit(toString(lst[ix]), ", ")),drop = F]
+    vars,drop = F]
   return(out)
 }
 
@@ -2986,15 +2991,80 @@ setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
   lst = as.list(match.call())[-1]
   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
-  tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
-  tmpix = factor(tmpix, levels = unique(tmpix))
-  grl = gr %>% GenomicRanges::split(tmpix)
+  cl = sapply(lst[ix], class)
+  vars = unlist(sapply(lst[ix], function(x) unlist(sapply(x, toString))))
+  if (length(vars) == 1) {
+    if (!vars %in% colnames(mcols(gr)))
+      vars = tryCatch(unlist(list(...)), error = function(e) vars)
+  }
+  if (!all(vars %in% colnames(mcols(gr))))
+    stop("Must specify valid metadata columns in gr")
+  tmpix = do.call(function(...) paste(..., sep = sep),
+    mcols(gr)[,vars,drop = F])
+  unix = which(!duplicated(tmpix))
+  tmpix = factor(tmpix, levels = tmpix[unix])
+  grl = gr.noval(gr) %>% GenomicRanges::split(tmpix)
+  ## out = tmpgrlgaps(grl, start = start, end = end)
   out = gaps(grl, start = start, end = end)
-  mcols(out) = data.table::tstrsplit(names(out), sep)
-  colnames(mcols(out)) = unlist(strsplit(toString(lst[ix]), ", "))
+  mcols(out) = mcols(gr)[unix,vars, drop = F]
   if (cleannm)
     names(out) = gsub(sep, " ", names(out))
-  out
+  return(out)
+}
+
+
+#' @name gr.setdiff2
+#' @title gr.setdiff that works with multiple by columns
+#' @description
+#'
+#'
+#' @return GRanges
+#' @rdname gr.setdiff2
+#' @author Kevin Hadi
+#' @export gr.setdiff2
+gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = TRUE, ...) 
+{
+  if (!is.null(by)) {
+    if (ignore.strand) {
+      query = gr.stripstrand(query)
+      subject = gr.stripstrand(subject)
+    }
+    sl = seqlengths(query)
+    if (new)
+      gp = do.call(gr.splgaps, c(alist(gr = gr.fix(subject, query)), ... = lapply(by, str2lang)))
+    else {
+      tmp = gr2dt(subject)
+      tmp$strand = factor(tmp$strand, c("+", "-", "*"))
+      gp = dt2gr(tmp[, as.data.frame(gaps(GRanges(seqnames, 
+        IRanges(start, end), seqlengths = sl, strand = strand))), 
+      , by = by], seqinfo = seqinfo(query))
+    }
+    qdt = as.data.table(mcols(gr.noval(query, keep.col = by)))[, query.id := seq_len(.N)]
+    sdt = as.data.table(mcols(gr.noval(subject, keep.col = by)))[, subject.id := seq_len(.N)]
+    mdt = merge(setkeyv(unique(qdt[,-c("query.id")][, inx := TRUE]), by),
+      setkeyv(unique(sdt[, -c("subject.id")][, iny := TRUE]), by), all = T)[is.na(iny)]
+    rm(sdt)
+    gp = grl.unlist(gp)
+    if (nrow(mdt)) {
+      gp = grbind(gp, gr.spreduce(gr.noval(query[merge(qdt, mdt, by = by)$query.id],
+        keep.col = by), by))
+    }
+    rm(mdt, qdt)
+    if (ignore.strand)
+      gp = gr.stripstrand(gp[strand(gp) == "*"])
+  }
+  else {
+    if (ignore.strand) {
+      gp = gaps(gr.stripstrand(subject)) %Q% (strand == 
+                                                "*")
+    }
+    else {
+      gp = gaps(subject)
+    }
+  }
+  out = gr.findoverlaps(query, gp, qcol = names(values(query)), 
+    ignore.strand = ignore.strand, by = by, ...)
+  return(out)
 }
 
 
