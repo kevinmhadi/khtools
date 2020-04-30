@@ -2567,6 +2567,29 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name gr.resize
+#' @title Resize granges without running into negative width error
+#' @description
+#'
+#' lower size limit of window is 0
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.resize
+gr.resize = function(gr, wid, each = TRUE, resize = TRUE, fix = "center") {
+    if (resize) {
+        if (isTRUE(each)) {
+            wid = wid * 2
+        }
+        width.arg = pmax(width(gr) + wid, 1)
+    }
+  else
+    width.arg = pmax(wid, 0)
+  return(GenomicRanges::resize(gr,
+    width = width.arg,
+    fix = fix))
+}
+
 #' @name parse.gr2
 #' @title a robust parse.gr
 #' @description
@@ -2712,9 +2735,9 @@ gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.spreduce
-gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
+gr.spreduce = function(gr,  ..., ignore.strand = FALSE, pad = 0, return.grl = FALSE, sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
-  ix = which(!names(lst) %in% c("gr", "sep", "pad"))
+  ix = which(!names(lst) %in% c("gr", "sep", "pad", "ignore.strand", "return.grl"))
   vars = unlist(sapply(lst[ix], function(x) unlist(sapply(x, toString))))
   if (length(vars) == 1) {
     if (!vars %in% colnames(mcols(gr)))
@@ -2728,11 +2751,16 @@ gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length =
   unix = which(!duplicated(tmpix))
   tmpix = factor(tmpix, levels = tmpix[unix])
   grl = unname(gr.noval(gr) %>% GenomicRanges::split(tmpix))
-  grl = GenomicRanges::reduce(grl + pad)
-  out = unlist(grl)
-  mcols(out) = mcols(gr)[rep(unix, times = IRanges::width(grl@partitioning)),
-    vars,drop = F]
-  return(out)
+  grl = GenomicRanges::reduce(grl + pad, ignore.strand = ignore.strand)
+  if (return.grl) {
+    mcols(grl) = mcols(gr)[unix,vars,drop = F]
+    return(grl)
+  } else {
+    out = unlist(grl)
+    mcols(out) = mcols(gr)[rep(unix, times = IRanges::width(grl@partitioning)),
+      vars,drop = F]
+    return(out)
+  }
 }
 
 ## gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
@@ -3275,21 +3303,27 @@ sv_filter = function(sv, filt_sv, pad = 500)
 
 #' @export pairs.filter.sv
 pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_vcf", mc.cores = 1, pon.path = '~/lab/projects/CCLE/db/tcga_and_1kg_sv_pon.rds') {
-    if (missing(id.field))
-        id.field = key(tbl)
-    if (is.null(id.field))
-        stop("please specify an id field")
-    if (!exists("sv_pon")) {
-        message("no sv_pon variable found...", "\n",
-                "loading ", pon.path)
-        sv_pon = gr.noval(readRDS(pon.path))
-    }
-    iter.fun = function(pr, tbl) {
-        ent = tbl[get(id.field) == pr]
-        .filter_sv(ent)
-    }
-    out = rbindlist(mclapply(mc.cores = mc.cores,
-                   tbl[[id.field]], iter.fun, tbl = tbl))
+  if (missing(id.field))
+    id.field = key(tbl)
+  if (is.null(id.field))
+    stop("please specify an id field")
+  if (!exists("sv_pon")) {
+    message("no sv_pon variable found...", "\n",
+      "loading ", pon.path)
+    sv_pon = gr.noval(readRDS(pon.path))
+  }
+  iter.fun = function(pr, tbl) {
+    try2({
+      ent = tbl[get(id.field) == pr]
+      return(.filter_sv(ent))
+    })
+  }
+  out = mclapply(mc.cores = mc.cores,
+    tbl[[id.field]], iter.fun, tbl = tbl)
+  out = tryCatch(rbindlist(out), error = function(e) {
+    message("error at rbindlist, returning list"); out
+  })
+  return(out)
 }
 
 
