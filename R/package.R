@@ -2289,6 +2289,7 @@ merge.repl = function(dt.x,
                       force_y = TRUE,
                       overwrite_x = FALSE,
                       keep_order = FALSE,
+                      keep_colorder = TRUE,
                       ...) {
     arg_lst = as.list(match.call())
     by.y = eval(arg_lst$by.y)
@@ -2404,6 +2405,14 @@ merge.repl = function(dt.x,
     }
     data.table::set(dt.repl, j = c("in.y.2345098712340987", "in.x.2345098712340987"),
                     value = list(NULL, NULL))
+    if (keep_colorder) {
+        x_cols = colnames(dt.x)
+        ## get the order of columns in dt.repl in order of X with
+        ## additional columns tacked on end
+        setcolorder(dt.repl,
+                    intersect(union(colnames(dt.x), colnames(dt.repl)),
+                              colnames(dt.repl)))
+    }
     invisible(dt.repl)
 }
 
