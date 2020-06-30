@@ -4,7 +4,15 @@
 \alias{gr.resize}
 \title{Resize granges without running into negative width error}
 \usage{
-gr.resize(gr, wid, each = TRUE, resize = TRUE, fix = "center")
+gr.resize(
+  gr,
+  wid,
+  minwid = 0,
+  each = TRUE,
+  pad = TRUE,
+  ignore.strand = FALSE,
+  fix = "center"
+)
 }
 \value{
 GRanges

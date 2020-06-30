@@ -4,7 +4,7 @@
 \alias{find_dups}
 \title{find all duplicates in a vector}
 \usage{
-find_dups(vec, re_sort = FALSE)
+find_dups(..., re_sort = FALSE, sep = " ")
 }
 \arguments{
 \item{vec}{A vector}

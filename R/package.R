@@ -53,14 +53,21 @@ match2 = function(x, y) {
 #' find_dups(c(1,3,1,3,1))
 #' find_dups(c(3,1,5,4,4))
 #' @export
-find_dups = function(vec, re_sort = FALSE) {
-    dups = unique(vec[ duplicated(vec)])
-    if (!re_sort) {
-        return(vec %in% dups)
-    } else {
-        matching_idx = match2(sort(dups), vec)
-        return(which(!is.na(matching_idx))[order(na.omit(matching_idx))])
-    }
+find_dups = function(..., re_sort = FALSE, sep = " ") {
+  lst = as.list(match.call())[-1]
+  ix = setdiff(seq_along(lst), which(names(lst) %in% c("re_sort", "sep")))
+  ## cl = sapply(lst[ix], class)
+  if (length(ix) > 1)
+    vec = do.call(function(...) paste(..., sep = sep), alist(...))
+  else
+    vec = unlist(list(...))
+  dupix = which(duplicated(vec))
+  if (!re_sort) {
+    return(which(vec %in% vec[dupix]))
+  } else {
+    matching_idx = match2(sort(vec[dupix]), vec)
+    return(which(!is.na(matching_idx))[order(na.omit(matching_idx))])
+  }
 }
 
 #' @name undup
@@ -480,6 +487,194 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name rownames_to_column
+#' @title making column out of rownames
+#' 
+#' internal version that doesn't require library(tibble)
+#'
+#' @param .data a data frame/table
+#' @return a data frame/table with the rownames as an additional column
+rownames_to_column = function(.data, var = "rowname") {
+    if (inherits(.data, "data.frame")) {
+        if (!is.null(rownames(.data))) {
+            .data = cbind(u.var5912349879872349876 = rownames(.data), .data)
+            colnames(.data)[1] = var
+            return(.data)
+        } else
+            return(.data)
+    } else
+        stop("must be a data frame")
+}
+
+
+#' @name normpath
+#' @title normalize directory, but not basepath
+#' 
+#' get the absolute file directory without following the
+#' base path link
+#'
+#' @param str a path string
+#' @return a normalized path
+normpath = function(p) {
+    bn = basename(p)
+    d = normalizePath(dirname(p))
+    return(paste0(d, "/", bn))
+}
+
+
+
+
+#' @name rm_mparen
+#' @title remove multiple parentheses from path
+#' 
+#' utility function for removing multiple parantheses
+#' probably not necessary
+#'
+#' @param str a path string
+#' @return a string with multiple parentheses replaced with a single parenthesis
+rm_mparen  = function(str) {
+    return(gsub('\\/{2,}', "/", str))
+}
+
+#' @name numeq
+#' @title test equality between numeric values with some tolerance
+#'
+#' @description
+#' two numerical values may be slightly off in their decimal precision.
+#' These may be considered equivalent values but the `==` operator will
+#' return FALSE. This tests for equivalence of two values with some lower
+#' tolerance limit
+#' 
+#' @return logical vector
+#' @export
+numeq = function(x, y, tol = .Machine$double.eps^0.5) {
+    abs(x - y) < tol
+}
+
+
+#' @name symdiff
+#' @title data.table of all setdiff items in X and in Y
+#'
+#' gives back data table of setdiff elements
+#' noting whether the element is in vector x or vector y
+#' This gives back all elements, including non-unique
+#' 
+#' @return data.table
+#' 
+#' @export
+symdiff = function(x, y, ignore.na = FALSE) {
+    xy = setdiff(x,y)
+    yx = setdiff(y,x)
+    if (ignore.na) {
+        xy = na.omit(xy)
+        yx = na.omit(yx)
+    }
+    elx = x[which(x %in% xy)]
+    ely = y[which(y %in% yx)]
+    if (length(xy)) {
+        xy = data.table(elements = elx,
+                        ix.x = which(x %in% xy),
+                        ix.y = NA_integer_,
+                        inx = TRUE, iny = FALSE)
+        lst = rleseq(xy$elements, clump = T)
+        xy = cbind(xy, as.data.table(lst))
+    } else
+        xy = data.table()
+    if (length(yx)) {
+        yx = data.table(elements = yx,
+                        ix.x = NA_integer_,
+                        ix.y = which(y %in% yx),
+                        inx = FALSE, iny = TRUE)
+        lst = rleseq(xy$elements, clump = T)
+        yx = cbind(yx, as.data.table(lst))
+    } else
+        yx = data.table()
+    tb = rbind(xy,
+               yx, fill = T)
+    return(tb)
+}
+
+
+#' @name debug.s4
+#' @title debug an S4 function
+#'
+#' wrapper around trace
+#' 
+#' @export debug.s4
+debug.s4 = function(what, signature, where) {
+  trace(what = what, tracer = browser, at = 1, signature = signature, where = where)
+}
+
+#' @name undebug.s4
+#' @title undebug an S4 function
+#'
+#' wrapper around untrace
+#' 
+#' @export undebug.s4
+undebug.s4 = function(what, signature, where) {
+  untrace(what = what, signature = signature, where = where)
+}
+
+
+#' @name interaction2
+#' @title interaction but orders levels based on input vectors
+#'
+#' @description
+#' Same as base::interaction but orders levels based on the appearance of elements
+#' in input vector(s)
+#' 
+#' @export
+interaction2 = function(..., drop = FALSE, sep = ".", lex.order = FALSE)
+{
+  args <- list(...)
+  narg <- length(args)
+  if (narg < 1L) 
+    stop("No factors specified")
+  if (narg == 1L && is.list(args[[1L]])) {
+    args <- args[[1L]]
+    narg <- length(args)
+  }
+  for (i in narg:1L) {
+    unix = which(!duplicated(args[[i]]))
+    f <- factor(args[[i]], levels = args[[i]][unix])[, drop = drop]
+    l <- levels(f)
+    if1 <- as.integer(f) - 1L
+    if (i == narg) {
+      ans <- if1
+      lvs <- l
+    }
+    else {
+      if (lex.order) {
+        ll <- length(lvs)
+        ans <- ans + ll * if1
+        lvs <- paste(rep(l, each = ll), rep(lvs, length(l)), 
+          sep = sep)
+      }
+      else {
+        ans <- ans * length(l) + if1
+        lvs <- paste(rep(l, length(lvs)), rep(lvs, each = length(l)), 
+          sep = sep)
+      }
+      if (anyDuplicated(lvs)) {
+        ulvs <- unique(lvs)
+        while ((i <- anyDuplicated(flv <- match(lvs, 
+          ulvs)))) {
+            lvs <- lvs[-i]
+            ans[ans + 1L == i] <- match(flv[i], flv[1:(i - 
+                                                         1)]) - 1L
+            ans[ans + 1L > i] <- ans[ans + 1L > i] - 1L
+          }
+        lvs <- ulvs
+      }
+      if (drop) {
+        olvs <- lvs
+        lvs <- lvs[sort(unique(ans + 1L))]
+        ans <- match(olvs[ans + 1L], lvs) - 1L
+      }
+    }
+  }
+  structure(as.integer(ans + 1L), levels = lvs, class = "factor")
+}
 
 #' @name lapply_dt
 #' @title Flexibly apply function to columns of data.table/frame
@@ -740,6 +935,25 @@ lens = function(x, use.names = TRUE) {
         out[ix] = vapply(x[ix], nrow, 1L, USE.NAMES=use.names)
     out
 }
+
+#' @name len
+#' @title similar to length except gets nrows for those items that have dimensions
+#'
+#' @description
+#' figure out length or nrow of an object
+#'
+#' @param x an object
+#' @return length or nrow of an object
+#' @export
+len = function(x, use.names = TRUE) {
+    nr = dim(x)[1]
+    n = length(x)
+    if (!is.null(nr))
+        return(nr)
+    else
+        return(n)
+}
+
 
 
 #' @name rg_sub
@@ -1167,6 +1381,18 @@ dedup.cols = function(tbl) {
 pinch.frac = function(x, fmin = 0.01, fmax = 0.99) {
     pmax(pmin(x, fmax), fmin)
 }
+
+#' @name pinch
+#'
+#' A convenience function to transform proportions.
+#' Useful for beta regression (library(betareg))
+#'
+#' @return A vector
+#' @export
+pinch = function(x, fmin = 0.01, fmax = 0.99) {
+    pmax(pmin(x, fmax), fmin)
+}
+
 
 #' @name binom.conf
 #' @title Get confidence intervals around fractions
@@ -2190,6 +2416,28 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ##############################
 ##############################
 
+#' @name debug.s4
+#' @title trace into an S4 function
+#'
+#' Debugging an S4 function can't be done with debug().
+#' This function is a convenience wrapper around trace()
+#' to step into S4 methods
+#'
+#' @export debug.s4
+debug.s4 = function(what, signature, where) {
+  trace(what = what, tracer = browser, at = 1, signature = signature, where = where)
+}
+
+#' @name undebug.s4
+#' @title reverse debug.s4
+#'
+#' undebugging an S4 function when debug.s4/trace were
+#' called on an S4 method.
+#'
+#' @export undebug.s4
+undebug.s4 = function(what, signature, where) {
+  untrace(what = what, signature = signature, where = where)
+}
 
 #' @name mstrsplit
 #' @title make matrix out of stringsplitted character vector
@@ -2576,6 +2824,42 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+
+#' @name gr.round
+#' @title round window to nearest unit
+#' @description
+#'
+#' Rounding window to nearest unit.
+#' meant to be used for plotting window in gTrack.
+#' For that purpose, it's most useful to use reduce = TRUE
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.round
+gr.round = function(gr, nearest = 1e4, all = TRUE, reduce = FALSE) {
+  if (reduce)
+    gr = GenomicRanges::reduce(gr)
+  wid = round((width(gr) + (0.5 * nearest)) / nearest) * nearest
+  if (all) {
+    wid = max(wid)
+  }
+  return(gr.resize(gr, wid = wid, pad = FALSE))
+}
+
+#' @name gr.sort
+#' @title sort granges, grangeslist
+#' @description
+#'
+#' sort granges or grangeslist by seqlevels
+#' also reorders seqlevels into 1:22, X, Y format
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.sort
+gr.sort = function(gr, ignore.strand = TRUE) {
+    return(sort(sortSeqlevels(gr), ignore.strand = ignore.strand))
+}
+
 #' @name gr.resize
 #' @title Resize granges without running into negative width error
 #' @description
@@ -2585,19 +2869,21 @@ dt_f2char = function(dt, cols = NULL) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.resize
-gr.resize = function(gr, wid, each = TRUE, resize = TRUE, fix = "center") {
-    if (resize) {
+gr.resize = function(gr, wid, minwid = 0, each = TRUE, pad = TRUE, ignore.strand = FALSE, fix = "center") {
+    if (pad) {
         if (isTRUE(each)) {
             wid = wid * 2
         }
-        width.arg = pmax(width(gr) + wid, 1)
-    }
-  else
-    width.arg = pmax(wid, 0)
-  return(GenomicRanges::resize(gr,
-    width = width.arg,
-    fix = fix))
+        width.arg = pmax(width(gr) + wid, minwid)
+    } else
+        width.arg = pmax(wid, minwid)
+    return(GenomicRanges::resize(gr,
+                                 width = width.arg,
+                                 fix = fix,
+                                 ignore.strand = ignore.strand))
 }
+
+
 
 #' @name parse.gr2
 #' @title a robust parse.gr
@@ -3310,6 +3596,321 @@ sv_filter = function(sv, filt_sv, pad = 500)
     }
 }
 
+############################## 
+##############################
+
+#' @name parsesnpeff
+#' @title parse snpeff output into granges
+#'
+#'
+#' @param vcf path to snpeff vcf
+#' @param pad Exposed argument to skitools::ra.overlaps()
+#' @return GRangesList of breakpoint pairs with junctions that overlap removed
+#' @export
+parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, debug = FALSE) {
+  if (debug) browser()
+  out.name = paste0("tmp_", rand.string(), ".vcf.gz")
+  tmp.path = paste0(tempdir(), "/", out.name)
+  if (!keepfile)
+    on.exit(unlink(tmp.path))
+  try2({
+    onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
+    if (coding_alt_only) {
+      filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'missense|splice|stop_gained|frame' )\""
+      if (filterpass)
+        cmd = sprintf("cat %s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, filt, tmp.path)
+      else
+        cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, filt, tmp.path)  
+    } else {
+      filt = ""
+      if (filterpass)
+        cmd = sprintf("cat %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, tmp.path)
+      else
+        cmd = sprintf("cat %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, tmp.path)
+    }
+    system(cmd)
+  })
+  if (!altpipe)
+    out = grok_vcf(tmp.path, long = TRUE, geno = geno, gr = gr)
+  else {
+    vcf = readVcf(tmp.path)
+    vcf = expand(vcf)
+    rr = within(rowRanges(vcf), {
+      REF = as.character(REF);
+      ALT = as.character(ALT)
+    })
+    ann = as.data.table(tstrsplit(unlist(info(vcf)$ANN), "\\|"))[,1:15,with = FALSE, drop = FALSE]
+    fn = c('allele', 'annotation', 'impact', 'gene', 'gene_id', 'feature_type', 'feature_id', 'transcript_type', 'rank', 'variant.c', 'variant.p', 'cdna_pos', 'cds_pos', 'protein_pos', 'distance')
+    data.table::setnames(ann, fn)
+    ## gathering read depth
+    if ("AD" %in% names(geno(vcf))) {
+      adep = setnames(as.data.table(geno(vcf)$AD[,,1:2]), c("ref", "alt"))
+      gt = geno(vcf)$GT
+    } else if (all(c("AU", "GU", "CU", "TU", "TAR", "TIR") %in% c(names(geno(vcf))))) {
+
+      ## strelka2 has a ridiculous read depth output format for snv
+
+      ## AU,GU,CU,TU fields are the read counts with that base
+      ## have to parse this by matching REF and ALT to these columns
+      this.col = dim(geno(vcf)[["AU"]])[2]
+      d.a = geno(vcf)[['AU']][,,1, drop = F][,this.col,1]
+      d.g = geno(vcf)[['GU']][,,1, drop = F][,this.col,1]
+      d.t = geno(vcf)[['TU']][,,1, drop = F][,this.col,1]
+      d.c = geno(vcf)[['CU']][,,1, drop = F][,this.col,1]
+
+      mat = cbind("A" = d.a, "G" = d.g, "T" = d.t, "C" = d.c)
+      rm("d.a", "d.g", "d.t", "d.c")
+      
+      refid = match(as.character(fixed(vcf)$REF), colnames(mat))
+      refid = ifelse(!isSNV(vcf), NA_integer_, refid)
+      altid = match(as.character(fixed(vcf)$ALT), colnames(mat))
+      altid = ifelse(!isSNV(vcf), NA_integer_, altid)
+
+      refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
+      altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
+
+      ## TAR = ref counts for indel
+      ## TIR = alt counts for indel
+      this.icol = dim(geno(vcf)[["TAR"]])[2]
+      refindel = d.tar = geno(vcf)[['TAR']][,,1, drop = F][,this.icol,1]
+      altindel = d.tir = geno(vcf)[['TIR']][,,1, drop = F][,this.icol,1]
+      
+      adep = data.table(ref = coalesce(refsnv, refindel),
+                        alt = coalesce(altsnv, altindel))
+
+      gt = NULL
+
+    } else {
+      message("ref and alt count columns not recognized")
+      
+      adep = NULL
+      gt = NULL
+      
+    }
+    
+    mcols(rr) = BiocGenerics::cbind(mcols(rr), ann, adep, gt = gt[,1])
+    out = rr
+  }
+  this.env = environment()
+  return(this.env$out)
+}
+
+#' @name est_snv_cn_stub
+#' @title estimate snv cn stub
+#'
+#'
+#' @param vcf path to vcf
+#' @param jab path to jabba
+#' @export
+est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somatic = FALSE, saveme = FALSE) {
+  oldsaf = options()$stringsAsFactors
+  options(stringsAsFactors = FALSE)
+  oldscipen = options()$scipen
+  options(scipen = 999)
+  on.exit({ ## equivalent to trap cmd in shell
+    options(scipen = oldscipen)
+    options(stringsAsFactors = oldsaf)
+    unlink(tmpvcf)
+    unlink(tmpvcf2)
+  })
+  tmpvcf = tempfile(fileext = ".vcf")
+  tmpvcf2 = tempfile(fileext = ".vcf")  
+  if (!somatic) {
+ 
+    message("starting germline processing")
+    ## getting a larger subsample from the VCF so as to get better
+    ## estimate of per segment average total read depth
+    system2("bcftools",
+            ## c("view -i 'FILTER==\"PASS\" && GT == \"0/1\"'",
+            c("view -i 'FILTER==\"PASS\"'",
+              vcf),
+            stdout = tmpvcf)
+
+    system2("java",
+            sprintf("-jar ~/software/jvarkit/dist/downsamplevcf.jar -N 10 -n %s %s", germ_subsample,
+                    tmpvcf),
+            stdout = tmpvcf2,
+            env = "module unload java; module load java/1.8;")
+ 
+    gvcf = parsesnpeff(vcf, coding_alt_only = TRUE, keepfile = FALSE, altpipe = TRUE)
+    gvcf_subsam = parsesnpeff(tmpvcf2, coding_alt_only = FALSE, keepfile = FALSE, altpipe = TRUE)
+    gvcf = unique(dt2gr(rbind(gr2dt(gvcf_subsam), gr2dt(gvcf))))
+    input = gvcf
+    rm("gvcf", "gvcf_subsam")
+    fif = file.info(dir("./"))
+    fif = arrange(cbind(path = rownames(fif), fif), desc(mtime))
+    tmp.t = grep("reg_.*.tsv", fif$path, value = TRUE)[1]
+    tmp.b = grep("reg_.*.bed", fif$path, value = TRUE)[1]
+    callout = grep("mpileup_", fif$path, value = TRUE)[1]
+    if (!file.exists(tmp.t))
+      tmp.t = tempfile(pattern = "reg_", fileext = ".tsv", tmpdir = ".")
+    if (!file.exists(tmp.b))
+      tmp.b = tempfile(pattern = "reg_", fileext = ".bed", tmpdir = ".")
+    if (!file.exists(callout))
+      callout = tempfile(pattern = "mpileup_", fileext = ".vcf", tmpdir = ".")
+    ## on.exit({unlink(tmp.t); unlink(callout); unlink(tmp.b)}, add = T)
+    input = within(input, {nref = nchar(REF);
+      nalt = nchar(ALT);
+      vartype = 
+        ifelse(nref > 1 & nalt == 1,"DEL",
+               ifelse(nref == 1 & nalt > 1, "INS",
+                      ifelse(nref == 1 & nalt == 1, "SNV", NA_character_)));
+      maxchar = pmax(nref, nalt);
+      nref = NULL; nalt = NULL
+    })
+    input2 = GenomicRanges::reduce(gr.resize(input, ifelse(input$maxchar > 1, 201, input$maxchar), pad = FALSE) %>% gr.sort)
+    fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, start := pmax(start, 1)][, end := pmax(end, 1)], tmp.t, sep = "\t", col.names = FALSE)
+    fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, start := pmax(start - 1, 0)][, end := pmax(end, 1)], tmp.b, sep = "\t", col.names = FALSE)
+    if (!file.exists(callout)) {
+    message("starting germline mpileup to call variants in tumor")
+    clock(system(
+      sprintf('(bcftools mpileup -d 8000 -Q 0 -q 0 -B -R %s -f ~/DB/GATK/human_g1k_v37_decoy.fasta %s | bcftools call -m --prior 0 -v) > %s',
+        tmp.t,
+        tumbam,
+        callout)))
+    }
+    excls = tempfile(pattern = "excludesam_", fileext = ".txt", tmpdir = tempdir())
+    writeLines(system(sprintf("bcftools query -l %s", callout), intern = T),
+      excls)
+    cntmp = tempfile(pattern = "cntmp_", fileext = ".vcf.gz", tmpdir = "./")
+    ## on.exit({unlink(excls); unlink(cntmp)}, add = T)
+    system(sprintf("(bcftools view -S ^%s %s | bcftools norm -c f -f /gpfs/commons/home/khadi/DB/GATK/human_g1k_v37_decoy.fasta | bcftools norm -Ov -m-any | bgzip -c) > %s",
+      excls, callout, cntmp))
+    cnfin = S4Vectors::expand(readVcf(cntmp))
+    dp4mat = do.call(rbind, as.list(info(cnfin)$DP4))
+    altv = dp4mat[,3] + dp4mat[,4]
+    idv = info(cnfin)$IDV
+    refv = dp4mat[,1] + dp4mat[,2]
+    idrefv = (altv + refv) - idv
+    gr4est = rowRanges(cnfin)
+    gr4est$ref = coalesce(idrefv, refv)
+    gr4est$alt = coalesce(idv, altv)
+    gr4est$ALT = as.character(gr4est$ALT); gr4est$REF = as.character(gr4est$REF)
+    gr4est  = merge(gr2dt(input), gr2dt(gr4est)[, pileupfound := TRUE],
+      by = c("seqnames", "start", "end", "REF", "ALT"),
+      suffixes = c("_normal", ""), all = TRUE,
+      allow.cartesian = TRUE)
+    gr4est = unique(gr4est)
+    gr4est[, pileupfound := pileupfound %in% TRUE]
+    ## raw input into snv cn estimator
+    if (saveme)
+      saveRDS(gr4est, 'gr4est_germline.rds')
+    hold = gr4est[is.na(ref)]
+    hold[, pileupnotfound := TRUE]
+    ## calls made by mpileup but not by original caller
+    germbin = gr4est[is.na(ref_normal)]
+    if (saveme)
+      saveRDS(germbin, 'germpileupbin.rds')
+    gr4est = gr4est[!is.na(ref)][!is.na(ref_normal)]
+  } else {
+    message("reading in somatic variants")
+    gr4est = parsesnpeff(vcf, coding_alt_only = FALSE, keepfile = FALSE, altpipe = TRUE)
+    if (saveme)
+      saveRDS(gr4est, 'gr4est_somatic.rds')
+    hold = NULL
+  }
+  
+  out = est_snv_cn(gr4est, jab, somatic = somatic)
+  out = rbind(out, hold, fill = TRUE)
+  if (saveme)
+    if (somatic)
+      saveRDS(out, 'est_snv_cn_somatic.rds')
+    else
+      saveRDS(out, 'est_snv_cn_germline.rds')
+  return(out)
+}
+
+#' @name est_snv_cn
+#' @title estimate snv cn
+#'
+#'
+#' @param gr GRanges
+#' @param jab jabba rds or jabba list object
+#' @export
+est_snv_cn = function(gr, jabba, somatic = FALSE) {
+  if (length(gr) == 0)
+    return(NULL)
+  if (is.character(jabba)) 
+    jab = readRDS(jabba)
+  gg = gG(jabba = jab)
+  lpp = with(jab, list(purity = purity, ploidy = ploidy))
+  if (inherits(gr, "data.table"))
+    gr = dt2gr(gr)
+  gr = gr %*% within(gg$nodes$gr[, c("snode.id", "cn")], {segwid = width})
+  dt = gr2dt(gr)
+  dt = dt[order(seqnames, start, end, -alt)][, rtot := ref + alt]
+  dt = cbind(dt, with(dt, as.data.table(rleseq(seqnames, start, REF, ALT, clump = T))))
+  dt[, rtot := sum(ref[1], alt[1]), by = idx]
+  dt[, seg_rtot := {u = !duplicated(idx); mean(rtot[u]) %>% round}, by = snode.id]
+  dt[, vaf := alt / rtot]
+  dt[, vaf_segt := pinch(alt / seg_rtot, 0, 1)]
+  if (isFALSE(somatic)) {
+    message("calculating cn of somatic variants")
+    dt[, norm_term := ifelse(grepl("^0[/|]1$", gt), 2, ifelse(grepl("^1[/|]1$", gt), 1, NA_integer_))]
+    dt[!is.na(cn),
+       c("est_cn", "est_cn_rm", "est_cn_ll", "est_cn_llrm") :=
+         {
+           cn = cn[1]
+           rtot = rtot[1]
+           seg_rtot = seg_rtot[1]
+           vaf_segt = vaf_segt[1]
+           alt = alt[1]
+           norm_term = norm_term[1]
+           estcn = round((cn * ((norm_term * vaf) - ((1 - lpp$purity)))) / lpp$purity)
+           estcnrm = round((cn * ((norm_term * vaf_segt) - ((1 - lpp$purity)))) / lpp$purity)
+           centers = pinch((lpp$purity * (0:cn) / cn ) + ((1 - lpp$purity) / 2))
+           ifun = function(cnid, rtot, vaf, alt) {
+             dbinom(alt, rtot, prob = centers[cnid + 1], log = T)
+           }
+           estllcn = which.max(
+               withv(sapply((0:cn), ifun,
+                            rtot = rtot, vaf = vaf, alt = alt), x - min(x))) - 1
+           estllrcn = which.max(
+               withv(sapply((0:cn), ifun,
+                            rtot = seg_rtot, vaf = vaf_segt, alt = alt), x - min(x))) - 1
+           list(estcn,
+                estcnrm,
+                estllcn,
+                estllrcn)
+         }, by = .(snode.id, idx)]
+  } else {
+    message("calculating cn of normal variants")
+    dt[!is.na(cn),
+       c("est_cn", "est_cn_rm", "est_cn_ll", "est_cn_llrm") :=
+         {
+           cn = cn[1]
+           rtot = rtot[1]
+           seg_rtot = seg_rtot[1]
+           vaf_segt = vaf_segt[1]
+           alt = alt[1]
+           estcn = round((cn * (2 * vaf)) / lpp$purity)
+           estcnrm = round((cn * (2 * vaf_segt)) / lpp$purity)
+           centers = pinch((lpp$purity * (0:cn) / cn ))
+           ifun = function(cnid, rtot, vaf, alt) {
+             out = dbinom(alt, rtot, prob = centers[cnid + 1], log = T)
+             out = replace(out, is.infinite(out) & sign(out) < 0,  -2e9)
+             out = replace(out, is.infinite(out) & sign(out) > 0,   2e9)
+             return(out)
+           }
+           estllcn =
+             which.max(
+               withv(sapply((0:cn), ifun,
+                            rtot = rtot, vaf = vaf, alt = alt), x - min(x))) - 1
+           estllrcn = which.max(
+               withv(sapply((0:cn), ifun,
+                            rtot = seg_rtot, vaf = vaf_segt, alt = alt), x - min(x))) - 1
+           list(estcn,
+                estcnrm,
+                estllcn,
+                estllrcn)
+         }, by = .(snode.id, idx)]
+  }
+  return(dt)
+}
+
+############################## 
+##############################
+
 #' @export pairs.filter.sv
 pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_vcf", mc.cores = 1, pon.path = '~/lab/projects/CCLE/db/tcga_and_1kg_sv_pon.rds') {
   if (missing(id.field))
@@ -3337,26 +3938,34 @@ pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_v
 
 
 #' @export plot.jabba
-plot.jabba = function(pairs, win, filename, use.jab.cov = TRUE, field.name = "jabba_rds", cov.field.name = "cbs_cov_rds", cov.y.field = "ratio", title = "", doplot = TRUE, gt, ...) {
+plot.jabba = function(pairs, win, filename, use.jab.cov = TRUE, field.name = "jabba_rds", cov.field.name = "cbs_cov_rds", cov.y.field = "ratio", title = "", doplot = TRUE, gt, plotfun = "ppng", h = 10, w = 10, rebin = FALSE, binwidth = 1e3, lwd.border = 0.0001, ...) {
+    if (is.character(plotfun)) {
+        plotfun = get(plotfun)
+    } else if (!is.function(plotfun)) {
+        stop("plotfun needs to be a function")
+    }
     if (missing(gt)) {
         gg = gG(jabba = pairs[[field.name]])
         if (isTRUE(use.jab.cov))
             cov = readRDS(inputs(readRDS(pairs[[field.name]] %>% dig_dir("Job.rds$")))$CovFile)
         else
             cov = readRDS(pairs[[cov.field.name]])
-        gcov = gTrack(cov, cov.y.field, circles = TRUE, lwd.border = 0.0001)
-        gt = c(gcov, gg$gtrack())
+        if (rebin)
+            cov = rebin(cov, binwidth = binwidth)
+        gcov = gTrack(cov, cov.y.field, circles = TRUE, lwd.border = lwd.border, y0 = 0)
+        gt = within(c(gcov, gg$gtrack()), {y0 = 0})
     }
     if (missing(win))
         win = si2gr(hg_seqlengths()) %>% keepStandardChromosomes(pruning.mode = "coarse") %>% gr.sort
     if (isTRUE(doplot)) {
         if (missing(filename))
-            ppng(plot(gt, win = win, ...), res = 200, title = title)
+            plotfun(plot(gt, win = win, ...), res = 200, title = title, h = h, w = w)
         else
-            ppng(plot(gt, win = win, ...), filename = filename, res = 200, title = title)
+            plotfun(plot(gt, win = win, ...), filename = filename, res = 200, title = title, h = h, w = w)
     }
     return(gt)
 }
+
 
 #' @export pairs.plot.jabba
 pairs.plot.jabba = function(pairs, dirpath = "~/public_html/jabba_output", jabba.field = "jabba_rds", cov.y.field = "foreground", id.field = "pair", mc.cores = 1) {
@@ -3546,7 +4155,7 @@ forceload = function(envir = globalenv()) {
         tryCatch( {
             message("force loading ", pkg)
             invisible(eval(as.list((asNamespace(pkg))), envir = envir))
-            invisible(eval(eapply(asNamespace(pkg), base::force2, all.names = TRUE), envir = envir))
+            invisible(eval(eapply(asNamespace(pkg), base::force, all.names = TRUE), envir = envir))
         }, error = function(e) message("could not force load ", pkg))
     }
 }
