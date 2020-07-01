@@ -502,6 +502,35 @@ match3 = function(x, table, nomatch = NA_integer_) {
 }
 
 
+#' @name column_to_rownames
+#' @title making column into rownames
+#' 
+#' internal version that doesn't require library(tibble)
+#'
+#' @param .data a data frame/table
+#' @return a data frame/table with rownames from a column
+#' @export
+column_to_rownames = function(.data, var = "rowname") {
+    ## if (inherits(.data, c("data.frame", "DFrame"))) {
+    if (!is.null(dim(.data))) {
+        if (!is.null(rownames(.data))) {
+            rn = .data[[var]]
+            if (is.numeric(var))
+                colix = setdiff(seq_len(ncol(.data)), var)
+            else if (is.character(var))
+                colix = setdiff(seq_len(ncol(.data)), match3(var,colnames(.data)))
+            .data = .data[, colix,drop = FALSE]
+            if (inherits(.data, "tbl"))
+                .data = as.data.frame(.data)
+            rownames(.data) = replace(as.character(rn), is.na(rn), "")
+            return(.data)
+        } else
+            return(.data)
+    } else
+        stop("must be a data frame-like object")
+}
+
+
 #' @name rownames_to_column
 #' @title making column out of rownames
 #' 
@@ -509,6 +538,7 @@ match3 = function(x, table, nomatch = NA_integer_) {
 #'
 #' @param .data a data frame/table
 #' @return a data frame/table with the rownames as an additional column
+#' @export
 rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE) {
     ## if (inherits(.data, c("data.frame", "DFrame"))) {
     if (!is.null(dim(.data))) {
@@ -2449,6 +2479,35 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ##############################
 ##############################
 
+#' @name dunlist2
+#' @title unlist into a data.table
+#'
+#' unlisting a list into a data table with
+#' ids corresponding to each list element
+#'
+#' @export dunlist2
+dunlist2 = function (x, simple = FALSE) 
+{
+    if (is.null(names(x))) 
+        names(x) = 1:length(x)
+    tmp = x
+    ## for (i in seq_along(tmp))
+    ##     tmp[[i]] = as.data.table(tmp[[i]])
+    if (!simple) {
+        tmp = lapply(x, as.data.table)
+        out = cbind(data.table(listid = rep(names(x), lens(x))), 
+                               rbindlist(tmp, fill = TRUE))
+    } else {
+        out = cbind(data.table(listid = rep(names(x), lens(x))), 
+                               V1 = unlist(tmp))
+    }
+    nm = unlist(lapply(x, rlang::names2))
+    out$names = nm
+    setkey(out, listid)
+    return(out)
+}
+
+
 #' @name debug.s4
 #' @title trace into an S4 function
 #'
@@ -3188,9 +3247,15 @@ gr.within = function(data, expr) {
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
     tmp = as(l, "DataFrame")
-    neword = union(orig.names, colnames(tmp))
-    tmp[,match3(neword, colnames(tmp))]
-    mcols(data) = tmp[,match3(neword, colnames(tmp))]
+    newn = unlist(lapply(as.list(substitute(expr, parent.frame()))[-1], function(x) {
+        x = as.character(x)
+        if (x[1] == "=")
+            return(x[2])
+        else
+            return(NULL)
+    }))
+    neword = union(union(orig.names, newn), colnames(tmp))
+    mcols(data) = tmp[,match3(neword, colnames(tmp)), drop = FALSE]
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -3200,6 +3265,7 @@ gr.within = function(data, expr) {
     }
     data
 }
+
 
 setGeneric('within')
 
@@ -3241,9 +3307,16 @@ tmpgrlwithin = function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    neword = union(orig.names, colnames(tmp))
-    tmp[,match3(neword, colnames(tmp))]
-    mcols(data) = tmp[,match3(neword, colnames(tmp))]
+    tmp = as(l, "DataFrame")
+    newn = unlist(lapply(as.list(substitute(expr, parent.frame()))[-1], function(x) {
+        x = as.character(x)
+        if (x[1] == "=")
+            return(x[2])
+        else
+            return(NULL)
+    }))
+    neword = union(union(orig.names, newn), colnames(tmp))
+    mcols(data) = tmp[,match3(neword, colnames(tmp)), drop = FALSE]
     ## mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
@@ -3262,6 +3335,7 @@ tmpgrlwithin = function(data, expr) {
     ## }
     data
 }
+
 
 setMethod("within", signature(data = "CompressedGRangesList"), NULL)
 setMethod("within", signature(data = "GRangesList"), NULL)
