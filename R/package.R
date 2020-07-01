@@ -3173,7 +3173,9 @@ gr.within = function(data, expr) {
         .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
     }
     e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
+    orig.names = setdiff(rev(names(e)), "X")
+    rm(list = "X", envir = e)
+    ## e$X = NULL
     e$data <- granges(data)
     e$seqnames = as.integer(seqnames(e$data))
     e$start = start(e$data)
@@ -3185,7 +3187,10 @@ gr.within = function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = as(l, "DataFrame")
+    tmp = as(l, "DataFrame")
+    neword = union(orig.names, colnames(tmp))
+    tmp[,match3(neword, colnames(tmp))]
+    mcols(data) = tmp[,match3(neword, colnames(tmp))]
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -3226,7 +3231,9 @@ tmpgrlwithin = function(data, expr) {
         .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
     }
     e <- list2env(as.list(as(data, "DataFrame")))
-    e$X = NULL
+    orig.names = setdiff(rev(names(e)), "X")
+    rm(list = "X", envir = e)
+    ## e$X = NULL
     e$grangeslist <- gr.noval(data)
     S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
     ## reserved <- c("ranges", "start", "end", "width", "space")
@@ -3234,7 +3241,10 @@ tmpgrlwithin = function(data, expr) {
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
-    mcols(data) = as(l, "DataFrame")
+    neword = union(orig.names, colnames(tmp))
+    tmp[,match3(neword, colnames(tmp))]
+    mcols(data) = tmp[,match3(neword, colnames(tmp))]
+    ## mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -3259,7 +3269,7 @@ setMethod("within", signature(data = "CompressedGRangesList"), tmpgrlwithin)
 setMethod("within", signature(data = "GRangesList"), tmpgrlwithin)
 
 
-
+setMethod("within", signature(data = "IRanges"), NULL)
 setMethod("within", signature(data = "IRanges"), function(data, expr) {
     top_prenv1 = function (x, where = parent.frame())
     {
