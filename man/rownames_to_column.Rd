@@ -6,7 +6,7 @@
 
 internal version that doesn't require library(tibble)}
 \usage{
-rownames_to_column(.data, var = "rowname")
+rownames_to_column(.data, var = "rowname", keep.rownames = FALSE)
 }
 \arguments{
 \item{.data}{a data frame/table}

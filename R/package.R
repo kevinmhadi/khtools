@@ -487,6 +487,21 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name match3
+#' @title similar to setkey except a general use utility
+#' 
+#' very slow version of keying a la data.table
+#'
+#' @export
+match3 = function(x, table, nomatch = NA_integer_) {
+  dx = within(data.frame(x), {id.x = seq_along(x)})
+  dtb = within(data.frame(table), {id.tb = seq_along(table)})
+  res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+              allow.cartesian = TRUE)
+  return(res$id.tb[order(res$id.x)])
+}
+
+
 #' @name rownames_to_column
 #' @title making column out of rownames
 #' 
@@ -494,17 +509,23 @@ lst.zerochar2empty = function(x) {
 #'
 #' @param .data a data frame/table
 #' @return a data frame/table with the rownames as an additional column
-rownames_to_column = function(.data, var = "rowname") {
-    if (inherits(.data, "data.frame")) {
+rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE) {
+    ## if (inherits(.data, c("data.frame", "DFrame"))) {
+    if (!is.null(dim(.data))) {
         if (!is.null(rownames(.data))) {
-            .data = cbind(u.var5912349879872349876 = rownames(.data), .data)
+            rn = rownames(.data)
+            .data = cbind(u.var5912349879872349876 = rn, .data)
             colnames(.data)[1] = var
+            if (keep.rownames)
+                rownames(.data) = rn
             return(.data)
         } else
             return(.data)
     } else
-        stop("must be a data frame")
+        stop("must be a data frame-like object")
 }
+
+
 
 
 #' @name normpath
