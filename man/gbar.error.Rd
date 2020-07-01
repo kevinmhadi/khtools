@@ -4,11 +4,20 @@
 \alias{gbar.error}
 \title{barplot with errorbars
 
-A barplot of fractions with confidence intervals. To be used with
-binom.conf.}
+Barplot with confidence intervals.
+To plot with confidence intervals around an event that has a binary
+outcome with a simple example:
+
+heads = 30, tails = 20,
+y = heads / (heads + tails)
+dt = binom.conf(y, heads + tails)
+conf.low = dt$conf.low
+conf.high = dt$conf.high
+
+gbar.error(y, conf.low, conf.high)}
 \usage{
 gbar.error(
-  frac,
+  y,
   conf.low,
   conf.high,
   group,
@@ -21,7 +30,11 @@ gbar.error(
 )
 }
 \arguments{
-\item{frac}{any numeric vector, does not have to be a fraction}
+\item{y}{any numeric vector, can be a fraction}
+
+\item{conf.low}{the lower bound of the confidence interval around y}
+
+\item{conf.high}{the upper bound of the confidence interval around y}
 }
 \value{
 A ggplot object
@@ -29,6 +42,15 @@ A ggplot object
 \description{
 barplot with errorbars
 
-A barplot of fractions with confidence intervals. To be used with
-binom.conf.
+Barplot with confidence intervals.
+To plot with confidence intervals around an event that has a binary
+outcome with a simple example:
+
+heads = 30, tails = 20,
+y = heads / (heads + tails)
+dt = binom.conf(y, heads + tails)
+conf.low = dt$conf.low
+conf.high = dt$conf.high
+
+gbar.error(y, conf.low, conf.high)
 }

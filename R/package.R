@@ -2274,24 +2274,36 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
 #' @name gbar.error
 #' @title barplot with errorbars
 #'
-#' A barplot of fractions with confidence intervals. To be used with
-#' binom.conf.
+#' Barplot with confidence intervals.
+#' To plot with confidence intervals around an event that has a binary
+#' outcome with a simple example:
 #' 
-#' @param frac any numeric vector, does not have to be a fraction
+#' heads = 30, tails = 20,
+#' y = heads / (heads + tails)
+#' dt = binom.conf(y, heads + tails)
+#' conf.low = dt$conf.low
+#' conf.high = dt$conf.high
+#'
+#' gbar.error(y, conf.low, conf.high)
+#' 
+#' @param y any numeric vector, can be a fraction
+#' @param conf.low the lower bound of the confidence interval around y 
+#' @param conf.high the upper bound of the confidence interval around y
+#' 
 #' @return A ggplot object
 #' @export gbar.error
-gbar.error = function(frac, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
-    dat = data.table(frac = frac, conf.low = conf.low, conf.high = conf.high, group = group)
+gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
+    dat = data.table(y = y, conf.low = conf.low, conf.high = conf.high, group = group)
     if (is.null(fill)) fill.arg = group else fill.arg = fill
     dat[, fill.arg := fill.arg]
-    gg = ggplot(dat, aes(x = group, fill = fill.arg, y = frac)) +
+    gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y)) +
         geom_bar(stat = stat, position = position)
     if (!is.na(conf.low) & !is.na(conf.high))
         gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
-    if (!is.null(wes))
-        gg = gg + scale_fill_manual(values = wesanderson::wes_palette(wes))
     if (!is.null(other.palette))
         gg = gg + scale_fill_manual(values = other.palette)
+    else if (!is.null(wes))
+        gg = gg + scale_fill_manual(values = skitools::brewer.master(length(unique(dat$fill.arg)), palette = wes, wes = TRUE))
     if (print) print(gg) else gg
 }
 
