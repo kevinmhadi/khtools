@@ -487,10 +487,25 @@ lst.zerochar2empty = function(x) {
 ##################################################
 ##################################################
 
+#' @name write.ctab
+#' @title writing a comma separated table with quotes
+#' 
+#' comma-separated table with quotes around strings
+#'
+#' @export write.ctab
+write.ctab = function (x, ..., sep = ",", quote = T, row.names = F) 
+{
+    if (!is.data.frame(x)) 
+        x = as.data.frame(x)
+    write.table(x, ..., sep = sep, quote = quote, row.names = row.names)
+}
+
+
 #' @name match3
 #' @title similar to setkey except a general use utility
 #' 
 #' very slow version of keying a la data.table
+#' but general use
 #'
 #' @export
 match3 = function(x, table, nomatch = NA_integer_) {
@@ -530,6 +545,16 @@ column_to_rownames = function(.data, var = "rowname") {
         stop("must be a data frame-like object")
 }
 
+#' @name col2rn
+#' @title alias for column_to_rownames
+#' 
+#' internal version that doesn't require library(tibble)
+#'
+#' @param .data a data frame/table
+#' @return a data frame/table with rownames from a column
+#' @export
+col2rn = column_to_rownames
+
 
 #' @name rownames_to_column
 #' @title making column out of rownames
@@ -555,6 +580,15 @@ rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE) {
         stop("must be a data frame-like object")
 }
 
+#' @name rn2col
+#' @title alias for rownames_to_column
+#' 
+#' internal version that doesn't require library(tibble)
+#'
+#' @param .data a data frame/table
+#' @return a data frame/table with rownames from a column
+#' @export
+rn2col = rownames_to_column
 
 
 
@@ -1413,13 +1447,19 @@ try2 = function(expr, ..., finally) {
 #' dedup the column names of a data.frame/data.table
 #'
 #' @return A data.table or data.frame
-#' @export
-dedup.cols = function(tbl) {
-    if (!inherits(tbl, "data.table"))
-        tbl[, match(unique(colnames(tbl)), colnames(tbl))]
-    else
-        tbl[, match(unique(colnames(tbl)), colnames(tbl)), with = FALSE]
+#' @export dedup.cols
+dedup.cols = function(tbl, remove = FALSE) {
+    if (remove) {
+        if (!inherits(tbl, "data.table"))
+            return(tbl[, match(unique(colnames(tbl)), colnames(tbl))])
+        else
+            return(tbl[, match(unique(colnames(tbl)), colnames(tbl)), with = FALSE])
+    } else {
+            colnames(tbl) = dedup(colnames(tbl))
+            return(tbl)
+    }
 }
+
 
 
 #' @name pinch.frac

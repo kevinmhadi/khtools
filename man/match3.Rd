@@ -4,7 +4,8 @@
 \alias{match3}
 \title{similar to setkey except a general use utility
 
-very slow version of keying a la data.table}
+very slow version of keying a la data.table
+but general use}
 \usage{
 match3(x, table, nomatch = NA_integer_)
 }
@@ -12,4 +13,5 @@ match3(x, table, nomatch = NA_integer_)
 similar to setkey except a general use utility
 
 very slow version of keying a la data.table
+but general use
 }
