@@ -2068,6 +2068,27 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 #################################################
 
 
+#' @name viewtask
+#' @title look at job
+#'
+#'
+#' @return A Flow job object
+#' @export
+viewtask = function(jb, arglst = c("name", "arg", "default")) {
+  ifun = function(x, arglst = arglst) {
+    unlist(lst.emptychar2na(lst.zerochar2empty(lapply(arglst, function(y)
+      tryCatch((slot(x, y)), error = function(e) NA_character_)))))
+  }
+  if (inherits(jb, "Job"))
+    obj = jb@task
+  else if (inherits(jb, "Task"))
+    obj = jb
+  else if (inherits(jb, "character"))
+    obj = Task(jb)
+  as.data.table(data.table::transpose(lapply(obj@args, ifun, arglst = arglst)))
+}
+
+
 #' @name idj
 #' @title idj
 #'
