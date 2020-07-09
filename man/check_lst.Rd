@@ -2,7 +2,8 @@
 % Please edit documentation in R/package.R
 \name{check_lst}
 \alias{check_lst}
-\title{check_lst
+\title{checking list for elements that are errors
+
 checking a list for any elements that are try-errors
 usually from an lapply(..., function(x) try({})) call}
 \usage{
@@ -15,7 +16,8 @@ check_lst(lst, class_condition = c("try-error", "error", "errored", "err"))
 a logical vector marking which elements are try-errors"
 }
 \description{
-check_lst
+checking list for elements that are errors
+
 checking a list for any elements that are try-errors
 usually from an lapply(..., function(x) try({})) call
 }

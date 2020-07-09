@@ -90,7 +90,9 @@ undup = function(obj, fromLast = FALSE, nmax = NA) {
 #' @export
 selfname = function(char) {setNames(char, char)}
 
-#' @title check_lst
+#' @name check_lst
+#' @title checking list for elements that are errors
+#' 
 #' checking a list for any elements that are try-errors
 #' usually from an lapply(..., function(x) try({})) call
 #'
@@ -101,6 +103,20 @@ check_lst = function(lst, class_condition = c("try-error", "error", "errored", "
 {
     unlist(lapply(lst, function(x) class(x)[1])) %in% class_condition
 }
+
+#' @name iderr
+#' @title returns ids of list elements that are errors
+#'
+#' checking a list for any elements that are try-errors
+#' usually from an lapply(..., function(x) try({})) call
+#'
+#' @param lst A list
+#' @return a logical vector marking which elements are try-errors"
+#' @export
+iderr = function(lst, class_condition = c("try-error", "error", "errored", "err")) {
+  which(check_lst(lst))
+}
+
 
 #' a wrapper around check_lst
 #'
@@ -482,10 +498,131 @@ lst.zerochar2empty = function(x) {
     x
 }
 
+#' @name lst.empty2replace
+#'
+#' set empty elements to NA
+#'
+#' @return A list
+#' @export lst.emptyreplace
+lst.emptyreplace = function(x, replace = NA) {
+    x[lengths(x) == 0] = replace
+    x
+}
+
 
 ################################################## general R utilities
 ##################################################
 ##################################################
+
+
+#' @name file.exists2
+#' @title slightly more robust test for whether file exists
+#'
+#' 
+#' test whether a file is NOT NA, NULL, or /dev/null and if 
+#' the file exists
+#'
+#' @author Kevin Hadi
+#' @param x a character vector
+#' @return logical
+#' @export file.exists2
+file.exists2 = function(x, nullfile = "/dev/null") {
+    return(!file.not.exists(x = x, nullfile = nullfile))
+}
+
+
+#' @name file.not.exists
+#' @title slightly more robust test for whether file does not exist
+#'
+#' test whether a file is NA, NULL, or /dev/null OR if 
+#' the file exists
+#'
+#' @author Kevin Hadi
+#' @param x a character vector
+#' @return logical
+#' @export file.not.exists
+file.not.exists = function(x, nullfile = "/dev/null") {
+    isnul = (is.null(x))
+    isbadfile = 
+        (is.na(x) | x == "NA" | x == "NULL" | x == nullfile) |
+        (x != nullfile & !file.exists(as.character(x)))
+    isnolength = len(x) == 0
+    return(isnul | isnolength | isbadfile)
+}
+
+
+#' @name silent
+#' @title run expression without any printed output
+#'
+#' execute expression without any output to console.
+#' silent({var = function_that_has_explicit_print(...)})
+#' 
+#'
+#' @author Kevin Hadi
+#' @param ... an expression
+#' @return NULL
+#' @export
+silent = function(this_expr, this_env = parent.frame()) {
+    eval(expr = {capture.output(
+            capture.output(... = this_expr,
+                           file = "/dev/null",
+                           type = c("output")),
+            file = "/dev/null",
+            type = "message")
+    }, envir = this_env)
+    invisible()
+}
+
+
+#' @name overwriteR6
+#' @title overwrite a method in R6 class generator
+#' 
+#' useful for dev purposes.
+#'
+#' @export overwriteR6
+overwriteR6 = function(newfun, oldfun, r6gen, meth = "public_methods", package = NULL, envir = globalenv()) {
+    meth = ifelse(grepl("^pub", meth), "public_methods",
+           ifelse(grepl("^pri", meth), "private_methods",
+           ifelse(grepl("^act", meth), "active",
+                  NA_character_)))
+    if (is.na(meth))
+        stop("method must refer to public, private, or active method")
+    if (!is.null(package)) {
+        if (is.character(package))
+            envpkg = asNamespace(package)
+        else if (isNamespace(package))
+            envpkg = package
+        nmpkg = environmentName(envpkg)
+    }
+    r6 = get(r6gen)
+    tmpfun = r6[[meth]][[oldfun]]
+    .newfun = get(newfun)
+    environment(.newfun) = environment(tmpfun)
+    attributes(.newfun) = attributes(tmpfun)
+    r6[[meth]][[oldfun]] = .newfun
+    NULL
+}
+
+
+#' @name overwritefun
+#' @title overwrite a function in its namespace
+#' 
+#' useful for dev purposes.
+#'
+#' @export overwritefun
+overwritefun = function(newfun, oldfun, package, envir = globalenv()) {
+    if (is.character(package))
+        envpkg = asNamespace(package)
+    else if (isNamespace(package))
+        envpkg = package
+    nmpkg = environmentName(envpkg)
+    tmpfun = get(oldfun, envir = envpkg)
+    .newfun = get(newfun)
+    environment(.newfun) = environment(tmpfun)
+    attributes(.newfun) = attributes(tmpfun)
+    eval(assignInNamespace(oldfun, .newfun, ns = nmpkg), globalenv())
+}
+
 
 #' @name write.ctab
 #' @title writing a comma separated table with quotes
@@ -1493,12 +1630,19 @@ pinch = function(x, fmin = 0.01, fmax = 0.99) {
 #' proportions. To be used with gbar.error
 #'
 #' @return A vector
-#' @export
-binom.conf = function(n, tot, alpha = 0.025) {
-    conf.low = qbinom(p = (1 - (alpha)), size = tot, prob = n / tot, lower.tail = FALSE) / tot
-    conf.high= qbinom(p = (1 - (alpha)), size = tot, prob = n / tot, lower.tail = TRUE) / tot
-    data.table(frac = n / tot, conf.low, conf.high)
+#' @export binom.conf
+binom.conf = function(n, tot, alpha = 0.025, tol = 1e-8) {
+    suppressWarnings({
+        conf.low = qbinom(p = (1 - (alpha)), size = tot, prob = n / tot, lower.tail = FALSE) / tot
+        conf.high= qbinom(p = (1 - (alpha)), size = tot, prob = n / tot, lower.tail = TRUE) / tot
+    })
+    dt = data.table(frac = n / (tot + tol),
+                    conf.low = replace2(conf.low, is.na(x), 0),
+                    conf.high = replace2(conf.high, is.na(x), 0))
+    return(dt)
 }
+
+
 
 
 #' @name getdat
@@ -2976,6 +3120,93 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## Genomics / mskilab stuff
 ############################## gUtils stuff
 ##############################
+
+
+#' @name df2gr
+#' @title data frame to GRanges
+#' @description
+#'
+#' data frame to GRanges
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export df2gr
+df2gr = function(df,
+                 seqnames.field = "seqnames",
+                 start.field = "start",
+                 end.field = "end",
+                 strand.field = "strand",
+                 ignore.strand = FALSE,
+                 keep.extra.columns = TRUE) {
+    if (inherits(seqnames.field, c("numeric", "integer"))) {
+        seqnames.field = colnames(df)[seqnames.field]
+    }
+    if (inherits(start.field, c("numeric", "integer"))) {
+        start.field = colnames(df)[start.field]
+    }
+    if (inherits(end.field, c("numeric", "integer"))) {
+        end.field = colnames(df)[end.field]
+    }
+    if (inherits(strand.field, c("numeric", "integer"))) {
+        strand.field = colnames(df)[strand.field]
+    }
+    if (!inherits(df, "data.frame")) {
+        df = as.data.frame(df)
+    }
+    makeGRangesFromDataFrame(df,
+                             seqnames.field = seqnames.field,
+                             start.field = start.field,
+                             end.field = end.field,
+                             strand.field = strand.field,
+                             ignore.strand = ignore.strand,
+                             keep.extra.columns = keep.extra.columns)
+}
+
+
+#' @name df2grl
+#' @title data frame to GRangesList
+#' @description
+#'
+#' data frame to grl
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export df2grl
+df2grl = function(df,
+                 seqnames.field = "seqnames",
+                 start.field = "start",
+                 end.field = "end",
+                 strand.field = "strand",
+                 split.field = "grl.ix",
+                 ignore.strand = FALSE,
+                 keep.extra.columns = TRUE) {
+    if (inherits(seqnames.field, c("numeric", "integer"))) {
+        seqnames.field = colnames(df)[seqnames.field]
+    }
+    if (inherits(start.field, c("numeric", "integer"))) {
+        start.field = colnames(df)[start.field]
+    }
+    if (inherits(end.field, c("numeric", "integer"))) {
+        end.field = colnames(df)[end.field]
+    }
+    if (inherits(strand.field, c("numeric", "integer"))) {
+        strand.field = colnames(df)[strand.field]
+    }
+    if (inherits(split.field, c("numeric", "integer"))) {
+        split.field = colnames(df)[split.field]
+    }
+    if (!inherits(df, "data.frame")) {
+        df = as.data.frame(df)
+    }
+    makeGRangesListFromDataFrame(df,
+                             seqnames.field = seqnames.field,
+                             start.field = start.field,
+                             end.field = end.field,
+                             strand.field = strand.field,
+                             split.field = split.field,
+                             ignore.strand = ignore.strand,
+                             keep.extra.columns = keep.extra.columns)
+}
 
 
 #' @name gr.round
