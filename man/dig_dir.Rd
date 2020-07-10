@@ -15,3 +15,6 @@ dig into a file path's directory
 Convenience wrapper around dir() to pull out files from the same
 directory of a given file.
 }
+\author{
+Kevin Hadi
+}

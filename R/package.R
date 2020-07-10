@@ -1,4 +1,9 @@
-#' match x indices in terms of y
+#' @importMethodsFrom S4Vectors with
+#' @exportMethod with
+
+
+#' @name match_s
+#' @title match x indices in terms of y
 #'
 #' @param x A vector
 #' @param y A vector
@@ -22,7 +27,8 @@ match_s = function(x, y) {
     return(setNames(x_ind[find_in_x], names(find_in_x)))
 }
 
-#' matches x in terms of y
+#' @name match2
+#' @title matches x in terms of y
 #'
 #' returns vector of indices of matches in x with length of vector = length(y)
 #' non matches are NA
@@ -541,14 +547,15 @@ file.exists2 = function(x, nullfile = "/dev/null") {
 #' @param x a character vector
 #' @return logical
 #' @export file.not.exists
-file.not.exists = function(x, nullfile = "/dev/null") {
+file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL")) {
     isnul = (is.null(x))
     isbadfile = 
-        (is.na(x) | x == "NA" | x == "NULL" | x == nullfile) |
+        (x %in% bad | x == nullfile) |
         (x != nullfile & !file.exists(as.character(x)))
     isnolength = len(x) == 0
     return(isnul | isnolength | isbadfile)
 }
+
 
 
 #' @name silent
@@ -1839,7 +1846,15 @@ replace2 = function(x, repl.expr, values) {
     }
 }
 
-
+#' @name replace_na
+#' @title replace NAs
+#'
+#' replace_na
+#'
+#' @export
+replace_na = function(data, replace) {
+    return(replace(data, is.na(data), replace))
+}
 
 #' @export
 ave2 = function(x, ..., FUN = mean) {
@@ -2052,6 +2067,7 @@ table3 = function(...) {
 #' Convenience wrapper around dir() to pull out files from the same
 #' directory of a given file.
 #'
+#' @author Kevin Hadi
 #' @export
 dig_dir = function(x, pattern = NULL, full.names = TRUE, mc.cores = 1, unlist = TRUE) {
     ## unlist(lst.empty2na(mclapply(dirname(x), function(y) {
@@ -3334,8 +3350,11 @@ parse.grl2 = function(str, meta = NULL) {
 
 #' @export gr_calc_cov
 gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
+    if (inherits(gr, "data.frame")) {
+        gr = dt2gr(gr)
+    }
     win = GRanges("Anchor", IRanges(-abs(win), abs(win)))
-    library(plyranges)
+    ## silent({library(plyranges); forceload()})
     grcov = gUtils::gr.sum(gr + PAD, field = field)
     if (!is.null(field))
         grcov = grcov %>% select(score = !!field)
