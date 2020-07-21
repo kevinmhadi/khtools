@@ -1,4 +1,5 @@
 #' @importMethodsFrom S4Vectors with
+#' @importMethodsFrom gUtils %&%
 #' @exportMethod with
 
 
@@ -744,6 +745,7 @@ rn2col = rownames_to_column
 #'
 #' @param str a path string
 #' @return a normalized path
+#' @export
 normpath = function(p) {
     bn = basename(p)
     d = normalizePath(dirname(p))
@@ -814,7 +816,7 @@ symdiff = function(x, y, ignore.na = FALSE) {
                         ix.x = NA_integer_,
                         ix.y = which(y %in% yx),
                         inx = FALSE, iny = TRUE)
-        lst = rleseq(xy$elements, clump = T)
+        lst = rleseq(yx$elements, clump = T)
         yx = cbind(yx, as.data.table(lst))
     } else
         yx = data.table()
@@ -1390,6 +1392,16 @@ normv_sep = function(x) {
     if (any(x >= 0, na.rm = T))
         x[which(x >= 0)] = normv((x[which(x >= 0)])) + 0.05
     return(normv(x))
+}
+
+
+#' @name zscore
+#' @title zscore a numeric vector
+#'
+#' @return vector
+#' @export
+zscore = function(x) {
+    (x - mean(x)) / sd(x)
 }
 
 
@@ -2007,6 +2019,11 @@ system3 = function (command, args = character(), stdout = "", stderr = "",
     .Internal(system(command, intern, timeout))
 }
 
+#' @name is.empty
+#' @title test if object is empty
+#'
+#' @author Kevin Hadi
+#' @export
 is.empty = function(x) {
     if (!is.null(dim(x))) {
         dim(x)[1] == 0
@@ -2400,6 +2417,7 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
+setMethod("within", signature(data = "gTrack"), NULL)
 setMethod("within", signature(data = "gTrack"), function(data, expr) {
     e = list2env(as.list(formatting(data)))
     eval(substitute(expr, parent.frame()), e)
@@ -3348,8 +3366,14 @@ parse.grl2 = function(str, meta = NULL) {
 ##     return(gr)
 ## }
 
+#' @name gr_calc_cov
+#' @title output data structure for ski slope from anchorlifted SNV
+#'
+#' 
+#' @return A GRanges
 #' @export gr_calc_cov
 gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
+    `%&%` = gUtils::`%&%`
     if (inherits(gr, "data.frame")) {
         gr = dt2gr(gr)
     }
