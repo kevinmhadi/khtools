@@ -522,6 +522,34 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 
 
+#' @name %=%
+#' @title test if two vectors are equal (uses conversion to character)
+#'
+#' Robust to NA
+#'
+#' @author Kevin Hadi
+#' @param x a vector
+#' @param y a vector
+#' @return logical vector
+#' @export
+`%=%` = function(x,y) {
+    paste(x) == paste(y)
+}
+
+
+#' @name seq_along2
+#' @title seq along either row of table or length of vector
+#'
+#'
+#' @author Kevin Hadi
+#' @param x data
+#' @return vector
+#' @export
+seq_along2 = function(x)  {
+  seq_len(len(x))
+}
+
+
 #' @name file.exists2
 #' @title slightly more robust test for whether file exists
 #'
@@ -533,8 +561,8 @@ lst.emptyreplace = function(x, replace = NA) {
 #' @param x a character vector
 #' @return logical
 #' @export file.exists2
-file.exists2 = function(x, nullfile = "/dev/null") {
-    return(!file.not.exists(x = x, nullfile = nullfile))
+file.exists2 = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", "")) {
+    return(!file.not.exists(x = x, nullfile = nullfile, bad = bad))
 }
 
 
@@ -548,14 +576,18 @@ file.exists2 = function(x, nullfile = "/dev/null") {
 #' @param x a character vector
 #' @return logical
 #' @export file.not.exists
-file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL")) {
+file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", "")) {
     isnul = (is.null(x))
-    isbadfile = 
-        (x %in% bad | x == nullfile) |
-        (x != nullfile & !file.exists(as.character(x)))
+    ## isbadfile = 
+    ##     (x %in% bad | x == nullfile) |
+    ##     (x != nullfile & !file.exists(as.character(x)))
+    isbadfile = (x %in% bad | x == nullfile)
+    isgoodfile = which(!isbadfile)
+    isbadfile[isgoodfile] = !file.exists(as.character(x[isgoodfile]))
     isnolength = len(x) == 0
     return(isnul | isnolength | isbadfile)
 }
+
 
 
 
@@ -933,6 +965,8 @@ lapply_dt = function(x, dt, LFUN = "identity", natype = NA, as.data.table = T) {
     expr = substitute(x)
     if (is.name(expr))
         x = x
+    else if (is.call(expr))
+        expr = eval(expr)
     else {
         x = trimws(gsub(',', "", unlist(strsplit(toString(expr), " "))[-1]))
         if (!is.null(names(expr)))
@@ -2637,12 +2671,15 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 #' @export read.bam.header
 read.bam.header = function(bam, trim = FALSE) {
     cmd = sprintf("samtools view -H %s", bam)
+    tb = fread(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t")
     if (!trim) {
-        return(as.data.table(read.table(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t")))
+        return(as.data.table(tb))
     } else {
-        read.table(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t") %>% filter(grepl("^SN", V2)) %>% mutate(V2 = gsub("SN:", "", V2)) %>% as.data.table
+        tb[grepl("^SN", V2)][, V2 := gsub("SN:", "", V2)]
     }
 }
+
+
 
 
 #' @name bcfindex
