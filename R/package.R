@@ -3328,7 +3328,7 @@ gr2df = function(gr, var = "rowname") {
 #' @export grl.undf
 grl.undf = function(grl) {
     gr = gr2df(grl)
-    lst = rleseq(gr$group)
+    lst = rleseq(gr$group, clump = FALSE)
     names(lst) = c("grl.ix", "grl.iix", "grl.len")
     return(dedup.cols(cbind(gr, as.data.frame(lst))))
 }
