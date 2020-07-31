@@ -3302,6 +3302,40 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+
+#' @name gr2df
+#' @title granges to datatable via dataframe
+#' @description
+#'
+#' GRangesList
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export gr2df
+gr2df = function(gr, var = "rowname") {
+    return(dt_f2char(setDT(rn2col(as.data.frame(gr), var = var, keep.rownames = T)),
+                     c("seqnames", "strand")))
+}
+
+#' @name grl.undf
+#' @title grangeslist to data table via dataframe
+#' @description
+#'
+#' GRangesList
+#'
+#' @return data table
+#' @author Kevin Hadi
+#' @export grl.undf
+grl.undf = function(grl) {
+    gr = gr2df(grl)
+    lst = rleseq(gr$group)
+    names(lst) = c("grl.ix", "grl.iix", "grl.len")
+    return(dedup.cols(cbind(gr, as.data.frame(lst))))
+}
+
+
+    
+
 #' @name grl.flipstrand
 #' @title flip strand of grangeslist
 #' @description
