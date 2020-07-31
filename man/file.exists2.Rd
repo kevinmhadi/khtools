@@ -8,7 +8,7 @@
 test whether a file is NOT NA, NULL, or /dev/null and if 
 the file exists}
 \usage{
-file.exists2(x, nullfile = "/dev/null")
+file.exists2(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", ""))
 }
 \arguments{
 \item{x}{a character vector}

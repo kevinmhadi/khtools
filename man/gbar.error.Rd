@@ -26,7 +26,11 @@ gbar.error(
   print = TRUE,
   fill = NULL,
   stat = "identity",
-  position = position_dodge(width = 0.9)
+  facet1 = NULL,
+  facet2 = NULL,
+  position = position_dodge(width = 0.9),
+  transpose = FALSE,
+  facet.scales = "fixed"
 )
 }
 \arguments{

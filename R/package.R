@@ -65,7 +65,7 @@ find_dups = function(..., re_sort = FALSE, sep = " ") {
   ix = setdiff(seq_along(lst), which(names(lst) %in% c("re_sort", "sep")))
   ## cl = sapply(lst[ix], class)
   if (length(ix) > 1)
-    vec = do.call(function(...) paste(..., sep = sep), alist(...))
+    vec = do.call(function(...) paste(..., sep = sep), list(...))
   else
     vec = unlist(list(...))
   dupix = which(duplicated(vec))
@@ -183,7 +183,7 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
 #' @return rownamed object
 #' @export
 setRownames = function(object = nm, nm) {
-    base::rownames(object) = nm
+    base::rownames(object) = rep_len(nm, nrow(object))
     object
 }
 
@@ -197,13 +197,27 @@ setRownames = function(object = nm, nm) {
 #' @export
 setAllNames = function(vec, nm) {
     if (is.null(nm)) {
-        return(setNames(vec, "NULL"))
+        return(setNames(vec, NULL))
     } else {
         if (length(nm) < length(vec)) {
-            nm = rep(nm, length.out = length(vec))
+            nm = rep_len(nm, length(vec))
         }
     }
     return(setNames(vec, nm))
+}
+
+#' @name setNames2
+#' @title setNames2
+#'
+#' convenience function to set all names of a vector
+#'
+#' @param vec vector
+#' @param nm character 
+#' @return named vector
+#' @export
+setNames2 = function(vec, nm, useempty = FALSE) {
+    names2(vec, useempty = useempty) = nm
+    return(vec)
 }
 
 
@@ -521,6 +535,77 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name names2
+#' @title robust name()
+#'
+#' gives back character vector same length of input regardless whether named or not
+#'
+#' @param str a path string
+#' @return a string with multiple parentheses replaced with a single parenthesis
+#' @export
+names2 = function(x) {
+    nm = names(x)
+    if (is.null(nm))
+        return(rep_len("", length(x)))
+    else
+        return(nm)
+}
+
+#' @name names2<-
+#' @title robust name() assignment
+#'
+#' 
+#'
+#' @param x vector
+#' @return x a vector with all names
+#' @export
+`names2<-` = function(x, value, useempty = FALSE) {
+    names(x) = if (!is.null(value))
+                   rep_len(value, length(x))
+               else {
+                   if (useempty)
+                       rep_len("", length(x))
+               }
+    return(x)
+}
+
+#' @name rm_mparen
+#' @title utility function for removing multiple parantheses
+#' probably not necessary
+#'
+#' @param str a path string
+#' @return a string with multiple parentheses replaced with a single parenthesis
+#' @export
+rm_mparen  = function(str) {
+    return(gsub('\\/{2,}', "/", str))
+}
+
+#' @name make_xfold
+#' @title make training/test splits
+#'
+#' @author Kevin Hadi
+#' @param dat data.table or data.frame of one row per observation
+#' @param k number of groups
+#' @return a list of row ids corresponding to each fold and training and test split
+#' @export
+make_xfold = function(dat, k = 10, nested = FALSE, times = 5, transpose = TRUE, seed = 10) {
+  obs.id = seq_along2(dat)
+  set.seed(seed)
+  if (!nested) {
+    train = caret::createFolds(obs.id, k = k, returnTrain = T)
+  } else
+    train = caret::createMultiFolds(obs.id, k = k)
+  test = lapply(train, function(x) {
+    setdiff(obs.id, x)
+  })
+  out = list(train = train, test = test)
+  if (transpose)
+    return(purrr::transpose(out))
+  else
+    return(out)
+}
+
+
 
 #' @name %=%
 #' @title test if two vectors are equal (uses conversion to character)
@@ -780,7 +865,7 @@ rn2col = rownames_to_column
 #' @export
 normpath = function(p) {
     bn = basename(p)
-    d = normalizePath(dirname(p))
+    d = dirname(normalizePath(p))
     return(paste0(d, "/", bn))
 }
 
@@ -1502,7 +1587,7 @@ ne = function(...) {
 #' @return logical
 #' @export good.file
 good.file = function(x, size.thresh = 0) {
-    (file.exists(x) & na2false(file.size(x) > size.thresh))
+    (file.exists2(x) & na2false(file.size(x) > size.thresh))
 }
 
 
@@ -1797,7 +1882,7 @@ file.info2 = function(fn, col = NULL, include.all = FALSE) {
     if (!"col" %in% names(lst.call) & grepl("[/$]", base::toString(substitute(fn))))
         col = "path"
     if (is.null(col)) col = as.character(substitute(fn))
-    fif = file.info(unique(subset2(fn, file.exists(x)))) %>% rownames_to_column(col) %>% as.data.table
+    fif = file.info(unique(subset2(fn, file.exists2(x)))) %>% rownames_to_column(col) %>% as.data.table
     if (include.all) {
         fif = merge(setnames(data.table(fn), col)[, tmp.ord := seq_along(fn)],
                     fif,
@@ -2616,18 +2701,43 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
 #' 
 #' @return A ggplot object
 #' @export gbar.error
-gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", position = position_dodge(width = 0.9)) {
+gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", facet1 = NULL, facet2 = NULL, position = position_dodge(width = 0.9), transpose = FALSE, facet.scales = "fixed") {
     dat = data.table(y = y, conf.low = conf.low, conf.high = conf.high, group = group)
+    if (is.null(facet1)) {
+        facet1 = facet2
+        facet2 = NULL
+    }
+    if (!is.null(facet1))
+        if (!is.factor(facet1))
+            facet1 = factor(facet1, unique(facet1))
+    if (!is.null(facet2))
+        if (!is.factor(facet2))
+            facet2 = factor(facet2, unique(facet2))
+    suppressWarnings(dat[, `:=`(facet1, facet1)])
+    suppressWarnings(dat[, `:=`(facet2, facet2)])
     if (is.null(fill)) fill.arg = group else fill.arg = fill
     dat[, fill.arg := fill.arg]
-    gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y)) +
-        geom_bar(stat = stat, position = position)
-    if (!is.na(conf.low) & !is.na(conf.high))
+    gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y))
+    gg = gg + geom_bar(stat = stat, position = position)
+    if (any(!is.na(conf.low)) & any(!is.na(conf.high)))
         gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
+    if (!is.null(wes))
+        gg = gg + scale_fill_manual(values = skitools::brewer.master(n = length(unique(fill.arg)), wes = TRUE, palette = wes))
+        ## gg = gg + scale_fill_manual(values = wesanderson::wes_palette(wes))
     if (!is.null(other.palette))
         gg = gg + scale_fill_manual(values = other.palette)
-    else if (!is.null(wes))
-        gg = gg + scale_fill_manual(values = skitools::brewer.master(length(unique(dat$fill.arg)), palette = wes, wes = TRUE))
+    if (!is.null(dat$facet1)) {
+        if (!is.null(dat$facet2)) {
+            if (transpose)
+                gg = gg + facet_grid(facet2 ~ facet1, scales = facet.scales)
+            else gg = gg + facet_grid(facet1 ~ facet2, scales = facet.scales)
+        }
+        else {
+            if (transpose)
+                gg = gg + facet_grid(. ~ facet1, scales = facet.scales)
+            else gg = gg + facet_grid(facet1 ~ ., scales = facet.scales)
+        }
+    }
     if (print) print(gg) else gg
 }
 
@@ -3191,6 +3301,25 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## Genomics / mskilab stuff
 ############################## gUtils stuff
 ##############################
+
+#' @name grl.flipstrand
+#' @title flip strand of grangeslist
+#' @description
+#'
+#' GRangesList
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export grl.flipstrand
+grl.flipstrand = function(grl) {
+    tmp_vals = mcols(grl)
+    tmp_gr = unlist(grl, use.names = FALSE)
+    tmp_gr = gr.flipstrand(tmp_gr)
+    new_grl = relist(tmp_gr, grl)
+    mcols(new_grl) = tmp_vals
+    return(new_grl)
+}
+
 
 
 #' @name df2gr

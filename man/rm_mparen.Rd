@@ -2,11 +2,11 @@
 % Please edit documentation in R/package.R
 \name{rm_mparen}
 \alias{rm_mparen}
-\title{remove multiple parentheses from path
-
-utility function for removing multiple parantheses
+\title{utility function for removing multiple parantheses
 probably not necessary}
 \usage{
+rm_mparen(str)
+
 rm_mparen(str)
 }
 \arguments{
@@ -14,8 +14,13 @@ rm_mparen(str)
 }
 \value{
 a string with multiple parentheses replaced with a single parenthesis
+
+a string with multiple parentheses replaced with a single parenthesis
 }
 \description{
+utility function for removing multiple parantheses
+probably not necessary
+
 remove multiple parentheses from path
 
 utility function for removing multiple parantheses
