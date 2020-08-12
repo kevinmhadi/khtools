@@ -4,9 +4,8 @@
 \alias{file.exists2}
 \title{slightly more robust test for whether file exists
 
-
-test whether a file is NOT NA, NULL, or /dev/null and if 
-the file exists}
+test whether file exists. "/dev/null", NA, "NA", "NULL", values excluded
+by default.}
 \usage{
 file.exists2(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", ""))
 }
@@ -19,9 +18,8 @@ logical
 \description{
 slightly more robust test for whether file exists
 
-
-test whether a file is NOT NA, NULL, or /dev/null and if 
-the file exists
+test whether file exists. "/dev/null", NA, "NA", "NULL", values excluded
+by default.
 }
 \author{
 Kevin Hadi

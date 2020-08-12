@@ -2,7 +2,9 @@
 % Please edit documentation in R/package.R
 \name{intercalate}
 \alias{intercalate}
-\title{collate two vectors together}
+\title{collate two vectors together
+
+interleave vectors together}
 \usage{
 intercalate(...)
 }
@@ -14,6 +16,8 @@ a vector with values of inputs collated together
 }
 \description{
 collate two vectors together
+
+interleave vectors together
 }
 \examples{
 intercalate(c("a","d","f"), c("b", "e", "g", "z"))

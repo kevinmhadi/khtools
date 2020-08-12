@@ -2,10 +2,14 @@
 % Please edit documentation in R/package.R
 \name{file.mat.exists}
 \alias{file.mat.exists}
-\title{file.mat.exists}
+\title{file.mat.exists
+
+run file.exists2 on columns of a table}
 \usage{
 file.mat.exists(x, rm_col1 = FALSE)
 }
 \description{
 file.mat.exists
+
+run file.exists2 on columns of a table
 }

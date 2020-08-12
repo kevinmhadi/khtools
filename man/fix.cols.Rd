@@ -15,7 +15,7 @@ fix.cols(dt, sep = "_")
 data.table/frame
 }
 \description{
-If there are any malformed columns 
+If there are any malformed columns
 (e.g. those with numbers at the beginning
 or a dash) these column names are fixed
 }

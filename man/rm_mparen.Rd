@@ -3,6 +3,7 @@
 \name{rm_mparen}
 \alias{rm_mparen}
 \title{utility function for removing multiple parantheses
+
 probably not necessary}
 \usage{
 rm_mparen(str)
@@ -19,6 +20,7 @@ a string with multiple parentheses replaced with a single parenthesis
 }
 \description{
 utility function for removing multiple parantheses
+
 probably not necessary
 
 remove multiple parentheses from path

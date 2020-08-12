@@ -1,5 +1,6 @@
 #' @importMethodsFrom S4Vectors with
 #' @importMethodsFrom gUtils %&%
+#' @importMethodsFrom S4Vectors as.data.frame
 #' @exportMethod with
 
 
@@ -95,11 +96,11 @@ undup = function(obj, fromLast = FALSE, nmax = NA) {
 #' @param char A character vector
 #' @return A named character vector
 #' @export
-selfname = function(char) {setNames(char, char)}
+selfname = function(char) {setNames2(char, char)}
 
 #' @name check_lst
 #' @title checking list for elements that are errors
-#' 
+#'
 #' checking a list for any elements that are try-errors
 #' usually from an lapply(..., function(x) try({})) call
 #'
@@ -165,7 +166,12 @@ ret_na_err = function(lst, class_condition = c("try-error", "error", "errored", 
 #' @export
 setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "") {
     if (!is.null(nm)) {
-        colnames(object)  = nm
+        if (is.null(names(nm)))
+            colnames(object)  = nm
+        else {
+            ix = match3(names(nm), colnames(object))
+            colnames(object)[ix] = nm
+        }
     } else if (!is.null(pattern)) {
         colnames(object) = gsub(pattern, replacement, colnames(object))
     }
@@ -177,7 +183,7 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
 #' @title convenience function to set row names
 #'
 #' sets rownames of an object
-#' 
+#'
 #' @param object tabled object
 #' @param nm names of the new columns
 #' @return rownamed object
@@ -189,10 +195,11 @@ setRownames = function(object = nm, nm) {
 
 #' @name setAllNames
 #' @title setAllNames
+#'
 #' convenience function to set all names of a vector
 #'
 #' @param vec vector
-#' @param nm character 
+#' @param nm character
 #' @return named vector
 #' @export
 setAllNames = function(vec, nm) {
@@ -212,7 +219,7 @@ setAllNames = function(vec, nm) {
 #' convenience function to set all names of a vector
 #'
 #' @param vec vector
-#' @param nm character 
+#' @param nm character
 #' @return named vector
 #' @export
 setNames2 = function(vec, nm, useempty = FALSE) {
@@ -221,7 +228,10 @@ setNames2 = function(vec, nm, useempty = FALSE) {
 }
 
 
-#' collate two vectors together
+#' @name intercalate
+#' @title collate two vectors together
+#'
+#' interleave vectors together
 #'
 #' @param ... A set of vectors to collate
 #' @return a vector with values of inputs collated together
@@ -229,6 +239,13 @@ setNames2 = function(vec, nm, useempty = FALSE) {
 #' intercalate(c("a","d","f"), c("b", "e", "g", "z"))
 #' @export
 intercalate = function(...) {
+    isNested <- function(x) {
+        if (class(x) != "list") {
+            stop("Expecting 'x' to be a list")
+        }
+        out <- any(sapply(x, is.list))
+        return(out)
+    }
     args = list(...)
     if (isNested(args)) {
         args = unlist(args, recursive = F)
@@ -405,6 +422,7 @@ ws2und = function(df)
 
 
 #' @name lst.empty
+#' @title lst.empty
 #'
 #' A logical vector to select which list elements are empty
 #'
@@ -429,6 +447,7 @@ lst.empty2zero = function(x) {
 
 
 #' @name lst.empty2na
+#' @title empty list elements set to NA
 #'
 #' set empty list elements to NA
 #'
@@ -445,12 +464,12 @@ lst.empty2na = function(x) {
 }
 
 #' @name lst.empty2null
+#' @title empty list elements set to NULL
 #'
 #' set empty list elements to NULL
 #'
 #' @return A list
 #' @export
-
 lst.empty2null = function(x) {
     x[lengths(x) == 0] = NULL
     ## x[S4Vectors::elementNROWS(x) == 0] = NULL
@@ -463,6 +482,7 @@ lst.empty2null = function(x) {
 
 
 #' @name lst.null2na
+#' @title NULL elements of list to NA
 #'
 #' set NULL list elements to NA
 #'
@@ -474,17 +494,7 @@ lst.null2na = function(x) {
 }
 
 #' @name lst.emptychar2null
-#'
-#' set empty character to null
-#'
-#' @return A list
-#' @export
-lst.emptychar2null = function(x) {
-    x[!nzchar(x)] = NULL
-    x
-}
-
-#' @name lst.emptychar2null
+#' @title empty character elements of list to NULL
 #'
 #' set empty character to null
 #'
@@ -497,6 +507,7 @@ lst.emptychar2null = function(x) {
 
 
 #' @name lst.emptychar2na
+#' @title empty character elements of list to NA
 #'
 #' set empty character to NA
 #'
@@ -509,6 +520,7 @@ lst.emptychar2na = function(x) {
 
 
 #' @name lst.zerochar2empty
+#' @title zero length character elements to empty char
 #'
 #' set 0 length chracter to empty
 #'
@@ -520,8 +532,9 @@ lst.zerochar2empty = function(x) {
 }
 
 #' @name lst.empty2replace
+#' @title length 0 elements of list to replace with a value
 #'
-#' set empty elements to NA
+#' set empty elements to a replacement value
 #'
 #' @return A list
 #' @export lst.emptyreplace
@@ -534,6 +547,100 @@ lst.emptyreplace = function(x, replace = NA) {
 ################################################## general R utilities
 ##################################################
 ##################################################
+
+#' @name ppng
+#' @title kevin's modification of ppng
+#'
+#' height and width are specified in inches by default
+#' resolution is specified as 300 by default
+#'
+#' @export
+ppng = function (expr, filename = "plot.png", height = 10, width = 10,
+                 dim = NULL, cex = 1, title = NULL,
+                 h = height, w = width,
+    cex.title = 1, oma.scale = 0, units = "in", res = 300, oma.val = c(1,1,1,1), ...) {
+
+    if (length(cex) == 1) {
+        cex = rep(cex, 2)
+    }
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPNG.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0)
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename))
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename)))
+        system(paste("mkdir -p", file.dir(filename)))
+
+    cat("rendering to", filename, "\n")
+    old_oma = par()$oma
+    png(filename, height = height, width = width, units = units, res = res, ...) ## pointsize default is 12... maybe the default previously was 24?
+
+    if (oma.scale > 0) {
+        par(oma = oma.val * oma.scale)
+    }
+    if (!is.null(dim)) {
+        if (length(dim) == 1)
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
+            byrow = TRUE))
+    }
+    eval(expr)
+    if (!is.null(title))
+        title(title, cex.main = cex.title * max(cex))
+    dev.off()
+    par(oma = old_oma)
+}
+
+#' @name ppdf
+#' @title kevin's modification of ppdf
+#'
+#' height and width are specified in inches by default
+#' resolution is specified as 300 but is not used
+#'
+#' @export
+ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
+                 h = height, w = width,
+                 cex = 1, title = NULL, byrow = TRUE, dim = NULL, cex.title = 1,
+                 oma.scale = 0, oma.val = c(1,1,1,1), useDingbats = FALSE, res = 0, ...) {
+    if (length(cex) == 1)
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0)
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename))
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename)))
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+
+    old_oma = par()$oma
+    pdf(filename, height = height, width = width, useDingbats = useDingbats, ...) ## pointsize default is 12
+
+    if (oma.scale > 0) {
+        par(oma = oma.val * oma.scale)
+    }
+    if (!is.null(dim)) {
+        if (length(dim) == 1)
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        graphics::layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
+                                byrow = byrow))
+    }
+    eval(expr)
+    if (!is.null(title))
+        title(title, cex.main = cex.title * max(cex))
+    dev.off()
+    par(oma = old_oma)
+}
 
 #' @name names2
 #' @title robust name()
@@ -554,7 +661,7 @@ names2 = function(x) {
 #' @name names2<-
 #' @title robust name() assignment
 #'
-#' 
+#' similar to rlang::names2
 #'
 #' @param x vector
 #' @return x a vector with all names
@@ -571,6 +678,7 @@ names2 = function(x) {
 
 #' @name rm_mparen
 #' @title utility function for removing multiple parantheses
+#'
 #' probably not necessary
 #'
 #' @param str a path string
@@ -638,9 +746,8 @@ seq_along2 = function(x)  {
 #' @name file.exists2
 #' @title slightly more robust test for whether file exists
 #'
-#' 
-#' test whether a file is NOT NA, NULL, or /dev/null and if 
-#' the file exists
+#' test whether file exists. "/dev/null", NA, "NA", "NULL", values excluded
+#' by default.
 #'
 #' @author Kevin Hadi
 #' @param x a character vector
@@ -654,7 +761,7 @@ file.exists2 = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", "")
 #' @name file.not.exists
 #' @title slightly more robust test for whether file does not exist
 #'
-#' test whether a file is NA, NULL, or /dev/null OR if 
+#' test whether a file is NA, NULL, or /dev/null OR if
 #' the file exists
 #'
 #' @author Kevin Hadi
@@ -663,7 +770,7 @@ file.exists2 = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", "")
 #' @export file.not.exists
 file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", "")) {
     isnul = (is.null(x))
-    ## isbadfile = 
+    ## isbadfile =
     ##     (x %in% bad | x == nullfile) |
     ##     (x != nullfile & !file.exists(as.character(x)))
     isbadfile = (x %in% bad | x == nullfile)
@@ -681,7 +788,7 @@ file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", 
 #'
 #' execute expression without any output to console.
 #' silent({var = function_that_has_explicit_print(...)})
-#' 
+#'
 #'
 #' @author Kevin Hadi
 #' @param ... an expression
@@ -701,7 +808,7 @@ silent = function(this_expr, this_env = parent.frame()) {
 
 #' @name overwriteR6
 #' @title overwrite a method in R6 class generator
-#' 
+#'
 #' useful for dev purposes.
 #'
 #' @export overwriteR6
@@ -731,7 +838,7 @@ overwriteR6 = function(newfun, oldfun, r6gen, meth = "public_methods", package =
 
 #' @name overwritefun
 #' @title overwrite a function in its namespace
-#' 
+#'
 #' useful for dev purposes.
 #'
 #' @export overwritefun
@@ -751,13 +858,13 @@ overwritefun = function(newfun, oldfun, package, envir = globalenv()) {
 
 #' @name write.ctab
 #' @title writing a comma separated table with quotes
-#' 
+#'
 #' comma-separated table with quotes around strings
 #'
 #' @export write.ctab
-write.ctab = function (x, ..., sep = ",", quote = T, row.names = F) 
+write.ctab = function (x, ..., sep = ",", quote = T, row.names = F)
 {
-    if (!is.data.frame(x)) 
+    if (!is.data.frame(x))
         x = as.data.frame(x)
     write.table(x, ..., sep = sep, quote = quote, row.names = row.names)
 }
@@ -765,9 +872,9 @@ write.ctab = function (x, ..., sep = ",", quote = T, row.names = F)
 
 #' @name match3
 #' @title similar to setkey except a general use utility
-#' 
+#'
 #' very slow version of keying a la data.table
-#' but general use
+#' but for general/interactive use
 #'
 #' @export
 match3 = function(x, table, nomatch = NA_integer_) {
@@ -781,7 +888,7 @@ match3 = function(x, table, nomatch = NA_integer_) {
 
 #' @name column_to_rownames
 #' @title making column into rownames
-#' 
+#'
 #' internal version that doesn't require library(tibble)
 #'
 #' @param .data a data frame/table
@@ -809,7 +916,7 @@ column_to_rownames = function(.data, var = "rowname") {
 
 #' @name col2rn
 #' @title alias for column_to_rownames
-#' 
+#'
 #' internal version that doesn't require library(tibble)
 #'
 #' @param .data a data frame/table
@@ -820,7 +927,7 @@ col2rn = column_to_rownames
 
 #' @name rownames_to_column
 #' @title making column out of rownames
-#' 
+#'
 #' internal version that doesn't require library(tibble)
 #'
 #' @param .data a data frame/table
@@ -844,7 +951,7 @@ rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE) {
 
 #' @name rn2col
 #' @title alias for rownames_to_column
-#' 
+#'
 #' internal version that doesn't require library(tibble)
 #'
 #' @param .data a data frame/table
@@ -856,7 +963,7 @@ rn2col = rownames_to_column
 
 #' @name normpath
 #' @title normalize directory, but not basepath
-#' 
+#'
 #' get the absolute file directory without following the
 #' base path link
 #'
@@ -864,9 +971,11 @@ rn2col = rownames_to_column
 #' @return a normalized path
 #' @export
 normpath = function(p) {
+    fe = file.exists2(p)
     bn = basename(p)
     d = dirname(normalizePath(p))
-    return(paste0(d, "/", bn))
+    return(ifelse(fe, paste0(d, "/", bn), as.character(p)))
+    ## return(paste0(d, "/", bn))
 }
 
 
@@ -874,7 +983,7 @@ normpath = function(p) {
 
 #' @name rm_mparen
 #' @title remove multiple parentheses from path
-#' 
+#'
 #' utility function for removing multiple parantheses
 #' probably not necessary
 #'
@@ -892,7 +1001,7 @@ rm_mparen  = function(str) {
 #' These may be considered equivalent values but the `==` operator will
 #' return FALSE. This tests for equivalence of two values with some lower
 #' tolerance limit
-#' 
+#'
 #' @return logical vector
 #' @export
 numeq = function(x, y, tol = .Machine$double.eps^0.5) {
@@ -906,9 +1015,9 @@ numeq = function(x, y, tol = .Machine$double.eps^0.5) {
 #' gives back data table of setdiff elements
 #' noting whether the element is in vector x or vector y
 #' This gives back all elements, including non-unique
-#' 
+#'
 #' @return data.table
-#' 
+#'
 #' @export
 symdiff = function(x, y, ignore.na = FALSE) {
     xy = setdiff(x,y)
@@ -947,7 +1056,7 @@ symdiff = function(x, y, ignore.na = FALSE) {
 #' @title debug an S4 function
 #'
 #' wrapper around trace
-#' 
+#'
 #' @export debug.s4
 debug.s4 = function(what, signature, where) {
   trace(what = what, tracer = browser, at = 1, signature = signature, where = where)
@@ -957,7 +1066,7 @@ debug.s4 = function(what, signature, where) {
 #' @title undebug an S4 function
 #'
 #' wrapper around untrace
-#' 
+#'
 #' @export undebug.s4
 undebug.s4 = function(what, signature, where) {
   untrace(what = what, signature = signature, where = where)
@@ -970,13 +1079,13 @@ undebug.s4 = function(what, signature, where) {
 #' @description
 #' Same as base::interaction but orders levels based on the appearance of elements
 #' in input vector(s)
-#' 
+#'
 #' @export
 interaction2 = function(..., drop = FALSE, sep = ".", lex.order = FALSE)
 {
   args <- list(...)
   narg <- length(args)
-  if (narg < 1L) 
+  if (narg < 1L)
     stop("No factors specified")
   if (narg == 1L && is.list(args[[1L]])) {
     args <- args[[1L]]
@@ -995,20 +1104,20 @@ interaction2 = function(..., drop = FALSE, sep = ".", lex.order = FALSE)
       if (lex.order) {
         ll <- length(lvs)
         ans <- ans + ll * if1
-        lvs <- paste(rep(l, each = ll), rep(lvs, length(l)), 
+        lvs <- paste(rep(l, each = ll), rep(lvs, length(l)),
           sep = sep)
       }
       else {
         ans <- ans * length(l) + if1
-        lvs <- paste(rep(l, length(lvs)), rep(lvs, each = length(l)), 
+        lvs <- paste(rep(l, length(lvs)), rep(lvs, each = length(l)),
           sep = sep)
       }
       if (anyDuplicated(lvs)) {
         ulvs <- unique(lvs)
-        while ((i <- anyDuplicated(flv <- match(lvs, 
+        while ((i <- anyDuplicated(flv <- match(lvs,
           ulvs)))) {
             lvs <- lvs[-i]
-            ans[ans + 1L == i] <- match(flv[i], flv[1:(i - 
+            ans[ans + 1L == i] <- match(flv[i], flv[1:(i -
                                                          1)]) - 1L
             ans[ans + 1L > i] <- ans[ans + 1L > i] - 1L
           }
@@ -1030,7 +1139,7 @@ interaction2 = function(..., drop = FALSE, sep = ".", lex.order = FALSE)
 #' @description
 #' Convenience function to apply a function to columns of a data.table/frame.
 #' The syntax for the columns is flexible
-#' 
+#'
 #' lapply_dt(c(newcolname = colname), dt, dosomething)
 #' will give a data.table or list with the column name
 #' renamed to newcolname
@@ -1076,10 +1185,10 @@ lapply_dt = function(x, dt, LFUN = "identity", natype = NA, as.data.table = T) {
 #' @title Fix messed up data frame/table column names
 #'
 #' @description
-#' If there are any malformed columns 
+#' If there are any malformed columns
 #' (e.g. those with numbers at the beginning
 #' or a dash) these column names are fixed
-#' 
+#'
 #'
 #' @param dt data.table/frame
 #' @param sep separator field
@@ -1103,7 +1212,7 @@ fix.cols = function(dt, sep = "_") {
 #' @title flexibly read in a field and append an id to the output
 #'
 #' @description
-#' 
+#'
 #'
 #' @param tbl table with fields to read in
 #' @param field field to read in
@@ -1153,10 +1262,10 @@ dedup = function(x, suffix = ".") {
     dup = duplicated(x)
     udup = setdiff(unique(x[dup]), NA)
     udup.ix = lapply(udup, function(y) which(x == y))
-    udup.suffices = lapply(udup.ix, function(y) c("", paste(suffix, 
+    udup.suffices = lapply(udup.ix, function(y) c("", paste(suffix,
         2:length(y), sep = "")))
     out = x
-    out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices), 
+    out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices),
         sep = "")
     return(out)
 }
@@ -1232,7 +1341,7 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
         for (i in seq_along(out))
             out[[i]][isnotna] = tmpout[[i]]
         return(out)
-    }    
+    }
     if (!isTRUE(clump)) {
         rlev = rle(vec)
         if (isTRUE(recurs)) {
@@ -1244,7 +1353,7 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
             out$lns = ave(out[[1]], out[[1]], FUN = length)
             ## if (na.ignore)
             ##     complete.cases(as.data.frame(lapply(list(...), is.na)))
-            return(out)                
+            return(out)
         }
     } else {
         if (!isTRUE(na.clump)) {
@@ -1384,7 +1493,7 @@ dynget = function(x, px = TRUE,
 #'
 #' @description
 #' convenience wrapper around dynget
-#' 
+#'
 #' @export
 dg = dynget
 
@@ -1403,6 +1512,7 @@ dg = dynget
 
 
 #' @name dcast.count
+#' @title dcast.count
 #'
 #' Counting up occurrences in a table while taking factor levels into account
 #'
@@ -1450,7 +1560,7 @@ dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggr
         if ("wt" %in% colnames(tbl)) {
             message("column named \"wt\" found, will weight counts using values in this field")
         }
-        expr = expression(within(tbl, {dummy = 1 * dg(wt)}))    
+        expr = expression(within(tbl, {dummy = 1 * dg(wt)}))
     }
     this.env = environment()
     if (is.null(rh))
@@ -1466,6 +1576,7 @@ dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggr
 
 
 #' @name dcast.wrap
+#' @title wrapper around dcast or dcast2
 #'
 #' A convenience wrapper around dcast to make formula generation more
 #' programmatic
@@ -1488,7 +1599,7 @@ dcast.wrap = function(x, lh, rh, dcast.fun, ...) {
 
 #' @name normv
 #' @title normalize a vector
-#' 
+#'
 #' i.e. rescale to have values between 0 and 1
 #'
 #' @return vector
@@ -1499,7 +1610,7 @@ normv = function(x) {
 
 #' @name normv_sep
 #' @title normalize a vector, treating positives and negatives separately
-#' 
+#'
 #' i.e. rescale negatives to be between 0-0.5
 #' rescale positives to be between 0.5-1
 #'
@@ -1581,7 +1692,7 @@ ne = function(...) {
 #'
 #' Queries a set of file paths for whether the file exists AND
 #' if the file is greater than a size threshold
-#' 
+#'
 #' @param x character vector of file paths
 #' @param size.thresh threshold of minimum file size
 #' @return logical
@@ -1592,6 +1703,7 @@ good.file = function(x, size.thresh = 0) {
 
 
 #' @name loop_grep
+#' @title wraps grep in for loop
 #'
 #' A wrapper around grep to identify string matches across multiple patterns
 #'
@@ -1612,6 +1724,7 @@ loop_grep = function(pattern, x, ignore.case = FALSE) {
 }
 
 #' @name loop_grepl
+#' @title wrapper around loop_grep
 #'
 #' Generating a logical vector from loop_grep
 #'
@@ -1628,14 +1741,15 @@ loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
 
 
 #' @name rrrepeated
+#' @title Recursively repeat a function call
 #'
 #' Recursively repeat a function
 #' Found on stackoverflow
 #'
+#' @author StackOverflow
 #' @return Same as .x
 #' @export
 rrrepeated <- function(.x, .reps = 1, .f, ...) {
-    library(purrr)
                                         # A single, finite, non-negative number of repetitions
     assertthat::assert_that(
         length(.reps) == 1,
@@ -1700,6 +1814,7 @@ ez_string = function(string_vec, c = T, list = !c, quotes = T, ws = "\n") {
 
 
 #' @name try2
+#' @title wrapper around tryCatch - robust to parallel:: functions
 #'
 #' A slightly more robust version of try that works within the parallel:: set of functions
 #' that pre-deploy a cluster.
@@ -1718,6 +1833,7 @@ try2 = function(expr, ..., finally) {
 
 
 #' @name dedup.cols
+#' @title applies dedup to colnames
 #'
 #' dedup the column names of a data.frame/data.table
 #'
@@ -1738,6 +1854,7 @@ dedup.cols = function(tbl, remove = FALSE) {
 
 
 #' @name pinch.frac
+#' @title pinch a vector
 #'
 #' A convenience function to transform proportions.
 #' Useful for beta regression (library(betareg))
@@ -1749,9 +1866,12 @@ pinch.frac = function(x, fmin = 0.01, fmax = 0.99) {
 }
 
 #' @name pinch
+#' @title pinch a vector
 #'
 #' A convenience function to transform proportions.
 #' Useful for beta regression (library(betareg))
+#' Can be used on any numeric values to squeeze between
+#' an interval.
 #'
 #' @return A vector
 #' @export
@@ -1785,7 +1905,7 @@ binom.conf = function(n, tot, alpha = 0.025, tol = 1e-8) {
 
 #' @name getdat
 #' @title a method to get the "data" argument from a with/within expression
-#' 
+#'
 #' to be used within "with()" within the expression
 #'
 #' @return data.frame/data.table
@@ -1853,7 +1973,7 @@ g2 = getdat2
 
 #' @name withv
 #' @title withv
-#' 
+#'
 #' to be used for quick interactive programming
 #' withv(toolongtotypemeagain, x * sum(x))
 #'
@@ -1936,7 +2056,7 @@ subset2 = function(x, sub.expr, ...) {
 #' @title function to replace elements of vector, can use "x" as surrogate variable in expression
 #'
 #' @description
-#' 
+#'
 #' convenience function to replace without having to type excessively
 #' if the variable is arrived at through nested functions or long
 #' variable names
@@ -2001,6 +2121,7 @@ ave2 = function(x, ..., FUN = mean) {
 
 
 #' @name rematch
+#' @title rematch
 #'
 #' reconstruct the original vector from a vmatch
 #'
@@ -2012,6 +2133,7 @@ rematch = function (vmatch_out)  {
 }
 
 #' @name vmatch
+#' @title make list of matches and nonmatches
 #'
 #' get match indices and non matched indices
 #'
@@ -2026,13 +2148,16 @@ vmatch = function(x, y, ...) {
 #' @name file.mat.exists
 #' @title file.mat.exists
 #'
+#' run file.exists2 on columns of a table
+#'
 #' @export file.mat.exists
 file.mat.exists = function(x, rm_col1 = FALSE) {
-    matrify(x, rm_col1 = rm_col1) %>% {setRownames(apply(., 2, file.exists), rownames(.))}
+    matrify(x, rm_col1 = rm_col1) %>% {setRownames(apply(., 2, file.exists2), rownames(.))}
 }
 
 
 #' @name `%nin%`
+#' @title not %in%
 #'
 #' Not match
 #'
@@ -2043,6 +2168,7 @@ file.mat.exists = function(x, rm_col1 = FALSE) {
 }
 
 #' @name f2int
+#' @title factor to integer
 #'
 #' robustly convert a factor to integer
 #'
@@ -2063,6 +2189,7 @@ f2int = function(this_factor) {
 }
 
 #' @name system3
+#' @title modified system2
 #'
 #' A modification of system2 to be able to return either or the stderr
 #' or stdout to console or flexibly return to a path.
@@ -2155,7 +2282,7 @@ is.empty = function(x) {
 #' @title minimum column per row (removing NA)
 #'
 #' Return the index of the minimum column per row while removing NA
-#' 
+#'
 #' @author stackoverflow
 #' @export min.col.narm
 min.col.narm = function(mat, ties.method = "first") {
@@ -2166,9 +2293,9 @@ min.col.narm = function(mat, ties.method = "first") {
 #' @name max.col.narm
 #' @title maximum column per row (removing NA)
 #'
-#' 
+#'
 #' Return the index of the maximum column per row while removing NA
-#' 
+#'
 #' @author Stackoverflow
 #' @export max.col.narm
 max.col.narm = function(mat, ties.method = "first") {
@@ -2276,7 +2403,7 @@ make_chunks = function(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_
 #' @name globasn
 #' @title assign an object to global environment
 #'
-#' @description 
+#' @description
 #' ONLY USE IF YOU KNOW WHAT YOU ARE DOING
 #' This function forces assignment of a variable/function
 #' to the global environment, or an environment of your choosing
@@ -2365,7 +2492,10 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 
 
 #' @name viewtask
-#' @title look at job
+#' @title convert job task to table
+#'
+#' Parse task from Flow Job object, character task file,
+#' or Flow Task object
 #'
 #'
 #' @return A Flow job object
@@ -2403,14 +2533,16 @@ idj = function(x, these.ids) {
 #'
 #' @return A Flow job object
 #' @export reset.job
-reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = "24", update_cores = 1) {
+reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1) {
     args = list(...)
     new.ent = copy(entities(x))
     if (!is.null(i)) {
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
-    if (!all(names(args) %in% names(new.ent)))
+    tsk = viewtask(x)
+    ## if (!all(names(args) %in% colnames(new.ent)))
+    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(jb.gridss2)$V2)
         stop("adding additional column to entities... this function is just for resetting with new arguments")
     for (j in seq_along(args))
     {
@@ -2535,6 +2667,12 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##################################################
 ##### gTrack stuff!
+
+setMethod("with", signature(data = "gTrack"), NULL)
+setMethod("with", signature(data = "gTrack"), function(data, expr) {
+    df = as.data.frame(formatting(data))
+    eval(substitute(expr, parent.frame()), df, parent.frame())
+})
 
 setMethod("within", signature(data = "gTrack"), NULL)
 setMethod("within", signature(data = "gTrack"), function(data, expr) {
@@ -2686,7 +2824,7 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
 #' Barplot with confidence intervals.
 #' To plot with confidence intervals around an event that has a binary
 #' outcome with a simple example:
-#' 
+#'
 #' heads = 30, tails = 20,
 #' y = heads / (heads + tails)
 #' dt = binom.conf(y, heads + tails)
@@ -2694,11 +2832,11 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
 #' conf.high = dt$conf.high
 #'
 #' gbar.error(y, conf.low, conf.high)
-#' 
+#'
 #' @param y any numeric vector, can be a fraction
-#' @param conf.low the lower bound of the confidence interval around y 
+#' @param conf.low the lower bound of the confidence interval around y
 #' @param conf.high the upper bound of the confidence interval around y
-#' 
+#'
 #' @return A ggplot object
 #' @export gbar.error
 gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", facet1 = NULL, facet2 = NULL, position = position_dodge(width = 0.9), transpose = FALSE, facet.scales = "fixed") {
@@ -2781,11 +2919,13 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 #' @export read.bam.header
 read.bam.header = function(bam, trim = FALSE) {
     cmd = sprintf("samtools view -H %s", bam)
-    tb = fread(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t")
+    tb = fread(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t", header = F)
     if (!trim) {
         return(as.data.table(tb))
     } else {
-        tb[grepl("^SN", V2)][, V2 := gsub("SN:", "", V2)]
+        tb = tb[grepl("^SN", V2)][, V2 := gsub("SN:", "", V2)]
+        identity(tb)
+        return(withAutoprint(tb, echo = FALSE)$value)
     }
 }
 
@@ -2872,22 +3012,22 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 #' ids corresponding to each list element
 #'
 #' @export dunlist2
-dunlist2 = function (x, simple = FALSE) 
+dunlist2 = function (x, simple = FALSE)
 {
-    if (is.null(names(x))) 
+    if (is.null(names(x)))
         names(x) = 1:length(x)
     tmp = x
     ## for (i in seq_along(tmp))
     ##     tmp[[i]] = as.data.table(tmp[[i]])
     if (!simple) {
         tmp = lapply(x, as.data.table)
-        out = cbind(data.table(listid = rep(names(x), lens(x))), 
+        out = cbind(data.table(listid = rep(names(x), lens(x))),
                                rbindlist(tmp, fill = TRUE))
     } else {
-        out = cbind(data.table(listid = rep(names(x), lens(x))), 
+        out = cbind(data.table(listid = rep(names(x), lens(x))),
                                V1 = unlist(tmp))
     }
-    nm = unlist(lapply(x, rlang::names2))
+    nm = unlist(lapply(x, names2))
     out$names = nm
     setkey(out, listid)
     return(out)
@@ -3143,6 +3283,13 @@ merge.repl = function(dt.x,
 }
 
 
+#' @name dt_lg2int
+#' @title logical to integer in data tables
+#'
+#' coerce logical columns to integers in data table
+#'
+#' @param dt data.table
+#' @return A data.table
 #' @export
 dt_lg2int = function(dt) {
     these_cols = which(sapply(dt, class) == "logical")
@@ -3153,6 +3300,14 @@ dt_lg2int = function(dt) {
     return(dt)
 }
 
+#' @name dt_na2false
+#' @title convert columns with NA to false
+#'
+#' coerce NA in columns of class "logical" to FALSE
+#'
+#' @param dt data.table
+#' @param these_cols NULL by default, will select columns of class logical, otherwise will be specified
+#' @return A data.table
 #' @export
 dt_na2false = function(dt, these_cols = NULL) {
     na2false = function(v)
@@ -3172,6 +3327,15 @@ dt_na2false = function(dt, these_cols = NULL) {
     return(dt)
 }
 
+
+#' @name dt_na2true
+#' @title convert columns with NA to true
+#'
+#' coerce NA in columns of class "logical" to TRUE
+#'
+#' @param dt data.table
+#' @param these_cols NULL by default, will select columns of class logical, otherwise will be specified
+#' @return A data.table
 #' @export
 dt_na2true = function(dt, these_cols = NULL) {
     if (is.null(these_cols)) {
@@ -3185,6 +3349,14 @@ dt_na2true = function(dt, these_cols = NULL) {
     return(dt)
 }
 
+#' @name dt_na2zero
+#' @title convert columns with NA to zeros
+#'
+#' coerce NA in columns of class "numeric"/"integer" to FALSE
+#'
+#' @param dt data.table
+#' @param these_cols NULL by default, will select columns of numeric class, otherwise will be specified
+#' @return A data.table
 #' @export
 dt_na2zero = function(dt, these_cols = NULL) {
     if (is.null(these_cols)) {
@@ -3203,6 +3375,14 @@ dt_na2zero = function(dt, these_cols = NULL) {
     return(dt)
 }
 
+#' @name dt_na2empty
+#' @title convert columns with NA to empty character
+#'
+#' coerce NA in columns of class "character" to ""
+#'
+#' @param dt data.table
+#' @param these_cols NULL by default, will select columns of character class, otherwise will be specified
+#' @return A data.table
 #' @export
 dt_na2empty = function(dt) {
     these_cols = which(sapply(dt, class) == "character")
@@ -3214,6 +3394,15 @@ dt_na2empty = function(dt) {
     return(dt)
 }
 
+
+#' @name dt_empty2na
+#' @title convert columns with empty character to NA
+#'
+#' coerce "" in columns of class "character" to NA_character_
+#'
+#' @param dt data.table
+#' @param these_cols NULL by default, will select columns of character class, otherwise will be specified
+#' @return A data.table
 #' @export
 dt_empty2na = function(dt) {
     these_cols = which(sapply(dt, class) == "character")
@@ -3225,7 +3414,14 @@ dt_empty2na = function(dt) {
     }
     return(dt)
 }
-
+#' @name dt_empty2na
+#' @title set columnn to NULL in data.table
+#'
+#' remove column from data table by setting to NULL
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_setnull = function(dt, cols) {
     for (this_col in cols) {
@@ -3234,6 +3430,14 @@ dt_setnull = function(dt, cols) {
     return(dt)
 }
 
+#' @name dt_setint
+#' @title convert column to integer
+#'
+#' coerce column of type "numeric" by default to "integer"
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_setint = function(dt, cols = NULL) {
     if (is.null(cols)) {
@@ -3245,7 +3449,15 @@ dt_setint = function(dt, cols = NULL) {
     return(dt)
 }
 
-
+#' @name dt_setallna
+#' @title convert all data.table entries to NA
+#'
+#' Set all columns to NA...
+#' can't remember why one would want this...
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_setallna = function(dt, cols = NULL, na_type = NA_integer_) {
     if (is.null(cols)) {
@@ -3258,6 +3470,15 @@ dt_setallna = function(dt, cols = NULL, na_type = NA_integer_) {
     return(dt)
 }
 
+#' @name dt_setchar
+#' @title convert column to character
+#'
+#' set columns to character
+#' default is nonsensical?
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_setchar = function(dt, cols = NULL) {
     if (is.null(cols)) {
@@ -3269,6 +3490,14 @@ dt_setchar = function(dt, cols = NULL) {
     return(dt)
 }
 
+#' @name dt_any2lg
+#' @title convert all columns to logical
+#'
+#' set columns to logical
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_any2lg = function(dt, cols = NULL) {
     if (is.null(cols)) {
@@ -3281,13 +3510,21 @@ dt_any2lg = function(dt, cols = NULL) {
     return(dt)
 }
 
+#' @name dt_f2char
+#' @title convert factor columns to character
+#'
+#' coerce factor columns to character
+#'
+#' @param dt data.table
+#' @param cols character vector of column names
+#' @return A data.table
 #' @export
 dt_f2char = function(dt, cols = NULL) {
     if (is.null(cols)) {
         ## cols = names(dt)[which(!unlist(lapply(dt, class)) == "character")]
-        cols = colnames(dt)
+        cols = colnames(dt)[which(unlist(lapply(dt, class)) == "factor")]
     } else {
-        cols = names(dt)[which(!unlist(lapply(dt, class)) == "factor")]
+        cols = cols[which(unlist(lapply(as.list(dt)[cols], class)) == "factor")]
     }
     for (this_col in cols) {
         data.table::set(dt, j = this_col, value = as.character(dt[[this_col]]))
@@ -3302,6 +3539,55 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name readinfasta
+#' @title wrapper around readDNAStringSet to remove extraneous characters
+#' @description
+#'
+#'
+#' Uses Biostrings::readDNAStringSet to read in fasta
+#' and remove all characters that do not correspond to rname
+#'
+#' @return DNAStringSet object
+#' @author Kevin Hadi
+#' @export
+readinfasta = function(fa, allow_vertbar = FALSE) {
+    if (!allow_vertbar)
+        ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,\\|_+\\[\\]]+$"
+    else
+        ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,_+\\[\\]]+$"        
+    fa = Biostrings::readDNAStringSet(fa)
+    names(fa) = gsub(ptrn, "", khtools::names2(fa), perl = T)
+    return(fa)
+}
+
+
+
+
+
+
+#' @name gr.genome
+#' @title create GRanges of full genome coordinates
+#' @description
+#'
+#' Grabs *.chrom.sizes file from
+#' environmental variable "DEFAULT_GENOME" or
+#' "DEFAULT_BSGENOME"
+#'
+#' May need to set either of these via
+#' Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
+#' Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.genome
+gr.genome = function(si) {
+    if (missing(si)) {
+        gr = si2gr(hg_seqlengths())
+    } else {
+        gr = si2gr(si)
+    }
+    gr.sort(keepStandardChromosomes(gr, pruning.mode = "coarse"))
+}
 
 #' @name gr2df
 #' @title granges to datatable via dataframe
@@ -3313,7 +3599,10 @@ dt_f2char = function(dt, cols = NULL) {
 #' @author Kevin Hadi
 #' @export gr2df
 gr2df = function(gr, var = "rowname") {
-    return(dt_f2char(setDT(rn2col(as.data.frame(gr), var = var, keep.rownames = T)),
+    sf = options()$stringsAsFactors
+    on.exit({options(stringsAsFactors = sf)})
+    options(stringsAsFactors = FALSE)
+    return(dt_f2char(setDT(rn2col(GenomicRanges::as.data.frame(gr), var = var, keep.rownames = T)),
                      c("seqnames", "strand")))
 }
 
@@ -3327,14 +3616,55 @@ gr2df = function(gr, var = "rowname") {
 #' @author Kevin Hadi
 #' @export grl.undf
 grl.undf = function(grl) {
+    sf = options()$stringsAsFactors
+    on.exit({options(stringsAsFactors = sf)})
+    options(stringsAsFactors = FALSE)
     gr = gr2df(grl)
     lst = rleseq(gr$group, clump = FALSE)
+    mc = setDT(GenomicRanges::as.data.frame(mcols(grl)[lst$idx,,drop = FALSE]))
     names(lst) = c("grl.ix", "grl.iix", "grl.len")
-    return(dedup.cols(cbind(gr, as.data.frame(lst))))
+    return(dedup.cols(cbind(gr, mc, as.data.frame(lst))))
 }
 
+#' @name asdt
+#' @title coerce to data table via setDT
+#' @description
+#'
+#' 
+#'
+#' @return data table
+#' @author Kevin Hadi
+#' @export
+asdt = function(obj) {
+    out = setDT(as.data.frame(obj))
+    return(out)
+}
 
-    
+#' @name asdf
+#' @title coerce to data frame
+#' @description
+#'
+#' 
+#'
+#' @return data frame
+#' @author Kevin Hadi
+#' @export
+asdf = function(obj) {
+    return(as.data.frame(obj))
+}
+
+#' @name asm
+#' @title coerce to matrix
+#' @description
+#'
+#' 
+#'
+#' @return matrix
+#' @author Kevin Hadi
+#' @export
+asm = function(obj) {
+    return(as.matrix(obj))
+}
 
 #' @name grl.flipstrand
 #' @title flip strand of grangeslist
@@ -3461,8 +3791,10 @@ gr.round = function(gr, nearest = 1e4, all = TRUE, reduce = FALSE) {
   if (all) {
     wid = max(wid)
   }
-  return(gr.resize(gr, wid = wid, pad = FALSE))
+  out = gr.resize(gr, wid = wid, pad = FALSE, reduce = T)
+  return(out)
 }
+
 
 #' @name gr.sort
 #' @title sort granges, grangeslist
@@ -3487,7 +3819,7 @@ gr.sort = function(gr, ignore.strand = TRUE) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.resize
-gr.resize = function(gr, wid, minwid = 0, each = TRUE, pad = TRUE, ignore.strand = FALSE, fix = "center") {
+gr.resize = function(gr, wid, minwid = 0, each = TRUE, pad = TRUE, ignore.strand = FALSE, fix = "center", reduce = FALSE) {
     if (pad) {
         if (isTRUE(each)) {
             wid = wid * 2
@@ -3495,11 +3827,14 @@ gr.resize = function(gr, wid, minwid = 0, each = TRUE, pad = TRUE, ignore.strand
         width.arg = pmax(width(gr) + wid, minwid)
     } else
         width.arg = pmax(wid, minwid)
+    if (reduce) 
+        gr = reduce(gr + width.arg, ignore.strand = ignore.strand) - width.arg
     return(GenomicRanges::resize(gr,
                                  width = width.arg,
                                  fix = fix,
                                  ignore.strand = ignore.strand))
 }
+
 
 
 
@@ -3540,7 +3875,7 @@ parse.grl2 = function(str, meta = NULL) {
                  strand = ifelse(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-"), "*", mat[,6]),
                  grl.ix = grl.ix)
     gr = gr.noval(GenomicRanges::split(gr, gr$grl.ix))
-    if (!is.null(meta) && nrow(meta) == length(gr)) 
+    if (!is.null(meta) && nrow(meta) == length(gr))
         S4Vectors::values(gr) = meta
     return(gr)
 }
@@ -3561,7 +3896,7 @@ parse.grl2 = function(str, meta = NULL) {
 ##                                     TRUE ~ mat[,6]),
 ##                  grl.ix = grl.ix)
 ##     gr = gr.noval(split(gr, gr$grl.ix))
-##     if (!is.null(meta) && nrow(meta) == length(gr)) 
+##     if (!is.null(meta) && nrow(meta) == length(gr))
 ##         values(gr) = meta
 ##     return(gr)
 ## }
@@ -3569,7 +3904,7 @@ parse.grl2 = function(str, meta = NULL) {
 #' @name gr_calc_cov
 #' @title output data structure for ski slope from anchorlifted SNV
 #'
-#' 
+#'
 #' @return A GRanges
 #' @export gr_calc_cov
 gr_calc_cov = function(gr, PAD = 50, field = NULL, start.base = -1e6, end.base = -5e3, win = 1e4, FUN = "mean", baseline = NULL, normfun = "*", normfactor = NULL) {
@@ -3915,9 +4250,9 @@ setMethod("within", signature(data = "IRanges"), function(data, expr) {
 
 tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   seqlevels = seqlevels(x)
-  ## if (!is.null(names(start))) 
+  ## if (!is.null(names(start)))
   ##   start <- start[seqlevels]
-  ## if (!is.null(names(end))) 
+  ## if (!is.null(names(end)))
   ##   end <- end[seqlevels]
   ## start <- S4Vectors:::recycleVector(start, length(seqlevels))
   ## start <- rep(start, each = 3L)
@@ -3935,7 +4270,7 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   rgl = GenomicRanges:::deconstructGRintoRGL(gr)
   ## rgl2 = gaps(rgl, start = rep(rep(start, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
   rgl2 = gaps(rgl, start = rep(rep(1, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
-  GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)    
+  GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)
 }
 
 #' @name gaps
@@ -3997,7 +4332,7 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
 #' @rdname gr.setdiff2
 #' @author Kevin Hadi
 #' @export gr.setdiff2
-gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = TRUE, ...) 
+gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = TRUE, ...)
 {
   if (!is.null(by)) {
     if (ignore.strand) {
@@ -4010,8 +4345,8 @@ gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = T
     else {
       tmp = gr2dt(subject)
       tmp$strand = factor(tmp$strand, c("+", "-", "*"))
-      gp = dt2gr(tmp[, as.data.frame(gaps(GRanges(seqnames, 
-        IRanges(start, end), seqlengths = sl, strand = strand))), 
+      gp = dt2gr(tmp[, as.data.frame(gaps(GRanges(seqnames,
+        IRanges(start, end), seqlengths = sl, strand = strand))),
       , by = by], seqinfo = seqinfo(query))
     }
     qdt = as.data.table(mcols(gr.noval(query, keep.col = by)))[, query.id := seq_len(.N)]
@@ -4030,14 +4365,14 @@ gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = T
   }
   else {
     if (ignore.strand) {
-      gp = gaps(gr.stripstrand(subject)) %Q% (strand == 
+      gp = gaps(gr.stripstrand(subject)) %Q% (strand ==
                                                 "*")
     }
     else {
       gp = gaps(subject)
     }
   }
-  out = gr.findoverlaps(query, gp, qcol = names(values(query)), 
+  out = gr.findoverlaps(query, gp, qcol = names(values(query)),
     ignore.strand = ignore.strand, by = by, ...)
   return(out)
 }
@@ -4248,7 +4583,7 @@ sv_filter = function(sv, filt_sv, pad = 500)
     }
 }
 
-############################## 
+##############################
 ##############################
 
 #' @name parsesnpeff
@@ -4272,7 +4607,7 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
       if (filterpass)
         cmd = sprintf("cat %s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, filt, tmp.path)
       else
-        cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, filt, tmp.path)  
+        cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, filt, tmp.path)
     } else {
       filt = ""
       if (filterpass)
@@ -4312,7 +4647,7 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
 
       mat = cbind("A" = d.a, "G" = d.g, "T" = d.t, "C" = d.c)
       rm("d.a", "d.g", "d.t", "d.c")
-      
+
       refid = match(as.character(fixed(vcf)$REF), colnames(mat))
       refid = ifelse(!isSNV(vcf), NA_integer_, refid)
       altid = match(as.character(fixed(vcf)$ALT), colnames(mat))
@@ -4326,7 +4661,7 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
       this.icol = dim(geno(vcf)[["TAR"]])[2]
       refindel = d.tar = geno(vcf)[['TAR']][,,1, drop = F][,this.icol,1]
       altindel = d.tir = geno(vcf)[['TIR']][,,1, drop = F][,this.icol,1]
-      
+
       adep = data.table(ref = coalesce(refsnv, refindel),
                         alt = coalesce(altsnv, altindel))
 
@@ -4334,12 +4669,12 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
 
     } else {
       message("ref and alt count columns not recognized")
-      
+
       adep = NULL
       gt = NULL
-      
+
     }
-    
+
     mcols(rr) = BiocGenerics::cbind(mcols(rr), ann, adep, gt = gt[,1])
     out = rr
   }
@@ -4366,9 +4701,9 @@ est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somati
     unlink(tmpvcf2)
   })
   tmpvcf = tempfile(fileext = ".vcf")
-  tmpvcf2 = tempfile(fileext = ".vcf")  
+  tmpvcf2 = tempfile(fileext = ".vcf")
   if (!somatic) {
- 
+
     message("starting germline processing")
     ## getting a larger subsample from the VCF so as to get better
     ## estimate of per segment average total read depth
@@ -4383,7 +4718,7 @@ est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somati
                     tmpvcf),
             stdout = tmpvcf2,
             env = "module unload java; module load java/1.8;")
- 
+
     gvcf = parsesnpeff(vcf, coding_alt_only = TRUE, keepfile = FALSE, altpipe = TRUE)
     gvcf_subsam = parsesnpeff(tmpvcf2, coding_alt_only = FALSE, keepfile = FALSE, altpipe = TRUE)
     gvcf = unique(dt2gr(rbind(gr2dt(gvcf_subsam), gr2dt(gvcf))))
@@ -4403,7 +4738,7 @@ est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somati
     ## on.exit({unlink(tmp.t); unlink(callout); unlink(tmp.b)}, add = T)
     input = within(input, {nref = nchar(REF);
       nalt = nchar(ALT);
-      vartype = 
+      vartype =
         ifelse(nref > 1 & nalt == 1,"DEL",
                ifelse(nref == 1 & nalt > 1, "INS",
                       ifelse(nref == 1 & nalt == 1, "SNV", NA_character_)));
@@ -4461,7 +4796,7 @@ est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somati
       saveRDS(gr4est, 'gr4est_somatic.rds')
     hold = NULL
   }
-  
+
   out = est_snv_cn(gr4est, jab, somatic = somatic)
   out = rbind(out, hold, fill = TRUE)
   if (saveme)
@@ -4482,7 +4817,7 @@ est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somati
 est_snv_cn = function(gr, jabba, somatic = FALSE) {
   if (length(gr) == 0)
     return(NULL)
-  if (is.character(jabba)) 
+  if (is.character(jabba))
     jab = readRDS(jabba)
   gg = gG(jabba = jab)
   lpp = with(jab, list(purity = purity, ploidy = ploidy))
@@ -4560,7 +4895,7 @@ est_snv_cn = function(gr, jabba, somatic = FALSE) {
   return(dt)
 }
 
-############################## 
+##############################
 ##############################
 
 #' @export pairs.filter.sv
@@ -4797,27 +5132,41 @@ pairs.get.jabba.pp = function(pairs, jabba.field = "jabba_rds", id.field = "pair
 #' A function to evaluate all functions in all loaded
 #' and attached packages to prevent errors upon reinstallation of
 #' a package
-#' 
+#'
 #' @param envir environment to evaluate in (probably doesn't matter)
 #' @export
 forceload = function(envir = globalenv()) {
+    force = function(x) x
     pkgs = gsub("package:", "", grep('package:', search(), value = TRUE))
     pkgs = c(pkgs, names(sessionInfo()$loadedOnly))
     for (pkg in pkgs) {
         tryCatch( {
             message("force loading ", pkg)
             invisible(eval(as.list((asNamespace(pkg))), envir = envir))
-            invisible(eval(eapply(asNamespace(pkg), base::force, all.names = TRUE), envir = envir))
+            invisible(eval(eapply(asNamespace(pkg), force, all.names = TRUE), envir = envir))
         }, error = function(e) message("could not force load ", pkg))
     }
 }
+
+
+## forceload = function(envir = globalenv()) {
+##     pkgs = gsub("package:", "", grep('package:', search(), value = TRUE))
+##     pkgs = c(pkgs, names(sessionInfo()$loadedOnly))
+##     for (pkg in pkgs) {
+##         tryCatch( {
+##             message("force loading ", pkg)
+##             invisible(eval(as.list((asNamespace(pkg))), envir = envir))
+##             invisible(eval(eapply(asNamespace(pkg), base::force, all.names = TRUE), envir = envir))
+##         }, error = function(e) message("could not force load ", pkg))
+##     }
+## }
 
 #' @name force2
 #' @title force with a tryCatch
 #'
 #' @description
 #' evaluate with tryCatch
-#' 
+#'
 #' @param x an object
 #' @export
 force2 = function(x)
@@ -4828,7 +5177,7 @@ force2 = function(x)
 #'
 #' @description
 #' A function to evaluate all functions in a single environment
-#' 
+#'
 #' @param envir environment to grab all functions from
 #' @param evalenvir environment to evaluate in (probably doesn't matter)
 #' @export
@@ -4852,7 +5201,7 @@ forcefun = function(envir = globalenv(), evalenvir = globalenv()) {
 #' @param invisible logical whether to print the objects in the environmnet or not
 #' @param envir environment with objects to evaluate
 #' @param evalenvir environment to evaluate in (probably doesn't matter)
-#' 
+#'
 #' @export
 forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
     if (invisible)  {
@@ -4864,12 +5213,12 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
     }
 }
 
-.onLoad = function(libname, pkgname) {    
+.onLoad = function(libname, pkgname) {
     message("khtools forcing functions to evaluate on load...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
 
-.onAttach = function(libname, pkgname) {    
+.onAttach = function(libname, pkgname) {
     ## forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
     ##     if (invisible)  {
     ##         invisible(eval(as.list(envir), envir = evalenvir))
@@ -4883,5 +5232,3 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
     message("khtools forcing functions to evaluate on attach...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
-
-

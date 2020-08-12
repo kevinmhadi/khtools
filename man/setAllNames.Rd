@@ -3,6 +3,7 @@
 \name{setAllNames}
 \alias{setAllNames}
 \title{setAllNames
+
 convenience function to set all names of a vector}
 \usage{
 setAllNames(vec, nm)
@@ -17,5 +18,6 @@ named vector
 }
 \description{
 setAllNames
+
 convenience function to set all names of a vector
 }

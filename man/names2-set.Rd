@@ -2,7 +2,9 @@
 % Please edit documentation in R/package.R
 \name{names2<-}
 \alias{names2<-}
-\title{robust name() assignment}
+\title{robust name() assignment
+
+similar to rlang::names2}
 \usage{
 names2(x, useempty = FALSE) <- value
 }
@@ -14,4 +16,6 @@ x a vector with all names
 }
 \description{
 robust name() assignment
+
+similar to rlang::names2
 }

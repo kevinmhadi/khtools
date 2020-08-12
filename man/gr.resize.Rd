@@ -11,7 +11,8 @@ gr.resize(
   each = TRUE,
   pad = TRUE,
   ignore.strand = FALSE,
-  fix = "center"
+  fix = "center",
+  reduce = FALSE
 )
 }
 \value{

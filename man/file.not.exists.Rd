@@ -4,7 +4,7 @@
 \alias{file.not.exists}
 \title{slightly more robust test for whether file does not exist
 
-test whether a file is NA, NULL, or /dev/null OR if 
+test whether a file is NA, NULL, or /dev/null OR if
 the file exists}
 \usage{
 file.not.exists(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", ""))
@@ -18,7 +18,7 @@ logical
 \description{
 slightly more robust test for whether file does not exist
 
-test whether a file is NA, NULL, or /dev/null OR if 
+test whether a file is NA, NULL, or /dev/null OR if
 the file exists
 }
 \author{

@@ -32,7 +32,8 @@ Imports:
     Flow,
     ggplot2,
     rlang,
-    rtracklayer
+    rtracklayer,
+    tools
 Suggests:
     XML,
     testthat
