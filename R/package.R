@@ -1,6 +1,7 @@
 #' @importMethodsFrom S4Vectors with
 #' @importMethodsFrom gUtils %&%
 #' @importMethodsFrom S4Vectors as.data.frame
+#' @importMethodsFrom S4Vectors split
 #' @exportMethod with
 
 
@@ -836,6 +837,49 @@ overwriteR6 = function(newfun, oldfun, r6gen, meth = "public_methods", package =
 }
 
 
+#' @name copyr6
+#' @title make deep copy of all non-function public and private fields in R6
+#'
+#' useful for dev
+#'
+#' @export copyr6
+copyr6 = function(x) {
+    if (inherits(x, "R6")) {
+        x2 = x$clone(deep = T)
+        for (name in intersect(names(x2$.__enclos_env__), c("private", "public")))
+            for (nname in names(x2$.__enclos_env__[[name]]))
+                tryCatch({
+                    x2$.__enclos_env__[[name]][[nname]] = rlang::duplicate(x2$.__enclos_env__[[name]][[nname]])
+                }, error = function(e) NULL)
+        return(x2)
+    } else {
+        message("object is not R6...")
+        return(x)
+    }
+}
+
+#' @name copys4
+#' @title make deep copy of all private slots in s4 object
+#'
+#' useful for dev
+#'
+#' @export copys4
+copys4 = function(x) {
+    if (isS4(x)) {
+        x2 = rlang::duplicate(x)
+        slns = slotNames(x2)
+        for (sln in slns) {
+            tryCatch({slot(x2, sln) = rlang::duplicate(slot(x2, sln))},
+                     error = function(e) NULL)
+        }
+        return(x2)
+    } else {
+        message("object is not s4...")
+        return(x)
+    }
+}
+
+
 #' @name overwritefun
 #' @title overwrite a function in its namespace
 #'
@@ -852,7 +896,7 @@ overwritefun = function(newfun, oldfun, package, envir = globalenv()) {
     .newfun = get(newfun)
     environment(.newfun) = environment(tmpfun)
     attributes(.newfun) = attributes(tmpfun)
-    eval(assignInNamespace(oldfun, .newfun, ns = nmpkg), globalenv())
+    eval(asn2(oldfun, .newfun, ns = nmpkg), globalenv())
 }
 
 
@@ -2919,7 +2963,8 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 #' @export read.bam.header
 read.bam.header = function(bam, trim = FALSE) {
     cmd = sprintf("samtools view -H %s", bam)
-    tb = fread(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t", header = F)
+    ## tb = fread(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t", header = F)
+    tb = setDT(read.table(text = system(cmd, intern = TRUE), fill = TRUE, sep = "\t", header = F))
     if (!trim) {
         return(as.data.table(tb))
     } else {
@@ -4466,6 +4511,34 @@ map_fus2unfus = function(ed, nodes, exact = TRUE) {
     return(ed)
 }
 
+gr.poverlaps = function(gr1, gr2, ignore.strand = FALSE, as.logical = TRUE) {
+    minoverlaps <<- 1
+    minoverlap <<- 0
+    out = IRanges::poverlaps(gr.fix(gr1, gr2), gr.fix(gr2, gr1), ignore.strand = ignore.strand)
+    if (as.logical) {
+        return(as.logical(out))
+    } else {
+        return(out)
+    }
+}
+
+inherits.edf = function(DF) {
+    if (all(sapply(DF, class) %in% c("integer","GRanges","CompressedGRangesList","logical", "GRangesList"))) {
+        if (inherits(DF, "DataFrame")) {
+            if (all(c("from","to","from.gr","to.gr","bp.left","bp.right","junction","ref") %in% colnames(DF))) {
+                return(TRUE)
+            } else {
+                return(FALSE)
+            }
+        } else {
+            return(FALSE)
+        }
+    } else {
+        return(FALSE)
+    }
+}
+
+
 #' @name ra.overlaps6
 #'
 #' One of the many rewrites of ra.overlaps
@@ -4527,8 +4600,60 @@ bedpe2grl = function(bdpe) {
         gr.fix(hg_seqlengths())
 }
 
+gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
+    if (!ignore.strand) {
+        return(GenomicRanges::shift(gr, c("+" = 1, "-" = -1)[as.character(strand(gr))] * shift))
+    } else {
+        return(GenomicRanges::shift(gr, shift))
+    }
+}
 
-
+ra.overlaps2 = function(ra1, ra2, pad = 0, ignore.strand = FALSE) {
+    if (length(ra1) == 0 | length(ra2) == 0) {
+        return(data.table(query.id = as.integer(NA), subject.id = as.integer(NA)))
+    }
+    ## forcibly removing all metadata before doing the query... the finagling
+    ## of metadata could be problematic especially when they are
+    ## not standard S3 classes
+    ra1@unlistData@elementMetadata = ra1@unlistData@elementMetadata[,c()]
+    ra1@elementMetadata = ra1@elementMetadata[,c()]
+    ra2@unlistData@elementMetadata = ra2@unlistData@elementMetadata[,c()]
+    ra2@elementMetadata = ra2@elementMetadata[,c()]
+    bp1 = grl.unlist(ra1)
+    bp2 = grl.unlist(ra2)
+    bp1 = gr.fix(bp1, bp2)
+    sbp1 = seqinfo(bp1)
+    bp2 = gr.fix(bp2, bp1)
+    sbp2 = seqinfo(bp2)
+    bp1 = sort(sortSeqlevels(bp1), ignore.strand = FALSE) + pad
+    bp2 = sort(sortSeqlevels(bp2), ignore.strand = FALSE) + pad
+    bp1 = gr2dt(bp1)
+    bp2 = gr2dt(bp2)
+    bp1[, grl.iix := seq_len(.N), by= grl.ix]
+    bp2[, grl.iix := seq_len(.N), by= grl.ix]
+    data.table::setorderv(bp1, "grl.ix")
+    data.table::setorderv(bp2, "grl.ix")
+    bp1 = dt2gr(bp1, seqlengths = seqlengths(sbp1), seqinfo = sbp1)
+    bp2 = dt2gr(bp2, seqlengths = seqlengths(sbp2), seqinfo = sbp2)
+    ## bp1 = gr.fix(bp1, bp2)
+    ## bp2 = gr.fix(bp2, bp1)
+    ix1 = findOverlaps(bp1 %Q% (grl.iix == 1),
+                       bp2 %Q% (grl.iix == 1),
+                       ignore.strand = ignore.strand)
+    ix2 = findOverlaps(bp1 %Q% (grl.iix == 2),
+                       bp2 %Q% (grl.iix == 2),
+                       ignore.strand = ignore.strand)
+    ix1 = as.data.table(ix1); data.table::setnames(ix1, c("query.id", "subject.id"))
+    ix2 = as.data.table(ix2); data.table::setnames(ix2, c("query.id", "subject.id"))
+    data.table::setkeyv(ix1, c("query.id", "subject.id"))
+    data.table::setkeyv(ix2, c("query.id", "subject.id"))
+    if (nrow(ix1) == 0 | nrow(ix2) == 0) {
+        return(data.table(query.id = as.integer(NA), subject.id = as.integer(NA)))
+    }
+    ## mg = merge(ix1, ix2, by = c("query.id", "subject.id"), allow.cartesian = TRUE)
+    mg = merge(ix1, ix2, allow.cartesian = TRUE)
+    return(mg)
+}
 
 
 #' filter sv by overlaps with another
@@ -5010,7 +5135,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
         cx$edges$mark(sv.in.mask = grl.in(cx$edges$grl, mask, logical = FALSE) > 0)
         ## cx$edges[edge.id %in% these_id]$mark(within_node_cluster = TRUE)
         ## these_id = cx$nodes[!is.na(cluster)]$edges$dt$edge.id
-        out = copy(gr2dt(grl.unlist(cx$edges[type == "ALT"]$grl)))
+        out = copy(gr2df(grl.unlist(cx$edges[type == "ALT"]$grl)))
         if (!is.null(dim(out)) && !dim(out)[1] == 0) {
             set(out, j = "pair", value = ent[[id.field]])
             tmp = cx$.__enclos_env__$private$pedges
@@ -5036,15 +5161,17 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
                            min_scn = pmin(snode[.$from]$cn, snode[.$to]$cn))
             } %>% distinct(edge.id, .keep_all = TRUE)
             out = dplyr::left_join(out, seg_cn, by = "edge.id") %>% setDT(key = "sedge.id")
-            out = gr2dt(gr.val(df2gr(out),
+            out = gr2df(gr.val(df2gr(out),
                                select(cx$nodes$gr, bp_scn = cn), "bp_scn"))
-            out = df2gr(out) %>% mutate(bp.in.mask = (.) %^% mask) %>% gr2dt
+            out = df2gr(out) %>% mutate(bp.in.mask = (.) %^% mask) %>% gr2df
         }
         return(out)
     }
     cx.edt = rbindlist(mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores), fill = TRUE)
     set(cx.edt, j = "fpair", value = cx.edt[, factor(get(id.field), levels = pairs[get(jn.field) %in% paths][[id.field]])])
+    cx.edt = cx.edt[, !colnames(cx.edt) == "rowname", with = FALSE]
     cx.edt = merge.repl(cx.edt, unique(cx.edt[, .(pair, edge.id, simple_type = gsub("([A-Z]+)([0-9]+)", "\\1", simple), simple_num = gsub("([A-Z]+)([0-9]+)", "\\2", simple))]), by = c("pair", "edge.id"))
+    cx.edt$simple_type = factor(cx.edt$simple_type, levels = c("INV", "INVDUP", "TRA"))
     cx.edt[, simple_type := fct_explicit_na(simple_type, "NA")]
     mod.dt = mltools::one_hot(cx.edt[, .(simple_type)])
     cx.edt = cbind(select(cx.edt, -matches("^simple_.*$")),
@@ -5054,7 +5181,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     cx.mat = cx.mat > 0
     mode(cx.mat) = "integer"
     cx.edt[, unclassified := rowSums(cx.mat) == 0]
-    return(cx.edt)
+    return(withAutoprint(cx.edt, echo = F)$value)
 }
 
 
@@ -5213,22 +5340,85 @@ forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent
     }
 }
 
+#' @name asn2
+#' @title version of utils::assignInNamespace
+#'
+#' @description
+#' can be used to reassign function into a namespace
+#' USE WITH CAUTION
+#'
+#' @export
+asn2 = function (x, value, ns, pos = -1, envir = as.environment(pos)) {
+    nf <- sys.nframe()
+    if (missing(ns)) {
+        nm <- attr(envir, "name", exact = TRUE)
+        if (is.null(nm) || substr(nm, 1L, 8L) != "package:") 
+            stop("environment specified is not a package")
+        ns <- asNamespace(substring(nm, 9L))
+    }
+    else ns <- asNamespace(ns)
+    ns_name <- getNamespaceName(ns)
+    ## if (nf > 1L) {
+    ##     if (ns_name %in% tools:::.get_standard_package_names()$base) 
+    ##         stop("locked binding of ", sQuote(x), " cannot be changed", 
+    ##             domain = NA)
+    ## }
+    if (bindingIsLocked(x, ns)) {
+        in_load <- Sys.getenv("_R_NS_LOAD_")
+        if (nzchar(in_load)) {
+            if (in_load != ns_name) {
+                msg <- gettextf("changing locked binding for %s in %s whilst loading %s", 
+                  sQuote(x), sQuote(ns_name), sQuote(in_load))
+                if (!in_load %in% c("Matrix", "SparseM")) 
+                  warning(msg, call. = FALSE, domain = NA, immediate. = TRUE)
+            }
+        }
+        else if (nzchar(Sys.getenv("_R_WARN_ON_LOCKED_BINDINGS_"))) {
+            warning(gettextf("changing locked binding for %s in %s", 
+                sQuote(x), sQuote(ns_name)), call. = FALSE, domain = NA, 
+                immediate. = TRUE)
+        }
+        unlockBinding(x, ns)
+        assign(x, value, envir = ns, inherits = FALSE)
+        w <- options("warn")
+        on.exit(options(w))
+        options(warn = -1)
+        lockBinding(x, ns)
+    }
+    else {
+        assign(x, value, envir = ns, inherits = FALSE)
+    }
+    if (!isBaseNamespace(ns)) {
+        S3 <- .getNamespaceInfo(ns, "S3methods")
+        if (!length(S3)) 
+            return(invisible(NULL))
+        S3names <- S3[, 3L]
+        if (x %in% S3names) {
+            i <- match(x, S3names)
+            genfun <- get(S3[i, 1L], mode = "function", envir = parent.frame())
+            if (.isMethodsDispatchOn() && methods::is(genfun, 
+                "genericFunction")) 
+                genfun <- methods::slot(genfun, "default")@methods$ANY
+            defenv <- if (typeof(genfun) == "closure") 
+                environment(genfun)
+            else .BaseNamespaceEnv
+            S3Table <- get(".__S3MethodsTable__.", envir = defenv)
+            remappedName <- paste(S3[i, 1L], S3[i, 2L], sep = ".")
+            if (exists(remappedName, envir = S3Table, inherits = FALSE)) 
+                assign(remappedName, value, S3Table)
+        }
+    }
+    invisible(NULL)
+}
+
 .onLoad = function(libname, pkgname) {
     message("khtools forcing functions to evaluate on load...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
 
 .onAttach = function(libname, pkgname) {
-    ## forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
-    ##     if (invisible)  {
-    ##         invisible(eval(as.list(envir), envir = evalenvir))
-    ##         invisible(eval(eapply(envir, force, all.names = TRUE), envir = evalenvir))
-    ##     } else {
-    ##         eval(as.list(envir), envir = evalenvir)
-    ##         eval(eapply(envir, force, all.names = TRUE), envir = evalenvir)
-    ##     }
-    ## }
-    ## globasn("randomblabla", "foobar")
     message("khtools forcing functions to evaluate on attach...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
+
+
