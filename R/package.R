@@ -159,7 +159,8 @@ ret_na_err = function(lst, class_condition = c("try-error", "error", "errored", 
 }
 
 
-#' convenience function to set column names
+#' @name setColnames
+#' @title convenience function to set column names
 #'
 #' @param object tabled object
 #' @param nm names of the new columns
@@ -179,6 +180,17 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
     return(object)
 }
 
+#' @name setcolnames
+#' @title convenience function to set column names
+#'
+#' alias of setColnames
+#' 
+#' @param object tabled object
+#' @param nm names of the new columns
+#' @return colnamed object
+#' @export
+setcolnames = setColnames
+
 
 #' @name setRownames
 #' @title convenience function to set row names
@@ -193,6 +205,18 @@ setRownames = function(object = nm, nm) {
     base::rownames(object) = rep_len(nm, nrow(object))
     object
 }
+
+
+#' @name setrownaes
+#' @title convenience function to set row names
+#'
+#' sets rownames of an object
+#'
+#' @param object tabled object
+#' @param nm names of the new columns
+#' @return rownamed object
+#' @export
+setrownames = setRownames
 
 #' @name setAllNames
 #' @title setAllNames
@@ -552,6 +576,126 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+
+#' @name clobber
+#' @title same as dplyr::coalesce
+#'
+#' clobber NA, or some value between multiple vectors
+#' bads can be a function that returns a logical
+#' 
+#'
+#' @param ... vectors to merge together
+#' @param bads a set of values to clobber, or a function that returns a logical
+#' @param r2l merge from left to right per pair of vectors
+#' @param fromLast if TRUE, merge from last vector to first 
+#' @export
+clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE) {
+    lst = list(...)
+    lens = lengths(lst)
+    maxlen = max(lens)
+    if (length(unique(lens)) > 1)
+        lst = lapply(lst, function(x) rep_len(x, maxlen))
+    if ( !length(bads) && !length(bads.x) && !length(bads.y))
+        stop("You gotta set one of bads, bads.x, or bads.y")
+    if ({ length(bads.x) && length(bads.y) }) {
+        message("bads.x and bads.y both set explicitly")
+        message("setting opposite to FALSE")
+        opposite = FALSE
+    }
+    anytrue = function(vec) rep_len(TRUE, length(vec))
+    if (isTRUE(bads) || !length(bads)) {
+        message("bads set to NULL or TRUE")
+        message("setting opposite to FALSE")
+        bads = anytrue
+        opposite = FALSE
+    }
+    if (opposite) {
+        yfun = get("!", mode = "function")
+    } else {
+        yfun = get("identity", mode = "function")
+    }
+    if (!length(bads.x)) bads.x = bads
+    if (!length(bads.y)) bads.y = bads
+    dofun = function(x,y) {
+        if (is.function(bads.x))
+            badsx = which(bads.x(x))
+        else
+            badsx = which(x %in% bads.x)
+        if (is.function(bads.y))
+            nbadsy = which(yfun(bads.y(y)))
+        else
+            nbadsy = which(yfun(y %in% bads.y))
+        ix = intersect(badsx, nbadsy)
+        return(replace(x, ix, rep_len(y[ix], length(ix))))
+    }
+    if (!r2l)
+        return(Reduce(function(x,y) dofun(x,y), lst, right = fromLast))
+    else
+        return(Reduce(function(x,y) dofun(y,x), lst, right = fromLast))
+}
+
+## clobber = function (..., bads = NA, r2l = FALSE, fromLast = FALSE, opposite = TRUE) 
+## {
+##     lst = list(...)
+##     lens = lengths(lst)
+##     maxlen = max(lens)
+##     if (length(unique(lens)) > 1) 
+##         lst = lapply(lst, function(x) rep_len(x, maxlen))
+##     if (opposite) {
+##         yfun = get("!", mode = "function")
+##     }
+##     else {
+##         yfun = get("identity", mode = "function")
+##     }
+##     dofun = function(x, y) {
+##         if (is.function(bads)) {
+##             badsx = which(bads(x))
+##             nbadsy = which(yfun(bads(y)))
+##         }
+##         else {
+##             badsx = which(x %in% bads)
+##             nbadsy = which(yfun(y %in% bads))
+##         }
+##         ix = intersect(badsx, nbadsy)
+##         return(replace(x, ix, rep_len(y[ix], length(ix))))
+##     }
+##     if (!r2l) 
+##         return(Reduce(function(x, y) dofun(x, y), lst, right = fromLast))
+##     else return(Reduce(function(x, y) dofun(y, x), lst, right = fromLast))
+## }
+
+#' @name coalesce
+#' @title same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber
+#'
+#' clobber NA, or some value between multiple vectors
+#' bads can be a function that returns a logical
+#'
+#' @export
+coalesce = clobber
+
+#' @name enframe
+#' @title same as tibble::enframe
+#'
+#' enframe
+#' 
+#'
+#' @param x named vector
+#' @param name name of column containing names(x)
+#' @param value name of column containing x values
+#' @export
+enframe = function(x, name = "name", value = "value", as.data.table = TRUE) {
+    names(x) = names2(x)
+    out = rownames_to_column(data.frame(x))
+    out = setColnames(out, c(name, value))
+    if (as.data.table) {
+        setDT(out)
+        return(out)
+    } else {
+        return(out)
+    }
+}
+
+
 #' @name ppng
 #' @title kevin's modification of ppng
 #'
@@ -746,6 +890,21 @@ seq_along2 = function(x)  {
   seq_len(len(x))
 }
 
+#' @name rep_len2
+#' @title recycle vector along length OR nrow of object
+#'
+#'
+#' @author Kevin Hadi
+#' @param x data
+#' @param objalong any object to recycle x along if uselen = TRUE, or an actual integer value if uselen = FALSE
+#' @return vector
+#' @export
+rep_len2 = function(x, objalong, uselen = TRUE) {
+    if (uselen)
+        rep_len(x, len(objalong))
+    else
+        rep_len(x, objalong)
+}
 
 #' @name file.exists2
 #' @title slightly more robust test for whether file exists

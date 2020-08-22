@@ -6,7 +6,7 @@
 \usage{
 gr.resize(
   gr,
-  wid,
+  width,
   minwid = 0,
   each = TRUE,
   pad = TRUE,
