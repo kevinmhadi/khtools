@@ -169,13 +169,13 @@ ret_na_err = function(lst, class_condition = c("try-error", "error", "errored", 
 setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "") {
     if (!is.null(nm)) {
         if (is.null(names(nm)))
-            colnames(object)  = nm
+            colnames2(object)  = nm
         else {
             ix = match3(names(nm), colnames(object))
-            colnames(object)[ix] = nm
+            colnames2(object)[ix] = nm
         }
     } else if (!is.null(pattern)) {
-        colnames(object) = gsub(pattern, replacement, colnames(object))
+        colnames2(object) = gsub(pattern, replacement, colnames2(object))
     }
     return(object)
 }
@@ -202,7 +202,7 @@ setcolnames = setColnames
 #' @return rownamed object
 #' @export
 setRownames = function(object = nm, nm) {
-    base::rownames(object) = rep_len(nm, nrow(object))
+    rownames2(object) = nm
     object
 }
 
@@ -684,8 +684,12 @@ coalesce = clobber
 #' @param value name of column containing x values
 #' @export
 enframe = function(x, name = "name", value = "value", as.data.table = TRUE) {
-    names(x) = names2(x)
-    out = rownames_to_column(data.frame(x))
+    if (is.null(dim(x))) {
+        nm = names2(x)
+    } else {
+        nm = rownames2(x)
+    }
+    out = cbind(data.frame(nm), data.frame(x))
     out = setColnames(out, c(name, value))
     if (as.data.table) {
         setDT(out)
@@ -806,6 +810,41 @@ names2 = function(x) {
         return(nm)
 }
 
+#' @name rownames2
+#' @title robust rownames
+#'
+#' gives back character vector same number of rows of input regardless whether named or not
+#'
+#' @param str a path string
+#' @return a string with multiple parentheses replaced with a single parenthesis
+#' @export
+rownames2 = function(x) {
+    if (!is.null(dim(x)))
+        nm = rownames(x)
+    else
+        nm = names(x)
+    if (is.null(nm))
+        return(rep_len("", len(x)))
+    else
+        return(rep_len(nm, len(x)))
+}
+
+#' @name colnames2
+#' @title robust colnames
+#'
+#' gives back character vector same number of columns of input regardless whether named or not
+#'
+#' @param str a path string
+#' @return a string with multiple parentheses replaced with a single parenthesis
+#' @export
+colnames2 = function(x) {
+    nm = colnames(x)
+    if (is.null(nm))
+        return(rep_len("", ncol(x)))
+    else
+        return(nm)
+}
+
 #' @name names2<-
 #' @title robust name() assignment
 #'
@@ -821,6 +860,49 @@ names2 = function(x) {
                    if (useempty)
                        rep_len("", length(x))
                }
+    return(x)
+}
+
+#' @name rownames2<-
+#' @title robust rownames() assignment
+#'
+#'
+#' @param x vector or matrix
+#' @return x a vector fully named or rownamed
+#' @export
+`rownames2<-` = function(x, value, useempty = FALSE) {
+    if (!is.null(dim(x))) {
+        rownames(x) = if (!is.null(value))
+                       rep_len(value, nrow(x))
+                   else {
+                       if (useempty)
+                           rep_len("", nrow(x))
+                   }
+    } else {
+        names(x) = if (!is.null(value))
+                       rep_len(value, length(x))
+                   else {
+                       if (useempty)
+                           rep_len("", length(x))
+                   }
+    }
+    return(x)
+}
+
+#' @name colnames2<-
+#' @title robust colnames() assignment
+#'
+#'
+#' @param x data with dimensions
+#' @return x data fully colnamed
+#' @export
+`colnames2<-` = function(x, value, useempty = FALSE) {
+    colnames(x) = if (!is.null(value))
+                      rep_len(value, ncol(x))
+                  else {
+                      if (useempty)
+                          rep_len("", ncol(x))
+                  }
     return(x)
 }
 
@@ -2169,6 +2251,70 @@ getdat2 = function(nm = "data") { ## to be used within "with()" expr
     return(dg(nm, F))
 }
 
+
+#' @name cenv
+#' @title concatenate environments
+#'
+#' @description
+#' to be able to call a function within a function and access variables
+#' use:
+#' ev = "bla"
+#' this.fun = function() anon()
+#' datatable = data.table()
+#' anon = function() {
+#'     with(cenv(datatable), {print(ev)})
+#' }
+#' this.fun()
+#'
+#' @param env can be a data.frame/table, or list, or environment
+#' @export
+cenv = function(env = environment()) {
+    expr_193659793_155174963 = as.expression(substitute(expr_6000525395_6907698684, env = env))
+    if (is.environment(env))
+        rm(expr_6000525395_6907698684, envir = env)
+    thisenv = c(list(data = env), as.list(env))
+    fms = sys.frames()
+    for (i in rev(seq_along(fms))) {
+        suppressWarnings(rm(expr_6000525395_6907698684, envir = fms[[i]]))
+        thisenv = c(thisenv, tryCatch(as.list(fms[[i]]), error = function(e) NULL))
+    }
+    thisenv = c(list(expr_193659793_155174963 = expr_193659793_155174963), thisenv, as.list(globalenv()))
+    return(thisenv)
+}
+
+## cenv = function(env = parent.frame()) {
+##     thisenv = c(list(data = env), as.list(env))
+##     fms = sys.frames()
+##     for (i in rev(seq_along(fms))) {
+##         thisenv = c(thisenv, tryCatch(as.list(fms[[i]]), error = function(e) NULL))
+##     }
+##     return(thisenv)
+## }
+
+
+#' @name main
+#' @title wrapper around cenv
+#'
+#' @description
+#' to be able to main
+#'
+#' @param expr expression to evaluate
+#' @param env environment
+#' @param return logical
+#' @export
+main = function(expr_6000525395_6907698684, return = F) {
+    env = environment()
+    out = with(cenv(env = env), {
+        tryCatch(expr_6000525395_6907698684, error = function(e) NULL);
+        eval(expr_193659793_155174963)
+    })
+    if (return)
+        return(out)
+    else
+        return(NULL)
+}
+
+
 #' @name g2
 #' @title alias for getdat2
 #'
@@ -2189,6 +2335,14 @@ withv = function(x, expr) {
     eval(substitute(expr), enclos = parent.frame())
 }
 
+#' @name wv
+#' @title alias for withv
+#'
+#' to be used for quick interactive programming
+#' withv(toolongtotypemeagain, x * sum(x))
+#'
+#' @export
+wv = withv
 
 
 with2 = function(data, expr, ...) {
