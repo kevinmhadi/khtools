@@ -218,6 +218,36 @@ setRownames = function(object = nm, nm) {
 #' @export
 setrownames = setRownames
 
+
+#' @name setcols
+#' @title convenience function to set columns
+#'
+#' sets columns of an object
+#'
+#' @param dt data frame/table or matrix
+#' @param old integer or character or logical vector corresponding to current colnames in dt
+#' @param new character vector for new column names
+#' @return colnamed object
+#' @export
+setcols = function(dt, old, new) {
+    cnames = colnames2(dt)
+    if (is.character(old)) {
+        out = merge(data.frame(cnames, seq_along(cnames)), data.frame(cnames = old, new = new),
+                    allow.cartesian = T)
+        cnames[out[[2]]] = out[[3]]
+        colnames(dt) = cnames
+        return(dt)
+    }
+    if (is.logical(old)) {
+        if (! length(old) == length(cnames)) stop("logical vector must be same length as ncol(dt)")
+        old = which(old)
+    }
+    cnames[old] = new
+    colnames(dt) = cnames
+    return(dt)
+}
+
+
 #' @name setAllNames
 #' @title setAllNames
 #'
@@ -1183,16 +1213,20 @@ match3 = function(x, table, nomatch = NA_integer_) {
 #' @param .data a data frame/table
 #' @return a data frame/table with rownames from a column
 #' @export
-column_to_rownames = function(.data, var = "rowname") {
+column_to_rownames = function(.data, var = "rowname", force = T) {
     ## if (inherits(.data, c("data.frame", "DFrame"))) {
     if (!is.null(dim(.data))) {
-        if (!is.null(rownames(.data))) {
-            rn = .data[[var]]
-            if (is.numeric(var))
+        if (!is.null(rownames(.data)) || force) {
+            ## rn = .data[[var]]
+            if (is.numeric(var)) {
+                rn = unname(unlist(eval(parse(text = paste(".data[,", paste("c(", paste0(var, collapse = ", "), ")"), "]")))))
                 colix = setdiff(seq_len(ncol(.data)), var)
-            else if (is.character(var))
+            } else if (is.character(var)) {
+                rn = unname(unlist(eval(parse(text = paste(".data[,", paste("c(", paste0(paste0("\"", var, "\""), collapse = ", "), ")"), "]")))))
                 colix = setdiff(seq_len(ncol(.data)), match3(var,colnames(.data)))
-            .data = .data[, colix,drop = FALSE]
+            }
+            eval(parse(text = paste(".data = .data[,", paste("c(", paste0(colix, collapse = ", "), ")"), ", drop = FALSE]")))
+            ## .data = .data[, colix,drop = FALSE]
             if (inherits(.data, "tbl"))
                 .data = as.data.frame(.data)
             rownames(.data) = replace(as.character(rn), is.na(rn), "")
@@ -2304,14 +2338,31 @@ cenv = function(env = environment()) {
 #' @export
 main = function(expr_6000525395_6907698684, return = F) {
     env = environment()
-    out = with(cenv(env = env), {
+    env.lst = cenv(env = env)
+    out = with(env.lst, {
         tryCatch(expr_6000525395_6907698684, error = function(e) NULL);
-        eval(expr_193659793_155174963)
+        eval(expr_193659793_155174963, env.lst)
     })
     if (return)
         return(out)
     else
         return(NULL)
+}
+
+#' @name errr
+#' @title turn on verbose error tracing through call stack
+#'
+#' 
+#' @export
+errr = function(x = 2) {
+    er = options()$error
+    if (is.null(er) || !missing(x)) {
+        message("error traceback on, traceback level set to ", x)
+        options(error = function() { traceback(x); print("ERROR"); })
+    } else {
+        message("error traceback off")
+        options(error = NULL)
+    }
 }
 
 
@@ -2323,6 +2374,15 @@ main = function(expr_6000525395_6907698684, return = F) {
 #'
 #' @export
 g2 = getdat2
+
+#' @name gx
+#' @title alias for getdat2(nm = "x")
+#'
+#' @description
+#' alias for getdat2(nm = "x")
+#'
+#' @export
+gx = function(nm = "x") eval.parent(getdat2(nm = nm))
 
 #' @name withv
 #' @title withv
@@ -3528,12 +3588,12 @@ merge.repl = function(dt.x,
                       keep_colorder = TRUE,
                       ...) {
     arg_lst = as.list(match.call())
-    by.y = eval(arg_lst$by.y)
-    by.x = eval(arg_lst$by.x)
-    by = eval(arg_lst$by)
-    all.x = eval(arg_lst$all.x)
-    all.y = eval(arg_lst$all.y)
-    all = eval(arg_lst$all)
+    by.y = eval(arg_lst$by.y, parent.frame())
+    by.x = eval(arg_lst$by.x, parent.frame())
+    by = eval(arg_lst$by, parent.frame())
+    all.x = eval(arg_lst$all.x, parent.frame())
+    all.y = eval(arg_lst$all.y, parent.frame())
+    all = eval(arg_lst$all, parent.frame())
     allow.cartesian = eval(arg_lst$allow.cartesian)
     key_x = key(dt.x)
     if (is.null(all.x)) {
