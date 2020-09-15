@@ -2,8 +2,8 @@
 #' @importMethodsFrom gUtils %&%
 #' @importMethodsFrom S4Vectors as.data.frame
 #' @importMethodsFrom S4Vectors split
+#' @import tools
 #' @exportMethod with
-
 
 #' @name match_s
 #' @title match x indices in terms of y
@@ -607,6 +607,22 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 
 
+#' @name et
+#' @title shortcut for eval(parse(text = <string>))
+#'
+#' @param txt string to evaluate
+#' @export
+et = function(txt, eval = TRUE, envir = parent.frame()) {
+    out = parse(text = txt)
+    if (eval) {
+        return(eval(out, envir = envir))
+    } else {
+        return(out)
+    }
+}
+
+
+
 #' @name clobber
 #' @title same as dplyr::coalesce
 #'
@@ -1110,6 +1126,35 @@ overwriteR6 = function(newfun, oldfun, r6gen, meth = "public_methods", package =
     NULL
 }
 
+#' @name copy2
+#' @title make deep copy
+#'
+#' useful for dev
+#' makes deep copy of R6 object, S4 object, or anything else really
+#'
+#' @export copy2
+copy2 = function(x) {
+    if (inherits(x, "R6")) {
+        x2 = x$clone(deep = T)
+        for (name in intersect(names(x2$.__enclos_env__), c("private", "public")))
+            for (nname in names(x2$.__enclos_env__[[name]]))
+                tryCatch({
+                    x2$.__enclos_env__[[name]][[nname]] = rlang::duplicate(x2$.__enclos_env__[[name]][[nname]])
+                }, error = function(e) NULL)
+        return(x2)
+    } else if (isS4(x)) {
+        x2 = rlang::duplicate(x)
+        slns = slotNames(x2)
+        for (sln in slns) {
+            tryCatch({slot(x2, sln) = rlang::duplicate(slot(x2, sln))},
+                     error = function(e) NULL)
+        }
+        return(x2)
+    } else {
+        x2 = rlang::duplicate(x)
+        return(x2)
+    }
+}
 
 #' @name copyr6
 #' @title make deep copy of all non-function public and private fields in R6
@@ -2960,7 +3005,7 @@ idj = function(x, these.ids) {
 reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
     if (is.null(task))
-        usetask = Flow::task(x@task)
+        usetask = x@task
     else if (is.character(task) || inherits(task, "Task"))
         usetask = task
     args = list(...)
@@ -4115,6 +4160,20 @@ grl.flipstrand = function(grl) {
 }
 
 
+#' @name gr.strand
+#' @title specify strand of granges or grangeslist
+#' @description
+#'
+#'
+#' @return granges or grangeslist
+#' @author Kevin Hadi
+#' @export gr.strand
+gr.strand = function(gr, str = "*") {
+    strand(gr) = str
+    return(gr)
+}
+
+
 
 #' @name df2gr
 #' @title data frame to GRanges
@@ -4249,7 +4308,7 @@ gr.sort = function(gr, ignore.strand = TRUE) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.resize
-gr.resize = function(gr, width, minwid = 0, each = TRUE, pad = TRUE, ignore.strand = FALSE, fix = "center", reduce = FALSE) {
+gr.resize = function(gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.strand = FALSE, fix = "center", reduce = FALSE) {
     wid = width
     if (pad) {
         if (isTRUE(each)) {
@@ -5796,6 +5855,15 @@ asn2 = function (x, value, ns, pos = -1, envir = as.environment(pos)) {
     }
     invisible(NULL)
 }
+
+#' @name ww
+#' @export
+ww = with
+
+#' @name wn
+#' @export
+wn = within
+
 
 .onLoad = function(libname, pkgname) {
     message("khtools forcing functions to evaluate on load...")

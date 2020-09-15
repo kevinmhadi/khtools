@@ -12,6 +12,7 @@ Description: This is a collection of miscellaneous wrappers for
 License: GPL v3.0
 Depends:
     R (>= 3.1.0),
+    tools,
     data.table,
     stringr,
     parallel,

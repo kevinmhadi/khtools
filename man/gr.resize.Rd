@@ -7,9 +7,9 @@
 gr.resize(
   gr,
   width,
+  pad = TRUE,
   minwid = 0,
   each = TRUE,
-  pad = TRUE,
   ignore.strand = FALSE,
   fix = "center",
   reduce = FALSE
