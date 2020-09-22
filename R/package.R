@@ -756,8 +756,9 @@ enframe = function(x, name = "name", value = "value", as.data.table = TRUE) {
 ppng = function (expr, filename = "plot.png", height = 10, width = 10,
                  dim = NULL, cex = 1, title = NULL,
                  h = height, w = width,
-    cex.title = 1, oma.scale = 0, units = "in", res = 300, oma.val = c(1,1,1,1), ...) {
+    cex.title = 1, oma.scale = 0, units = "in", res = 300, oma.val = c(1,1,1,1), pars = list(), ...) {
 
+    this.env = environment()
     if (length(cex) == 1) {
         cex = rep(cex, 2)
     }
@@ -774,12 +775,55 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         system(paste("mkdir -p", file.dir(filename)))
 
     cat("rendering to", filename, "\n")
-    old_oma = par()$oma
-    on.exit({par(oma = old_oma)})
+    old_oma = par(no.readonly=T)$oma
+    lst.par = par(no.readonly=T)
+    goodnm = intersect(names(pars), names(lst.par))
+    lst.old.par = lst.par = lst.par[goodnm]
+    oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+        paste0(names(lst.par)[i], "=c(",
+               paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                             lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+               collapse = ",")
+    })), collapse = ",")
+    oldstr = paste0("par(", allpars, ")")
+    ## on.exit({
+    ##     for (i in seq_along(lst.old.par)) {
+    ##         arg = paste0(names(lst.old.par)[i], "=c(",
+    ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
+    ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
+    ##                      collapse = ",")
+    ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
+    ##     }
+        
+    ## })
+    on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+    if (length(pars) > 0) {
+        goodnm = intersect(names(pars), names(lst.par))
+        lst.par[goodnm] = pars[goodnm]
+        ## for (i in seq_along(lst.par)) {
+        ##     arg = paste0(names(lst.par)[i], "=c(",
+        ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+        ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+        ##                  collapse = ",")
+        ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
+        ## }
+        newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+            paste0(names(lst.par)[i], "=c(",
+                   paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                                 lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+                   collapse = ",")
+        })), collapse = ",")
+        newstr = paste0("par(", allpars, ")")
+        eval(parse(text = newstr), envir = parent.frame())
+    } else {
+        newstr = ""
+        newpars = ""
+    }
     png(filename, height = height, width = width, units = units, res = res, ...) ## pointsize default is 12... maybe the default previously was 24?
 
     if (oma.scale > 0) {
-        par(oma = oma.val * oma.scale)
+        ## par(oma = oma.val * oma.scale)
+        newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
     }
     if (!is.null(dim)) {
         if (length(dim) == 1)
@@ -788,11 +832,14 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
             byrow = TRUE))
     }
-    eval(expr)
+    ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+    ##      envir = parent.frame())
+    eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+         envir = parent.frame())
+    ## eval(expr, envir = this.env)
     if (!is.null(title))
         title(title, cex.main = cex.title * max(cex))
     dev.off()
-    par(oma = old_oma)
 }
 
 #' @name ppdf
@@ -805,7 +852,8 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
 ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
                  h = height, w = width,
                  cex = 1, title = NULL, byrow = TRUE, dim = NULL, cex.title = 1,
-                 oma.scale = 0, oma.val = c(1,1,1,1), useDingbats = FALSE, res = 0, ...) {
+                 oma.scale = 0, oma.val = c(1,1,1,1), useDingbats = FALSE, res = 0, pars = list(), ...) {
+    this.env = environment()
     if (length(cex) == 1)
         cex = rep(cex, 2)
     height = h
@@ -821,13 +869,55 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         system(paste("mkdir -p", file.dir(filename)))
     cat("rendering to", filename, "\n")
 
-    old_oma = par()$oma
-    on.exit({par(oma = old_oma)})
+    old_oma = par(no.readonly=T)$oma
+    lst.par = par(no.readonly=T)
+    goodnm = intersect(names(pars), names(lst.par))
+    lst.old.par = lst.par = lst.par[goodnm]
+    oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+        paste0(names(lst.par)[i], "=c(",
+               paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                             lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+               collapse = ",")
+    })), collapse = ",")
+    oldstr = paste0("par(", allpars, ")")
+    ## on.exit({
+    ##     for (i in seq_along(lst.old.par)) {
+    ##         arg = paste0(names(lst.old.par)[i], "=c(",
+    ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
+    ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
+    ##                      collapse = ",")
+    ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
+    ##     }
+        
+    ## })
+    on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+    if (length(pars) > 0) {
+        goodnm = intersect(names(pars), names(lst.par))
+        lst.par[goodnm] = pars[goodnm]
+        ## for (i in seq_along(lst.par)) {
+        ##     arg = paste0(names(lst.par)[i], "=c(",
+        ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+        ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+        ##                  collapse = ",")
+        ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
+        ## }
+        newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+            paste0(names(lst.par)[i], "=c(",
+                   paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                                 lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+                   collapse = ",")
+        })), collapse = ",")
+        newstr = paste0("par(", allpars, ")")
+        eval(parse(text = newstr), envir = parent.frame())
+    } else {
+        newstr = ""
+        newpars = ""
+    }
     pdf(filename, height = height, width = width,
         useDingbats = useDingbats, ...) ## pointsize default is 12
 
     if (oma.scale > 0) {
-        par(oma = oma.val * oma.scale)
+        newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
     }
     if (!is.null(dim)) {
         if (length(dim) == 1)
@@ -836,11 +926,14 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         graphics::layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
                                 byrow = byrow))
     }
-    eval(expr)
+    ## eval(expr)
+    ## eval(parse(text = paste0("{", newstr, ";", as.character(as.expression(substitute(expr))), "}")),
+         ## envir = parent.frame())
+    eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+         envir = parent.frame())
     if (!is.null(title))
         title(title, cex.main = cex.title * max(cex))
     dev.off()
-    par(oma = old_oma)
 }
 
 #' @name names2

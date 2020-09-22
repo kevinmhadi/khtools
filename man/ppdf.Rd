@@ -23,6 +23,7 @@ ppdf(
   oma.val = c(1, 1, 1, 1),
   useDingbats = FALSE,
   res = 0,
+  pars = list(),
   ...
 )
 }

@@ -22,6 +22,7 @@ ppng(
   units = "in",
   res = 300,
   oma.val = c(1, 1, 1, 1),
+  pars = list(),
   ...
 )
 }
