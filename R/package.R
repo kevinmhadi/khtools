@@ -775,6 +775,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
 
     cat("rendering to", filename, "\n")
     old_oma = par()$oma
+    on.exit({par(oma = old_oma)})
     png(filename, height = height, width = width, units = units, res = res, ...) ## pointsize default is 12... maybe the default previously was 24?
 
     if (oma.scale > 0) {
@@ -821,7 +822,9 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
     cat("rendering to", filename, "\n")
 
     old_oma = par()$oma
-    pdf(filename, height = height, width = width, useDingbats = useDingbats, ...) ## pointsize default is 12
+    on.exit({par(oma = old_oma)})
+    pdf(filename, height = height, width = width,
+        useDingbats = useDingbats, ...) ## pointsize default is 12
 
     if (oma.scale > 0) {
         par(oma = oma.val * oma.scale)
@@ -1697,6 +1700,9 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
         warning("not all vectors provided have same length")
     fulllens = max(lns, na.rm = T)
     vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+    if (length(vec) == 0) {
+        return(list(idx = integer(0), seq = integer(0), lns = integer(0)))
+    }
     ## rlev = rle(paste(as.character(vec)))
     if (na.ignore) {
         isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
@@ -2790,6 +2796,24 @@ table3 = function(...) {
     return(table(..., useNA = "always"))
 }
 
+#' @name dir2
+#' @title dir with full grep
+#'
+#'
+#' @author Kevin Hadi
+#' @export
+dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALSE, 
+    recursive = FALSE, ignore.case = FALSE, include.dirs = FALSE, 
+    no.. = FALSE, ...) {
+    paths = dir(path = path, all.files = all.files,
+                full.names = full.names, recursive = recursive,
+                ignore.case = ignore.case, include.dirs = include.dirs,
+        no.. = no..)
+    if (!is.null(pattern))
+        paths = grep(pattern = pattern, x = paths, value = TRUE, ...)
+    return(paths)
+}
+
 #' @name dig_dir
 #' @title dig into a file path's directory
 #'
@@ -2798,21 +2822,21 @@ table3 = function(...) {
 #'
 #' @author Kevin Hadi
 #' @export
-dig_dir = function(x, pattern = NULL, full.names = TRUE, mc.cores = 1, unlist = TRUE) {
-    ## unlist(lst.empty2na(mclapply(dirname(x), function(y) {
-    ##     dir(y, pattern = pattern, full.names = T)
-    ## }, mc.cores = mc.cores)))
+dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1, 
+    unlist = TRUE, ...) 
+{
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
     if (unlist == TRUE) {
-        unlist(lst.empty2na(mcMap(function(m.x, m.pattern) {
-            dir(path = m.x, pattern = m.pattern, full.names = full.names)
-        }, dirname(x), pattern, mc.cores = mc.cores)))
-    } else {
-        lst.empty2na(mcMap(function(m.x, m.pattern) {
-            dir(path = m.x, pattern = m.pattern, full.names = full.names)
-        }, dirname(x), pattern, mc.cores = mc.cores))
+        unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+    }
+    else {
+        lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
     }
 }
 
@@ -3329,7 +3353,10 @@ gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palet
     suppressWarnings(dat[, `:=`(facet2, facet2)])
     if (is.null(fill)) fill.arg = group else fill.arg = fill
     dat[, fill.arg := fill.arg]
-    gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y))
+    if (is.character(stat) && stat == "count")
+        gg = ggplot(dat, aes(fill = fill.arg, x = y))
+    else
+        gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y))
     gg = gg + geom_bar(stat = stat, position = position)
     if (any(!is.na(conf.low)) & any(!is.na(conf.high)))
         gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
@@ -3754,7 +3781,7 @@ merge.repl = function(dt.x,
                     intersect(union(colnames(dt.x), colnames(dt.repl)),
                               colnames(dt.repl)))
     }
-    invisible(dt.repl)
+    return(dt.repl)
 }
 
 
@@ -4013,6 +4040,99 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## Genomics / mskilab stuff
 ############################## gUtils stuff
 ##############################
+
+
+#' @name shift_up
+#' @title shift_upstream from plyranges package
+#' @description
+#'
+#' works on genomicranges
+#'
+#' @return granges
+#' @author Stuart Lee
+#' @author Michael Lawrence
+#' @author Dianne Cook
+#' @export
+shift_up = function (x, shift = 0L) 
+{
+    strand = function(bla) {as.character(BiocGenerics::strand(bla))}
+    neg <- strand(x) == "-"
+    pos <- strand(x) %in% c("+", "*")
+    if (length(x) == length(shift)) {
+        shift_neg <- shift[which(neg)]
+        shift_pos <- shift[which(pos)]
+        x[neg] <- shift_right(x[neg], shift_neg)
+        x[pos] <- shift_left(x[pos], shift_pos)
+    }
+    else {
+        x[neg] <- shift_right(x[neg], shift)
+        x[pos] <- shift_left(x[pos], shift)
+    }
+    x
+}
+
+
+#' @name shift_down
+#' @title shift_downstream from plyranges package
+#' @description
+#'
+#' works on genomicranges
+#'
+#' @return granges
+#' @author Stuart Lee
+#' @author Michael Lawrence
+#' @author Dianne Cook
+#' @export
+shift_down = function (x, shift = 0L) 
+{
+    strand = function(bla) {as.character(BiocGenerics::strand(x))}
+    neg <- strand(x) == "-"
+    pos <- strand(x) %in% c("+", "*")
+    if (length(x) == length(shift)) {
+        shift_neg <- shift[which(neg)]
+        shift_pos <- shift[which(pos)]
+        x[neg] <- shift_left(x[neg], shift_neg)
+        x[pos] <- shift_right(x[pos], shift_pos)
+    }
+    else {
+        x[neg] <- shift_left(x[neg], shift)
+        x[pos] <- shift_right(x[pos], shift)
+    }
+    x
+}
+
+#' @name shift_left
+#' @title shift_left from plyranges package
+#' @description
+#'
+#' works on genomicranges
+#'
+#' @return granges
+#' @author Stuart Lee
+#' @author Michael Lawrence
+#' @author Dianne Cook
+#' @export
+shift_left = function (x, shift = 0L) 
+{
+    shift_l <- -1L * shift
+    GenomicRanges::shift(x, shift_l)
+}
+
+#' @name shift_right
+#' @title shift_right from plyranges package
+#' @description
+#'
+#' works on genomicranges
+#'
+#' @return granges
+#' @author Stuart Lee
+#' @author Michael Lawrence
+#' @author Dianne Cook
+#' @export
+shift_right = function (x, shift = 0L) 
+{
+    GenomicRanges::shift(x, shift)
+}
 
 #' @name readinfasta
 #' @title wrapper around readDNAStringSet to remove extraneous characters
