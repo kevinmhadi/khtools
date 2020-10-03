@@ -231,6 +231,17 @@ setrownames = setRownames
 #' @export
 setcols = function(dt, old, new) {
     cnames = colnames2(dt)
+    if (missing(new) || missing(old)) {
+        if (missing(old)) {
+            old = new
+        }
+        if (is.character(old) && length(old) == length(cnames)) {
+            colnames(dt) = old
+            return(dt)
+        } else {
+            stop("names provided must be same length as ncol(dt)")
+        }
+    }
     if (is.character(old)) {
         out = merge(data.frame(cnames, seq_along(cnames)), data.frame(cnames = old, new = new),
                     allow.cartesian = T)
@@ -262,7 +273,7 @@ setAllNames = function(vec, nm) {
         return(setNames(vec, NULL))
     } else {
         if (length(nm) < length(vec)) {
-            nm = rep_len(nm, length(vec))
+            nm = rep_len2(nm, vec)
         }
     }
     return(setNames(vec, nm))
@@ -606,11 +617,111 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name unI
+#' @title remove "AsIs" from class, i.e. undo I(obj)
+#'
+#' undo I(obj)
+#' 
+#' 
+#' @export
+unI = function(x) {
+  if (inherits(x, "AsIs")) class(x) = setdiff(class(x), "AsIs")
+  return(x)
+}
+
+
+#' @name log10p
+#' @title log10(x + 1)
+#' 
+#' 
+#' @export
+log10p = function(x) {
+    log10(x + 1)
+}
+
+
+#' @name .gc
+#' @title .gc
+#' 
+#' 
+#' 
+#' @param df data frame
+#' @param ptrn pattern
+#' @author Kevin Hadi
+#' @export 
+.gc = function(df, ptrn, ignore.case = FALSE) {
+    cnames = colnames2(df)
+    if (is.character(ptrn)) {
+        ix = loop_grep(ptrn, cnames, ignore.case = ignore.case)
+    } else {
+        ix = ptrn
+    }
+    return(et(sprintf("df[,%s,drop=F]",
+                      paste0("c(", paste(ix, collapse = ","), ")"))))
+}
+
+
+
+#' @name duped
+#' @title duped
+#' 
+#' 
+#' 
+#' @param ... vectors to paste by 
+#' @author Kevin Hadi
+#' @export 
+duped = function(..., binder = "data.table") {
+    duplicated(tryCatch(et(sprintf("do.call(%s, list(...))", binder)),
+                        ## error = function(e) do.call(cbind, list(...))))
+                        error = function(e) do.call(paste, list(...))))
+}
+
+
+#' @name colexists
+#' @title find out if column is in data.table
+#' 
+#' 
+#' 
+#' @param nm name of column
+#' @param df data.frame or data.table
+#' @author Kevin Hadi
+#' @export colexists
+colexists = function(nm, df) {
+    cnames = colnames2(df)
+    return(nm %in% cnames)
+}
+
+#' @name dodo.call2
+#' @title dodo.call+
+#'
+#' FUN can be an anonymous function call
+#' dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
+#' can also omit the brackets
+#' 
+#' 
+#' 
+#' @param FUN function
+#' @author Marcin Imielinski
+#' @export dodo.call2
+dodo.call2 = function (FUN, args) 
+{
+    if (!is.character(FUN)) 
+        FUN = substitute(FUN)
+    cmd = paste(
+        paste0("{", as.character(as.expression(FUN)), "}"),
+        "(",
+        paste("args[[", 1:length(args), "]]", collapse = ","),
+        ")",
+        sep = "")
+    return(et(cmd))
+}
+
 
 #' @name et
 #' @title shortcut for eval(parse(text = <string>))
 #'
 #' @param txt string to evaluate
+#' @author Kevin Hadi
 #' @export
 et = function(txt, eval = TRUE, envir = parent.frame()) {
     out = parse(text = txt)
@@ -640,7 +751,7 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
     lens = lengths(lst)
     maxlen = max(lens)
     if (length(unique(lens)) > 1)
-        lst = lapply(lst, function(x) rep_len(x, maxlen))
+        lst = lapply(lst, function(x) rep(x, length.out = maxlen))
     if ( !length(bads) && !length(bads.x) && !length(bads.y))
         stop("You gotta set one of bads, bads.x, or bads.y")
     if ({ length(bads.x) && length(bads.y) }) {
@@ -648,7 +759,7 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
         message("setting opposite to FALSE")
         opposite = FALSE
     }
-    anytrue = function(vec) rep_len(TRUE, length(vec))
+    anytrue = function(vec) rep(TRUE, length.out = length(vec))
     if (isTRUE(bads) || !length(bads)) {
         message("bads set to NULL or TRUE")
         message("setting opposite to FALSE")
@@ -672,7 +783,7 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
         else
             nbadsy = which(yfun(y %in% bads.y))
         ix = intersect(badsx, nbadsy)
-        return(replace(x, ix, rep_len(y[ix], length(ix))))
+        return(replace(x, ix, rep(y[ix], length.out = length(ix))))
     }
     if (!r2l)
         return(Reduce(function(x,y) dofun(x,y), lst, right = fromLast))
@@ -947,7 +1058,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
 names2 = function(x) {
     nm = names(x)
     if (is.null(nm))
-        return(rep_len("", length(x)))
+        return(rep("", length.out = length(x)))
     else
         return(nm)
 }
@@ -966,9 +1077,9 @@ rownames2 = function(x) {
     else
         nm = names(x)
     if (is.null(nm))
-        return(rep_len("", len(x)))
+        return(rep("", length.out = len(x)))
     else
-        return(rep_len(nm, len(x)))
+        return(rep(nm, length.out = len(x)))
 }
 
 #' @name colnames2
@@ -982,7 +1093,7 @@ rownames2 = function(x) {
 colnames2 = function(x) {
     nm = colnames(x)
     if (is.null(nm))
-        return(rep_len("", ncol(x)))
+        return(rep("", length.out = ncol(x)))
     else
         return(nm)
 }
@@ -997,10 +1108,10 @@ colnames2 = function(x) {
 #' @export
 `names2<-` = function(x, value, useempty = FALSE) {
     names(x) = if (!is.null(value))
-                   rep_len(value, length(x))
+                   rep(value, length.out = length(x))
                else {
                    if (useempty)
-                       rep_len("", length(x))
+                       rep("", length.out = length(x))
                }
     return(x)
 }
@@ -1015,17 +1126,17 @@ colnames2 = function(x) {
 `rownames2<-` = function(x, value, useempty = FALSE) {
     if (!is.null(dim(x))) {
         rownames(x) = if (!is.null(value))
-                       rep_len(value, nrow(x))
+                       rep(value, length.out = nrow(x))
                    else {
                        if (useempty)
-                           rep_len("", nrow(x))
+                           rep("", length.out = nrow(x))
                    }
     } else {
         names(x) = if (!is.null(value))
-                       rep_len(value, length(x))
+                       rep(value, length.out = length(x))
                    else {
                        if (useempty)
-                           rep_len("", length(x))
+                           rep("", length.out = length(x))
                    }
     }
     return(x)
@@ -1040,10 +1151,10 @@ colnames2 = function(x) {
 #' @export
 `colnames2<-` = function(x, value, useempty = FALSE) {
     colnames(x) = if (!is.null(value))
-                      rep_len(value, ncol(x))
+                      rep(value, length.out = ncol(x))
                   else {
                       if (useempty)
-                          rep_len("", ncol(x))
+                          rep("", length.out = ncol(x))
                   }
     return(x)
 }
@@ -1114,6 +1225,37 @@ seq_along2 = function(x)  {
   seq_len(len(x))
 }
 
+
+#' @name rep_each
+#' @title recycle vector - shortcut for rep(x, each = each)
+#'
+#' @description
+#'
+#' @author Kevin Hadi
+#' @param x data
+#' @param each length to extend vector by
+#' @return vector
+#' @export
+rep_each = function(x, each) {
+    return(rep(x, each = each))
+}
+
+
+#' @name rep_len
+#' @title recycle vector - overload base::rep_len
+#'
+#' @description
+#' problem with base::rep_len is that it doesn't work with other objects
+#'
+#' @author Kevin Hadi
+#' @param x data
+#' @param length.out length to extend vector by
+#' @return vector
+#' @export
+rep_len = function(x, length.out) {
+    return(rep(x, length.out = length.out))
+}
+
 #' @name rep_len2
 #' @title recycle vector along length OR nrow of object
 #'
@@ -1125,9 +1267,9 @@ seq_along2 = function(x)  {
 #' @export
 rep_len2 = function(x, objalong, uselen = TRUE) {
     if (uselen)
-        rep_len(x, len(objalong))
+        rep(x, length.out = len(objalong))
     else
-        rep_len(x, objalong)
+        rep(x, length.out = objalong)
 }
 
 #' @name file.exists2
@@ -2923,12 +3065,12 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
     }
     if (unlist == TRUE) {
         unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+            dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
     }
     else {
         lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+            dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
     }
 }
@@ -3322,7 +3464,7 @@ gg_mytheme = function(gg,
                       x_angle = 90,
                       x_axis_hjust = 0.5,
                       x_axis_vjust = 0.5,
-                      y_axis_hjust = 0.5,
+                      y_axis_hjust = 1,
                       print = FALSE) {
     ## gg = gg + theme_bw(base_size = base_size) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), plot.background = element_blank(), axis.line = element_line(colour = "black"), axis.text.x  = element_text(angle = 90, vjust = .5), legend.position = legend.position)
     gg = gg +
@@ -3385,7 +3527,7 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
         gg = gg + geom_hex(bins = hex_par$bin)
     else if (identical(dens_type, "point"))
         if (is.null(colour))
-            gg = gg + geom_point(size = 0.1)
+            gg = gg + geom_point(size = cex.scatter)
         else
             gg = gg + geom_point(mapping = aes(colour = colour), size = cex.scatter)
     if (!is.null(dat$facet1)) {
@@ -3489,7 +3631,7 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
     else
         gg = gg + geom_histogram(stat = stat_bin(bins = bins), ...)
     gg = gg + scale_x_continuous(trans = trans, limits = xlim, breaks = scales::pretty_breaks(n = x_breaks)) +
-        scale_y_continuous(breaks = pretty_breaks(n = y_breaks), limits = ylim, expand = expand)
+        scale_y_continuous(breaks = scales::pretty_breaks(n = y_breaks), limits = ylim, expand = expand)
     if (!is.null(xlab) && any(!is.na(xlab)) && nzchar(xlab))
         gg = gg + xlab(xlab)
     if (print)
@@ -5386,7 +5528,7 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
   try2({
     onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
     if (coding_alt_only) {
-      filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'missense|splice|stop_gained|frame' )\""
+      filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\""
       if (filterpass)
         cmd = sprintf("cat %s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, filt, tmp.path)
       else
@@ -5463,6 +5605,88 @@ parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE
   }
   this.env = environment()
   return(this.env$out)
+}
+
+#' @name grok_vcf
+#' @title modded grok_vcf
+#'
+#'
+#' @param x path to vcf
+#' @return GRanges
+#' @author Marcin Imielinski
+#' @export
+grok_vcf = function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner = FALSE, verbose = FALSE, geno = NULL, tmp.dir = tempdir(), gr = NULL)
+{
+  fn = c('allele', 'annotation', 'impact', 'gene', 'gene_id', 'feature_type', 'feature_id', 'transcript_type', 'rank', 'variant.c', 'variant.p', 'cdna_pos', 'cds_pos', 'protein_pos', 'distance')
+
+  if (is.character(x))
+    {
+        out = suppressWarnings(read_vcf(x, tmp.dir = tmp.dir, geno = geno, gr = gr))
+        if (length(out) == 0) {
+            return(out)
+        }
+      if (is.na(label))
+        label = x
+    }
+  else
+    out = x
+
+  if (is.na(label))
+    label = ''
+
+  if (verbose)
+    message('Grokking vcf ', label)
+
+  if (!long)
+  {
+        vcf = out
+        if (length(vcf)>0)
+        {
+          if (!is.null(vcf$ANN))
+          {
+            vcf$eff = unstrsplit(vcf$ANN)
+            vcf$modifier = !grepl('(HIGH)|(LOW)|(MODERATE)', vcf$eff)
+            if (!keep.modifier)
+              vcf = vcf[!vcf$modifier]
+          }
+          vcf$ref = as.character(vcf$REF)
+          vcf$alt = as.character(unstrsplit(vcf$ALT))
+          vcf = vcf[, sapply(values(vcf), class) %in% c('factor', 'numeric', 'integer', 'logical', 'character')]
+          vcf$var.id = 1:length(vcf)
+          vcf$type = ifelse(nchar(vcf$ref)==nchar(vcf$alt), 'SNV',
+                     ifelse(nchar(vcf$ref)<nchar(vcf$alt),
+                            'INS', 'DEL'))
+          vcf$label = label
+        }
+        return(vcf)
+  }
+  else if (length(out)>0)
+    {
+        out$REF = as.character(out$REF)
+        out$ALT = as.character(unstrsplit(out$ALT))
+        out$vartype = ifelse(nchar(out$REF) == nchar(out$ALT), 'SNV',
+                      ifelse(nchar(out$REF) < nchar(out$ALT), 'INS', 'DEL'))
+        tmp = lapply(out$ANN, function(y) do.call(rbind, lapply(strsplit(y, '\\|'), '[', 1:15)))
+        tmpix = rep(1:length(out), sapply(tmp, nrow))
+        meta = as.data.frame(do.call(rbind, tmp))
+        colnames(meta) = fn
+        meta$varid = tmpix
+        meta$file = x
+        out2 = out[tmpix]
+        rownames(meta) = NULL
+        values(out2) = cbind(values(out2), meta)
+        names(out2) = NULL
+        out2$ANN = NULL
+        if (oneliner)
+          out2$oneliner = paste(
+            ifelse(!is.na(out2$gene),
+                   as.character(out2$gene),
+                   as.character(out2$annotation)),
+            ifelse(nchar(as.character(out2$variant.p))>0,
+                   as.character(out2$variant.p),
+                   as.character(out2$variant.c)))
+    }
+    return(out2)
 }
 
 #' @name est_snv_cn_stub

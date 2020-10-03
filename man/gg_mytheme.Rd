@@ -19,7 +19,7 @@ gg_mytheme(
   x_angle = 90,
   x_axis_hjust = 0.5,
   x_axis_vjust = 0.5,
-  y_axis_hjust = 0.5,
+  y_axis_hjust = 1,
   print = FALSE
 )
 }

@@ -12,3 +12,6 @@ et(txt, eval = TRUE, envir = parent.frame())
 \description{
 shortcut for eval(parse(text = <string>))
 }
+\author{
+Kevin Hadi
+}
