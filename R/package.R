@@ -617,6 +617,28 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name flag2int
+#' @title convert bam flag to integer
+#' 
+#' 
+#' @export
+flag2int = function(flags) {
+    apply(flags, 1, function(x) sum(2^((1:12) - 1) * x))
+}
+
+
+#' @name mkst
+#' @title MaKe STring
+#'
+#' making string out of vector for eval(parse(text = ...))
+#' 
+#' 
+#' @export
+mkst = function(v, f = "c", collapse = ",") {
+    return(paste0(f, "(", paste0(v, collapse = collapse), ")"))
+}
+
+
 #' @name unI
 #' @title remove "AsIs" from class, i.e. undo I(obj)
 #'
@@ -671,9 +693,9 @@ log10p = function(x) {
 #' @author Kevin Hadi
 #' @export 
 duped = function(..., binder = "data.table") {
-    duplicated(tryCatch(et(sprintf("do.call(%s, list(...))", binder)),
+    duplicated(tryCatch(et(sprintf("%s(...)", binder)),
                         ## error = function(e) do.call(cbind, list(...))))
-                        error = function(e) do.call(paste, list(...))))
+                        error = function(e) paste(...)))
 }
 
 
@@ -1996,11 +2018,19 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
 #' @return A numeric vector of lengths of each list
 #' @export
 lens = function(x, use.names = TRUE) {
-    dlst = lapply(x, dim)
-    out = lengths(x, use.names = use.names)
-    ix = which(!dlst == "NULL")
-    if (length(ix))
-        out[ix] = vapply(x[ix], nrow, 1L, USE.NAMES=use.names)
+    out = vapply(x, function(x) {
+        out = dim(x)[1L]
+        if (!is.null(out))
+            return(out)
+        else
+            return(length(x))
+    }, FUN.VALUE = 1L, USE.NAMES = use.names)
+    ## dlst = lapply(x, nrow)
+    ## dlst = lapply(x, dim)
+    ## out = lengths(x, use.names = use.names)
+    ## ix = which(!dlst == "NULL")
+    ## if (length(ix))
+    ##     out[ix] = vapply(x[ix], nrow, 1L, USE.NAMES=use.names)
     out
 }
 
