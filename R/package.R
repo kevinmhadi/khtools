@@ -617,6 +617,16 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name ne.na
+#' @title mark x with NA if it does not exist
+#' 
+#' 
+#' @export
+ne.na = function(x, no = NA_character_) {
+    ifelse(file.not.exists(x), no, x)
+}
+
+
 #' @name flag2int
 #' @title convert bam flag to integer
 #' 
@@ -3106,6 +3116,32 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
 }
 
 
+#' @name dig_dir2
+#' @title dig into a file path's directory
+#'
+#' Convenience wrapper around dir2() to pull out files from the same
+#' directory of a given file.
+#'
+#' @author Kevin Hadi
+#' @export
+dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1, 
+    unlist = TRUE, ...) 
+{
+    if (is.null(pattern)) {
+        pattern = list(NULL)
+    }
+    if (unlist == TRUE) {
+        unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+    }
+    else {
+        lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
+    }
+}
+
 
 
 #' @name stack.dt
@@ -3955,28 +3991,46 @@ merge.repl = function(dt.x,
     if (keep_order == TRUE) {
         dt.x$tmp.2345098712340987 = seq_len(nrow(dt.x))
     }
+
     dt.x$in.x.2345098712340987 = TRUE
     dt.y$in.y.2345098712340987 = TRUE
+
     new_ddd_args = list(by = by, by.x = by.x, by.y = by.y, all.x = all.x, all.y = all.y, allow.cartesian = allow.cartesian)
+
     if (is.null(by.y) & is.null(by.x) & is.null(by)) {
-        k.x = key(dt.x)
-        k.y = key(dt.y)
+
+        if (length(attributes(dt.x)$sorted) > 0 &&
+            length(attributes(dt.y)$sorted) > 0) {
+            k.x = key(dt.x)
+            k.y = key(dt.y)
+        } else {
+            k.y = k.x = intersect(names2(dt.x), names2(dt.y))
+            if (length(k.x) == 0)
+                stop("no common columns to merge by!")
+            message("intersecting by: ", paste(k.x, collapse = ", "))
+            new_ddd_args$by = k.x
+        }
         if (is.null(k.x) | is.null(k.y) || (k.x != k.y)) {
             stop("neither by.x/by.y  nor by are supplied, keys of dt.x and dt.y must be identical and non NULL")
         }
         x.cols = setdiff(names(dt.x), k.x)
         y.cols = setdiff(names(dt.y), k.y)
+
     } else if (!is.null(by.x) & !is.null(by.y)) {
+
         x.cols = setdiff(names(dt.x), by.x)
         y.cols = setdiff(names(dt.y), by.y)
         new_ddd_args = new_ddd_args[setdiff(names(new_ddd_args), c("by"))]
+
     } else if (!is.null(by)) {
+
         x.cols = setdiff(names(dt.x), by)
         y.cols = setdiff(names(dt.y), by)
         if (! all(by %in% colnames(dt.x)) | ! all(by %in% colnames(dt.y))) {
             stop("column ", by, " does not exist in one of the tables supplied \nCheck the column names")
         }
         new_ddd_args = new_ddd_args[setdiff(names(new_ddd_args), c("by.y", "by.x"))]
+
     }
     these_cols = intersect(x.cols, y.cols)
     ## if (replace_in_x) {
@@ -3985,10 +4039,10 @@ merge.repl = function(dt.x,
         for (this_col in these_cols) {
             data.table::set(dt.x.tmp, i = NULL, j = this_col, value = NULL)
         }
-        dt.repl = do.call("merge", args = c(list(x = dt.x.tmp, y = dt.y), new_ddd_args))
+        dt.repl = suppressWarnings(do.call("merge", args = c(list(x = dt.x.tmp, y = dt.y), new_ddd_args)))
         ## dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
     } else {
-        dt.repl = do.call("merge", args = c(list(x = dt.x, y = dt.y), new_ddd_args))
+        dt.repl = suppressWarnings(do.call("merge", args = c(list(x = dt.x, y = dt.y), new_ddd_args)))
         dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
         this_env = environment()
         for (this_col in these_cols) {
@@ -4703,7 +4757,7 @@ gr.resize = function(gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.stra
     } else
         width.arg = pmax(wid, minwid)
     if (reduce) 
-        gr = reduce(gr + width.arg, ignore.strand = ignore.strand) - width.arg
+        gr = GenomicRanges::reduce(gr + width.arg, ignore.strand = ignore.strand) - width.arg
     return(GenomicRanges::resize(gr,
                                  width = width.arg,
                                  fix = fix,
