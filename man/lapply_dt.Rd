@@ -4,7 +4,14 @@
 \alias{lapply_dt}
 \title{Flexibly apply function to columns of data.table/frame}
 \usage{
-lapply_dt(x, dt, LFUN = "identity", natype = NA, as.data.table = T)
+lapply_dt(
+  x,
+  dt,
+  LFUN = "identity",
+  natype = NA,
+  as.data.table = T,
+  evalcall = FALSE
+)
 }
 \arguments{
 \item{x}{fields to apply function to}
@@ -16,6 +23,8 @@ lapply_dt(x, dt, LFUN = "identity", natype = NA, as.data.table = T)
 \item{natype}{the type of NA which is to be specified as one of NA, NA_character_, NA_real_, or NA_integer_}
 
 \item{as.data.table}{a logical indicating whether to coerce the output to a data.table}
+
+\item{evalcall}{logical flag to evaluate x as a call or not}
 }
 \value{
 data.table/frame if as.data.table is TRUE, otherwise a list

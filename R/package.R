@@ -682,7 +682,10 @@ log10p = function(x) {
 #' @author Kevin Hadi
 #' @export 
 .gc = function(df, ptrn, ignore.case = FALSE) {
-    cnames = colnames2(df)
+    if (inherits(df, c("GRanges", "GRangesList")))
+        cnames = colnames2(df@elementMetadata)
+    else
+        cnames = colnames2(df)
     if (is.character(ptrn)) {
         ix = loop_grep(ptrn, cnames, ignore.case = ignore.case)
     } else {
@@ -1504,6 +1507,40 @@ write.ctab = function (x, ..., sep = ",", quote = T, row.names = F)
 }
 
 
+
+
+#' @name qmat
+#' @title query a matrix with nonmatching entries as NA
+#'
+#'
+#' @export
+qmat = function(mat, rid = NULL, cid = NULL) {
+    rown_provided = FALSE
+    coln_provided = FALSE
+    if (is.null(rid)) {
+        rid = seq_len(nrow(mat))
+    } else if (is.character(rid)) {
+        rid = setNames(match3(rid, rownames(mat)), rid)
+        rown_provided = TRUE
+    }
+    rst = mkst(rid)
+    if (is.null(cid))
+        cid = seq_len(ncol(mat))
+    else if (is.character(cid)) {
+        coln_provided = TRUE
+        cid = setNames(match3(cid, colnames(mat)), cid)
+    }
+    if (!inherits(rid, "integer")) rid = as.integer(rid)
+    if (!inherits(cid, "integer")) cid = as.integer(cid)
+    ## can work with data table
+    out = et(sprintf("mat[%s,%s,drop = FALSE]", mkst(rid), mkst(cid)))
+    ## out = mat[rid,cid,drop = FALSE]
+    if (rown_provided) rownames(out) = names(rid)
+    if (coln_provided) colnames(out) = names(cid)
+    return(out)
+}
+
+
 #' @name match3
 #' @title similar to setkey except a general use utility
 #'
@@ -1512,8 +1549,8 @@ write.ctab = function (x, ..., sep = ",", quote = T, row.names = F)
 #'
 #' @export
 match3 = function(x, table, nomatch = NA_integer_) {
-  dx = within(data.frame(x), {id.x = seq_along(x)})
-  dtb = within(data.frame(table), {id.tb = seq_along(table)})
+  dx = within(data.frame(x = x), {id.x = seq_along(x)})
+  dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
   res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
               allow.cartesian = TRUE)
   return(res$id.tb[order(res$id.x)])
@@ -1788,16 +1825,17 @@ interaction2 = function(..., drop = FALSE, sep = ".", lex.order = FALSE)
 #' @param dt data.table/frame
 #' @param LFUN either a character name of a function, or a function
 #' @param natype the type of NA which is to be specified as one of NA, NA_character_, NA_real_, or NA_integer_
+#' @param evalcall logical flag to evaluate x as a call or not
 #' @param as.data.table a logical indicating whether to coerce the output to a data.table
 #' @return data.table/frame if as.data.table is TRUE, otherwise a list
 #' @export lapply_dt
-lapply_dt = function(x, dt, LFUN = "identity", natype = NA, as.data.table = T) {
+lapply_dt = function(x, dt, LFUN = "identity", natype = NA, as.data.table = T, evalcall = FALSE) {
     if (!is.function(LFUN))
         LFUN = base::mget(x = 'identity', mode = "function", inherits = T)[[1]]
     expr = substitute(x)
     if (is.name(expr))
         x = x
-    else if (is.call(expr))
+    else if (evalcall && is.call(expr))
         expr = eval(expr)
     else {
         x = trimws(gsub(',', "", unlist(strsplit(toString(expr), " "))[-1]))
@@ -3249,10 +3287,159 @@ globasn = function(obj, var = NULL, return_obj = TRUE, envir = .GlobalEnv, verbo
 #' @export
 reassign = function(variables_lst, calling_env = parent.frame()) {
     for (i in 1:length(variables_lst)) {
+        message("variable assigned to: ", names(variables_lst[i]))
         assign(names(variables_lst[i]), variables_lst[[i]], envir = calling_env)
     }
-    return(variables_lst)
+    invisible(variables_lst)
 }
+
+
+
+##############################
+##############################
+############################## multiROC helpers
+##############################
+##############################
+
+#' @name classystat
+#' @title calculates various scores from actual classes and predicted classes
+#'
+#' Scores calculated from a classification task with known true labels:
+#' precision, recall
+#' F1, mean f1, weighted mean f1, mean precision,
+#' mean recall, weighted mean recall, accuracy
+#' 
+#' @param real true class labels
+#' @param pred predicted class labels
+#' @return a list of various statistics for clasification task
+#' @export
+classystat= function(real, pred) {
+  if (!inherits(real, "factor"))
+    real = factor(real)
+  if (!inherits(pred, "factor"))
+    pred = factor(pred)
+  if (length(setdiff(levels(real), levels(pred))) > 0)
+    stop("real and pred must have matching levels!")
+  if (! all(levels(real) == levels(pred))) 
+    pred = factor(pred, levels = levels(real))
+  rp = (table2(real = real, pred = pred) %>% melt %>% asdt)
+  acc = with(rp, {
+    sum(value[real == pred]) / sum(value)
+  })
+  prec = rp[, sum(value[real == pred]) / sum(value), by = pred]
+  reca = rp[, sum(value[real == pred]) / sum(value), by = real]
+  tots = rp[, sum(value), by = real]$V1
+  grandtot = rp[, sum(value)]
+  prec[, wV1 := tots * V1 / grandtot]
+  reca[, wV1 := tots * V1 / grandtot]
+  aggprec = mean(prec$V1)
+  aggreca = mean(reca$V1)
+  aggwprec = sum(prec$wV1)
+  aggwreca = sum(reca$wV1)
+  f1 = setNames(2 * (prec$V1 * reca$V1) / (prec$V1 + reca$V1), prec[[1]])
+  aggf1 = mean(f1)
+  wf1 = setNames(tots * f1 / grandtot, prec[[1]])
+  ## weighted aggregate F1
+  waggf1 = sum(wf1)
+  list(
+    total_true = rp[, sum(value), by =real][, setNames(V1, real)],
+    precision = with(prec, setNames(V1, pred)),
+    recall = with(reca, setNames(V1, real)),
+    f1 = f1,
+    mean_precision = aggprec,
+    mean_recall = aggreca,
+    weighted_mean_precision = aggwprec,
+    weighted_mean_recall = aggwreca,
+    mean_f1 = aggf1,
+    weighted_mean_f1 = waggf1,
+    accuracy = acc
+  ) 
+}
+
+#' @name mroclab
+#' @title create one hot table of labels for multiROC
+#'
+#' @param y factor
+#' @return the input list
+#' @export
+mroclab = function(y) {
+    if (!inherits(y, "factor"))
+        stop("y must be a factor")
+    lbl = mltools::one_hot(data.table(y))
+    colnm = gsub("y_", "", colnames(lbl))
+    lbl = setColnames(lbl, paste0(colnm, " _true"))
+    lbl
+}
+
+#' @name mrocpred
+#' @title format predicted scores for multiROC
+#'
+#' from predict(...)
+#' 
+#' @param prd0 a matrix of prediction scores
+#' @return A prediction
+#' @export
+mrocpred = function(prd0, nm = "agg") {
+    prd = asdf(prd0)
+    prd = setColnames(prd, paste0(colnames(prd), " _pred_", nm))
+    prd
+}
+
+
+#' @name mrocdat
+#' @title create a data frame for ggplotting multiroc
+#'
+#' 
+#' 
+#' @param lbl output from mroclab
+#' @param prd output from mrocpred
+#' @return A data.frame that can be fed into ggplot
+#' @export
+mrocdat = function(lbl, prd) {  
+  prd00 = rbind(0, asm(mrocpred(predrf(rfmod.rsv, rsv))))
+  mg = setcols(with((melt(prd00)), g2()[order(Var2, value),]), c("Var2", "value"), c("Group", "prd"))[, c("Group", "prd"), drop = F]
+  cb = cbind(lbl, prd)
+  roc_res = multiROC::multi_roc(cb, force_diag = T)
+  plot_roc_df <- multiROC::plot_roc_data(roc_res)
+  gdat = asdt(plot_roc_df)[Group %nin% c("Macro", "Micro")][, prd := mg$prd]
+  withAutoprint(gdat, echo = F)$value
+}
+
+
+#' @name ggmroc
+#' @title ggplot for multiROC
+#'
+#' helper function for outputting ggplot
+#' 
+#' @param lbl output from mroclab
+#' @param prd output from mrocpred
+#' @return A data.frame that can be fed into ggplot
+#' @export
+ggmroc = function(gdat, palette = "Moonrise2") {
+    g = with(gdat, {
+        ggplot(g2(), aes(x = 1-Specificity, y=Sensitivity)) +
+            geom_path(aes(color = Group, linetype=Method), size=1.5) +
+            geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
+                         colour='grey', linetype = 'dotdash') +
+            scale_colour_manual(values = skitools::brewer.master(length(unique(Group)), wes = T, palette = palette)) +
+            theme_bw() +
+            theme(plot.title = element_text(hjust = 0.5),
+                  legend.justification=c(1, 0), legend.position=c(.95, .05),
+                  legend.title=element_blank(),
+                  legend.background = element_rect(fill=NULL, size=0.5,
+                                                   linetype="solid", colour ="black"))
+    })
+    return(g)
+}
+
+
+
+##############################
+##############################
+############################## end multiROC helpers
+##############################
+##############################
+
 
 
 ##############################
@@ -4474,9 +4661,74 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
     return(fa)
 }
 
+#' @name subgr
+#' @title subgr
+#' 
+#' @description
+#'
+#'
+#' 
+#'
+#' @return granges
+#' @author Kevin Hadi
+#' @export
+subgr = function(x, y) {
+  expr = as.expression(substitute(y))
+  x[S4Vectors::with(x, eval(expr))]
+}
 
+#' @name %Q%
+#' @title query
+#'
+#' 
+#' @description
+#'
+#'
+#' 
+#'
+#' @return granges
+#' @author Kevin Hadi
+#' @export
+"%Q%" = function(x,y, ...) {
+    UseMethod("%Q%")
+}
 
+#' @name %Q%.GRanges
+#' @title query on GRangesList
+#'
+#' 
+#' @description
+#'
+#'
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export
+"%Q%.GRanges" = subgr
 
+#' @name %Q%.GRangesList
+#' @title query on GRangesList
+#' 
+#' @description
+#'
+#'
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export
+"%Q%.GRangesList" = subgr
+
+#' @name %Q%.CompressedGRangesList
+#' @title query on CompressedGRangesList
+#' 
+#' @description
+#'
+#'
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export
+"%Q%.CompressedGRangesList" = subgr
 
 
 #' @name gr.genome
@@ -4747,21 +4999,27 @@ gr.sort = function(gr, ignore.strand = TRUE) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.resize
-gr.resize = function(gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.strand = FALSE, fix = "center", reduce = FALSE) {
+gr.resize = function (gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.strand = FALSE, 
+    fix = "center", reduce = FALSE) 
+{
     wid = width
     if (pad) {
         if (isTRUE(each)) {
             wid = wid * 2
         }
         width.arg = pmax(width(gr) + wid, minwid)
-    } else
-        width.arg = pmax(wid, minwid)
-    if (reduce) 
-        gr = GenomicRanges::reduce(gr + width.arg, ignore.strand = ignore.strand) - width.arg
-    return(GenomicRanges::resize(gr,
-                                 width = width.arg,
-                                 fix = fix,
-                                 ignore.strand = ignore.strand))
+    }
+    else width.arg = pmax(wid, minwid)
+    if (reduce) {
+        ## gr = GenomicRanges::reduce(gr + width.arg, ignore.strand = ignore.strand) - 
+        ##     width.arg
+        out = gr.resize(gr, width, pad = pad, minwid = minwid, each = each, ignore.strand = ignore.strand, fix = fix, reduce = FALSE)
+        out = GenomicRanges::reduce(out, ignore.strand = ignore.strand)
+        out = gr.resize(out, width, pad = pad, minwid = minwid, each = each, ignore.strand = ignore.strand, fix = fix, reduce = FALSE)
+        return(out)               
+    }
+    return(GenomicRanges::resize(gr, width = width.arg, fix = fix, 
+        ignore.strand = ignore.strand))
 }
 
 
@@ -4888,6 +5146,45 @@ std.calc.cov = function(anci, pad, field = NULL, baseline = NULL, FUN = "median"
     gr_calc_cov(anci %>% dt2gr, PAD = pad, start.base = -5e3, end.base = 0, FUN = FUN, field = field, win = 5e3, baseline = baseline)
 }
 
+
+#' @name gr.disjoin
+#' @title updated gr.disjoin from gUtils to work with GRangesList
+#' @description
+#'
+#' 
+#'
+#' @return GRanges or GRangesList
+#' @author Kevin Hadi
+#' @export gr.disjoin
+gr.disjoin = function (x, ..., ignore.strand = TRUE) 
+{
+    if (inherits(x, "GRangesList")) {
+        gr = GenomicRanges:::deconstructGRLintoGR(x)
+        if (ignore.strand) gr = gr.stripstrand(gr)
+        return(GenomicRanges:::reconstructGRLfromGR(gUtils::gr.disjoin(gr, ..., ignore.strand = ignore.strand), x))
+    }
+    y = disjoin(x, ...)
+    ix = gr.match(y, x, ignore.strand = ignore.strand)
+    values(y) = values(x)[ix, , drop = FALSE]
+    return(y)
+}
+
+
+
+#' @name grl.disjoin
+#' @title disjoin on grangeslist
+#' @description
+#'
+#' 
+#'
+#' @return GRangesList
+#' @author Kevin Hadi
+#' @export grl.disjoin
+grl.disjoin = function(x, ..., ignore.strand = T) {
+  gr = GenomicRanges:::deconstructGRLintoGR(x)
+  if (ignore.strand) gr = gr.stripstrand(gr)
+  GenomicRanges:::reconstructGRLfromGR(gr.disjoin(gr, ..., ignore.strand = ignore.strand), x)
+}
 
 
 #' @name gr.split
