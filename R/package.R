@@ -1549,13 +1549,43 @@ qmat = function(mat, rid = NULL, cid = NULL) {
 #'
 #' @export
 match3 = function(x, table, nomatch = NA_integer_) {
-  dx = within(data.frame(x = x), {id.x = seq_along(x)})
-  dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
-  res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
-              allow.cartesian = TRUE)
-  return(res$id.tb[order(res$id.x)])
+    ## dx = within(data.frame(x = x), {id.x = seq_along(x)})
+    ## dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
+    ## res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+    ##             allow.cartesian = TRUE)
+    ## return(res$id.tb[order(res$id.x)])
+    m = match(table,x)
+    mat = cbind(m, seq_along(m))
+    mat = mat[!is.na(mat[,1]),,drop=FALSE]
+    mat = mat[order(mat[,1]),,drop = FALSE]
+    mat = cbind(mat, seq_len(dim(mat)[1]))
+    m2 = match(x,table)
+    ix = which(!duplicated(m2))
+    mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+    mat[mat_rix,,drop=F][,2]
 }
 
+#' @name %k%
+#' @title similar to setkey except a general use utility
+#'
+#' slower version of setkey, but for interactive use
+#'
+#' @export
+`%k%` = function(x,y) {
+    ## m = match(x,y)
+    ## mat = cbind(m, seq_along(m))
+    ## mat = mat[!is.na(mat[,1]),,drop=FALSE]
+    ## mat = mat[order(mat[,1]),,drop = FALSE]
+    ## mat = cbind(mat, seq_len(dim(mat)[1]))
+    ## ## rleseq(x[which(x %in% y)], clump = T)
+    ## m2 = match(y,x)
+    ## ## lst = rleseq(m2, clump = T)
+    ## ix = which(!duplicated(m2))
+    ## base::tabulate(m2)[m2][ix]    
+    ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+    ## mat[mat_rix,,drop=F][,2]
+    match3(y,x)
+}
 
 #' @name column_to_rownames
 #' @title making column into rownames
