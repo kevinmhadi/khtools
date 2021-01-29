@@ -11,7 +11,8 @@ df2gr(
   end.field = "end",
   strand.field = "strand",
   ignore.strand = FALSE,
-  keep.extra.columns = TRUE
+  keep.extra.columns = TRUE,
+  starts.in.df.are.0based = FALSE
 )
 }
 \value{

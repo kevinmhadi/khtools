@@ -6,7 +6,13 @@
 
 internal version that doesn't require library(tibble)}
 \usage{
-rn2col(.data, var = "rowname", keep.rownames = FALSE)
+rn2col(
+  .data,
+  var = "rowname",
+  keep.rownames = FALSE,
+  asdf = as.data.frame,
+  as.data.frame = FALSE
+)
 }
 \arguments{
 \item{.data}{a data frame/table}

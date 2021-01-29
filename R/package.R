@@ -35,6 +35,7 @@ match_s = function(x, y) {
 #'
 #' returns vector of indices of matches in x with length of vector = length(y)
 #' non matches are NA
+#'
 #' @export
 match2 = function(x, y) {
     ## x_tmp = factor(as.character(x), levels = as.character(y))
@@ -53,7 +54,8 @@ match2 = function(x, y) {
     return(new_index)
 }
 
-#' find all duplicates in a vector
+#' @name find_dups
+#' @title find all duplicates in a vector
 #'
 #' @param vec A vector
 #' @return a logical vector with all positions marked TRUE being duplicates
@@ -61,6 +63,7 @@ match2 = function(x, y) {
 #' find_dups(c(1,1,1,3,5))
 #' find_dups(c(1,3,1,3,1))
 #' find_dups(c(3,1,5,4,4))
+#'
 #' @export
 find_dups = function(..., re_sort = FALSE, sep = " ") {
   lst = as.list(match.call())[-1]
@@ -110,7 +113,8 @@ selfname = function(char) {setNames2(char, char)}
 #' @export
 check_lst = function(lst, class_condition = c("try-error", "error", "errored", "err"))
 {
-    unlist(lapply(lst, function(x) class(x)[1])) %in% class_condition
+    ## unlist(lapply(lst, function(x) class(x)[1])) %in% class_condition
+    return(vapply(lst, function(x) class(x)[1], "") %in% class_condition)
 }
 
 #' @name iderr
@@ -126,8 +130,22 @@ iderr = function(lst, class_condition = c("try-error", "error", "errored", "err"
   which(check_lst(lst))
 }
 
+#' @name whicherr
+#' @title iderr
+#'
+#' checking a list for any elements that are try-errors
+#' usually from an lapply(..., function(x) try({})) call
+#'
+#' @param lst A list
+#' @return a logical vector marking which elements are try-errors"
+#' @export
+whicherr = iderr
 
-#' a wrapper around check_lst
+
+#' @name ret_no_err
+#' @title a wrapper around check_lst
+#'
+#' 
 #'
 #' @param lst A list (usually the output of lapply(... , function(x) try({}))
 #' @return only returns the non-errors in the list
@@ -137,7 +155,9 @@ ret_no_err = function(lst, class_condition = c("try-error", "error", "errored", 
     return(lst[!check_lst(lst, class_condition = class_condition)])
 }
 
-#' a wrapper around check_lst
+#' @name ret_err
+#' @title a wrapper around check_lst
+#'
 #'
 #' @param lst A list (usually the output of lapply(... , function(x) try({}))
 #' @return only returns the errors in the list
@@ -184,7 +204,7 @@ setColnames = function(object = nm, nm = NULL, pattern = NULL, replacement = "")
 #' @title convenience function to set column names
 #'
 #' alias of setColnames
-#' 
+#'
 #' @param object tabled object
 #' @param nm names of the new columns
 #' @return colnamed object
@@ -617,10 +637,77 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name uniqf
+#' @title Unique factor
+#'
+#' @description
+#' Make a unique factor based on one or more vectors
+#' in parallel.
+#'
+#' @export uniqf
+uniqf = function(..., sep = paste0(" ", rand.string(length = 8), 
+                                   " ")) {
+    lst = as.list(match.call()[-1])
+    ix = which(names2(lst) != "sep")
+    senv = suppressWarnings(stackenv(parent.frame()))
+    tmpix = do.call(paste, c(lst[ix], alist(sep = dg(sep))), envir = parent.frame())
+    tmpix = factor(tmpix, levels = unique(tmpix))
+    tmpix
+}
+
+#' @name qq
+#' @title get actual quantile values of vector
+#'
+#' @description
+#' Use the empirical distribution of numeric values
+#' to get the quantiles assigned to each value of a vector
+#'
+#' @export qq
+qq = function(x) {
+    ecdf(x)(x)
+}
+
+#' @name qtrim
+#' @title cut off vector by quantiles
+#'
+#' @description
+#' Use the empirical distribution of numeric values
+#' to get the quantiles assigned to each value of a vector.
+#' then remove values that are above the quantile cutoff.
+#'
+#' @export qtrim
+qtrim = function(x, maxq = 0.99) {
+    x[qq(x) < maxq]
+}
+
+#' @name tailf
+#' @title modification of tailf from skitools
+#'
+#'
+#' @export tailf
+tailf = function (x, n = NULL, grep = NULL) {
+    oldscipen = options()$scipen
+    on.exit(options(scipen = oldscipen))
+    options(scipen = 999)
+    if (is.null(grep)) {
+        if (is.null(n)) {
+            x = paste("tail -f", paste(x, collapse = " "))
+        }
+        else {
+            x = paste("tail -n", n, "-f", paste(x, collapse = " "))
+        }
+    }
+    else {
+        x = paste("grep -H", grep, paste(x, collapse = " "),
+            " | more")
+    }
+    system(x)
+}
+
 #' @name ne.na
 #' @title mark x with NA if it does not exist
-#' 
-#' 
+#'
+#'
 #' @export
 ne.na = function(x, no = NA_character_) {
     ifelse(file.not.exists(x), no, x)
@@ -629,8 +716,8 @@ ne.na = function(x, no = NA_character_) {
 
 #' @name flag2int
 #' @title convert bam flag to integer
-#' 
-#' 
+#'
+#'
 #' @export
 flag2int = function(flags) {
     apply(flags, 1, function(x) sum(2^((1:12) - 1) * x))
@@ -641,8 +728,8 @@ flag2int = function(flags) {
 #' @title MaKe STring
 #'
 #' making string out of vector for eval(parse(text = ...))
-#' 
-#' 
+#'
+#'
 #' @export
 mkst = function(v, f = "c", collapse = ",") {
     return(paste0(f, "(", paste0(v, collapse = collapse), ")"))
@@ -653,8 +740,8 @@ mkst = function(v, f = "c", collapse = ",") {
 #' @title remove "AsIs" from class, i.e. undo I(obj)
 #'
 #' undo I(obj)
-#' 
-#' 
+#'
+#'
 #' @export
 unI = function(x) {
   if (inherits(x, "AsIs")) class(x) = setdiff(class(x), "AsIs")
@@ -664,8 +751,8 @@ unI = function(x) {
 
 #' @name log10p
 #' @title log10(x + 1)
-#' 
-#' 
+#'
+#'
 #' @export
 log10p = function(x) {
     log10(x + 1)
@@ -674,13 +761,13 @@ log10p = function(x) {
 
 #' @name .gc
 #' @title .gc
-#' 
-#' 
-#' 
+#'
+#'
+#'
 #' @param df data frame
 #' @param ptrn pattern
 #' @author Kevin Hadi
-#' @export 
+#' @export
 .gc = function(df, ptrn, ignore.case = FALSE) {
     if (inherits(df, c("GRanges", "GRangesList")))
         cnames = colnames2(df@elementMetadata)
@@ -699,12 +786,12 @@ log10p = function(x) {
 
 #' @name duped
 #' @title duped
-#' 
-#' 
-#' 
-#' @param ... vectors to paste by 
+#'
+#'
+#'
+#' @param ... vectors to paste by
 #' @author Kevin Hadi
-#' @export 
+#' @export
 duped = function(..., binder = "data.table") {
     duplicated(tryCatch(et(sprintf("%s(...)", binder)),
                         ## error = function(e) do.call(cbind, list(...))))
@@ -714,9 +801,9 @@ duped = function(..., binder = "data.table") {
 
 #' @name colexists
 #' @title find out if column is in data.table
-#' 
-#' 
-#' 
+#'
+#'
+#'
 #' @param nm name of column
 #' @param df data.frame or data.table
 #' @author Kevin Hadi
@@ -732,24 +819,50 @@ colexists = function(nm, df) {
 #' FUN can be an anonymous function call
 #' dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
 #' can also omit the brackets
-#' 
-#' 
-#' 
+#'
+#'
+#'
 #' @param FUN function
 #' @author Marcin Imielinski
 #' @export dodo.call2
-dodo.call2 = function (FUN, args) 
+dodo.call2 = function (FUN, args, use.names = T)
 {
-    if (!is.character(FUN)) 
-        FUN = substitute(FUN)
-    cmd = paste(
-        paste0("{", as.character(as.expression(FUN)), "}"),
-        "(",
-        paste("args[[", 1:length(args), "]]", collapse = ","),
-        ")",
-        sep = "")
+    if (!is.character(FUN))
+      FUN = substitute(FUN)
+    if (isTRUE(use.names) && !is.null(names(args)))
+      argn = paste(names(args), "=")
+    else
+        argn = NULL
+    if (!is.matrix(args)) {
+        cmd = paste(
+            paste0("{", as.character(as.expression(FUN)), "}"),
+            "(",
+            paste0(argn, "args[[", 1:length(args), "]]", collapse = ","),
+            ")",
+            sep = "")
+    } else {
+        cmd = paste(
+            paste0("{", as.character(as.expression(FUN)), "}"),
+            "(",
+            paste0(argn, "args[,", 1:ncol(args), "]", collapse = ","),
+            ")",
+            sep = "")
+    }
     return(et(cmd))
 }
+
+#' @name nonacol
+#' @title no columns named "NA"
+#'
+#'
+#' @param x data frame
+#' @author Kevin Hadi
+#' @export nonacol
+nonacol = function(x, napattern = "^NA") {
+  good = grep(napattern, colnames(x), invert = T)
+  return(et(sprintf("x[, %s,drop=F]", mkst(good))))
+}
+
 
 
 #' @name et
@@ -774,12 +887,12 @@ et = function(txt, eval = TRUE, envir = parent.frame()) {
 #'
 #' clobber NA, or some value between multiple vectors
 #' bads can be a function that returns a logical
-#' 
+#'
 #'
 #' @param ... vectors to merge together
 #' @param bads a set of values to clobber, or a function that returns a logical
 #' @param r2l merge from left to right per pair of vectors
-#' @param fromLast if TRUE, merge from last vector to first 
+#' @param fromLast if TRUE, merge from last vector to first
 #' @export
 clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE) {
     lst = list(...)
@@ -826,12 +939,12 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
         return(Reduce(function(x,y) dofun(y,x), lst, right = fromLast))
 }
 
-## clobber = function (..., bads = NA, r2l = FALSE, fromLast = FALSE, opposite = TRUE) 
+## clobber = function (..., bads = NA, r2l = FALSE, fromLast = FALSE, opposite = TRUE)
 ## {
 ##     lst = list(...)
 ##     lens = lengths(lst)
 ##     maxlen = max(lens)
-##     if (length(unique(lens)) > 1) 
+##     if (length(unique(lens)) > 1)
 ##         lst = lapply(lst, function(x) rep_len(x, maxlen))
 ##     if (opposite) {
 ##         yfun = get("!", mode = "function")
@@ -851,7 +964,7 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
 ##         ix = intersect(badsx, nbadsy)
 ##         return(replace(x, ix, rep_len(y[ix], length(ix))))
 ##     }
-##     if (!r2l) 
+##     if (!r2l)
 ##         return(Reduce(function(x, y) dofun(x, y), lst, right = fromLast))
 ##     else return(Reduce(function(x, y) dofun(y, x), lst, right = fromLast))
 ## }
@@ -869,7 +982,7 @@ coalesce = clobber
 #' @title same as tibble::enframe
 #'
 #' enframe
-#' 
+#'
 #'
 #' @param x named vector
 #' @param name name of column containing names(x)
@@ -940,7 +1053,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
     ##                      collapse = ",")
     ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
     ##     }
-        
+
     ## })
     on.exit({eval(parse(text = oldstr), envir = parent.frame())})
     if (length(pars) > 0) {
@@ -1034,7 +1147,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
     ##                      collapse = ",")
     ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
     ##     }
-        
+
     ## })
     on.exit({eval(parse(text = oldstr), envir = parent.frame())})
     if (length(pars) > 0) {
@@ -1523,16 +1636,24 @@ qmat = function(mat, rid = NULL, cid = NULL) {
         rid = setNames(match3(rid, rownames(mat)), rid)
         rown_provided = TRUE
     }
-    rst = mkst(rid)
+    ## rst = mkst(rid)
     if (is.null(cid))
         cid = seq_len(ncol(mat))
     else if (is.character(cid)) {
         coln_provided = TRUE
         cid = setNames(match3(cid, colnames(mat)), cid)
     }
-    if (!inherits(rid, "integer")) rid = as.integer(rid)
-    if (!inherits(cid, "integer")) cid = as.integer(cid)
+    ## if (!inherits(rid, "integer")) rid = as.integer(rid)
+    ## if (!inherits(cid, "integer")) cid = as.integer(cid)
     ## can work with data table
+    if (!inherits(rid, "character")) {
+        rid = structure(as.character(rid), names = names(rid))
+        rid[is.na(rid)] = "NA_integer_"
+    }
+    if (!inherits(cid, "character")) {
+        cid = structure(as.character(cid), names = names(cid))
+        cid[is.na(cid)] = "NA_integer_"
+    }
     out = et(sprintf("mat[%s,%s,drop = FALSE]", mkst(rid), mkst(cid)))
     ## out = mat[rid,cid,drop = FALSE]
     if (rown_provided) rownames(out) = names(rid)
@@ -1548,30 +1669,49 @@ qmat = function(mat, rid = NULL, cid = NULL) {
 #' but for general/interactive use
 #'
 #' @export
-match3 = function(x, table, nomatch = NA_integer_) {
-    ## dx = within(data.frame(x = x), {id.x = seq_along(x)})
-    ## dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
-    ## res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
-    ##             allow.cartesian = TRUE)
-    ## return(res$id.tb[order(res$id.x)])
-    m = match(table,x)
-    mat = cbind(m, seq_along(m))
-    mat = mat[!is.na(mat[,1]),,drop=FALSE]
-    mat = mat[order(mat[,1]),,drop = FALSE]
-    mat = cbind(mat, seq_len(dim(mat)[1]))
-    m2 = match(x,table)
-    ix = which(!duplicated(m2))
-    mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
-    mat[mat_rix,,drop=F][,2]
+match3 = function(x, table, nomatch = NA_integer_, old = TRUE) {
+    if (old) {
+        dx = within(data.frame(x = x), {id.x = seq_along(x)})
+        dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
+        res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+                    allow.cartesian = TRUE)
+        return(res$id.tb[order(res$id.x)])
+    } else  {
+        m = match(table,x)
+        mat = cbind(m, seq_along(m))
+        mat = mat[!is.na(mat[,1]),,drop=FALSE]
+        mat = mat[order(mat[,1], na.last = FALSE),,drop = FALSE]
+        mat = cbind(mat, seq_len(dim(mat)[1]))
+        m2 = match(x,table)
+        ix = which(!duplicated(m2) & !is.na(m2))
+        mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+        ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+        ix = rep(1, length.out = length(m2))
+        ## original line
+        ## ix[!is.na(m2)] = base::tabulate(m)[!is.na(m2)]
+        ix[!is.na(m2)] = base::tabulate(m)[m][m2][!is.na(m2)]
+        out = rep(m2, ix)
+        out[!is.na(out)] = mat[mat_rix,,drop=F][,2]
+        return(out)
+        ## m = match(table, x)
+        ## mat = cbind(m, seq_along(m))
+        ## mat = mat[!is.na(mat[, 1]), , drop = FALSE]
+        ## mat = mat[order(mat[, 1]), , drop = FALSE]
+        ## mat = cbind(mat, seq_len(dim(mat)[1]))
+        ## m2 = match(x, table)
+        ## ix = which(!duplicated(m2))
+        ## mat_rix = unlist(rep(split(mat[, 3], mat[, 1]), base::tabulate(m2)[m2][ix]))
+        ## mat[mat_rix, , drop = F][, 2]
+    }
 }
 
-#' @name %k%
+#' @name %K%
 #' @title similar to setkey except a general use utility
 #'
 #' slower version of setkey, but for interactive use
 #'
 #' @export
-`%k%` = function(x,y) {
+`%K%` = function(thisx,thisy, old = TRUE) {
     ## m = match(x,y)
     ## mat = cbind(m, seq_along(m))
     ## mat = mat[!is.na(mat[,1]),,drop=FALSE]
@@ -1581,10 +1721,13 @@ match3 = function(x, table, nomatch = NA_integer_) {
     ## m2 = match(y,x)
     ## ## lst = rleseq(m2, clump = T)
     ## ix = which(!duplicated(m2))
-    ## base::tabulate(m2)[m2][ix]    
+    ## base::tabulate(m2)[m2][ix]
     ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
     ## mat[mat_rix,,drop=F][,2]
-    match3(y,x)
+    if (old)
+        return(match3(table = thisx, x = thisy, old = TRUE))
+    else
+        return(match3(table = thisx, x = thisy, old = FALSE))
 }
 
 #' @name column_to_rownames
@@ -1595,16 +1738,21 @@ match3 = function(x, table, nomatch = NA_integer_) {
 #' @param .data a data frame/table
 #' @return a data frame/table with rownames from a column
 #' @export
-column_to_rownames = function(.data, var = "rowname", force = T) {
+column_to_rownames = function(.data, var = "rowname", force = T, sep = " ") {
     ## if (inherits(.data, c("data.frame", "DFrame"))) {
     if (!is.null(dim(.data))) {
+        tmpfun = function(...) paste(..., sep = sep)
         if (!is.null(rownames(.data)) || force) {
             ## rn = .data[[var]]
             if (is.numeric(var)) {
-                rn = unname(unlist(eval(parse(text = paste(".data[,", paste("c(", paste0(var, collapse = ", "), ")"), "]")))))
+                eva = eval(parse(text = paste(".data[,", paste("c(", paste0(var, collapse = ", "), ")"), ",drop=FALSE]")))
+                if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
+                rn = unname(unlist(eva))
                 colix = setdiff(seq_len(ncol(.data)), var)
             } else if (is.character(var)) {
-                rn = unname(unlist(eval(parse(text = paste(".data[,", paste("c(", paste0(paste0("\"", var, "\""), collapse = ", "), ")"), "]")))))
+                eva = eval(parse(text = paste(".data[,", paste("c(", paste0(paste0("\"", var, "\""), collapse = ", "), ")"), ",drop=FALSE]")))
+                if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
+                rn = unname(unlist(eva))
                 colix = setdiff(seq_len(ncol(.data)), match3(var,colnames(.data)))
             }
             eval(parse(text = paste(".data = .data[,", paste("c(", paste0(colix, collapse = ", "), ")"), ", drop = FALSE]")))
@@ -1638,12 +1786,17 @@ col2rn = column_to_rownames
 #' @param .data a data frame/table
 #' @return a data frame/table with the rownames as an additional column
 #' @export
-rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE) {
+rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE,
+                              asdf = as.data.frame, as.data.frame = FALSE) {
     ## if (inherits(.data, c("data.frame", "DFrame"))) {
+    as.data.frame = asdf
     if (!is.null(dim(.data))) {
         if (!is.null(rownames(.data))) {
             rn = rownames(.data)
-            .data = cbind(u.var5912349879872349876 = rn, .data)
+            if (as.data.frame)
+                .data = cbind(u.var5912349879872349876 = rn, as.data.frame(.data))
+            else
+                .data = cbind(u.var5912349879872349876 = rn, .data)
             colnames(.data)[1] = var
             if (keep.rownames)
                 rownames(.data) = rn
@@ -2036,7 +2189,8 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
     fulllens = max(lns, na.rm = T)
     vec = setNames(paste(..., sep = sep), seq_len(fulllens))
     if (length(vec) == 0) {
-        return(list(idx = integer(0), seq = integer(0), lns = integer(0)))
+        out = list(idx = integer(0), seq = integer(0), lns = integer(0))
+        return(out)
     }
     ## rlev = rle(paste(as.character(vec)))
     if (na.ignore) {
@@ -2079,6 +2233,7 @@ rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore
         out$lns = ave(out[[1]], out[[1]], FUN = length)
         return(out)
     }
+    
 }
 
 
@@ -2300,16 +2455,16 @@ dcast.count2 = function(tbl, lh, rh = NULL, countcol = "count", wt = 1, fun.aggr
 #'
 #' @return A data frame or data.table
 #' @export dcast.wrap
-dcast.wrap = function(x, lh, rh, dcast.fun, ...) {
+dcast.wrap = function (x, lh, rh, dcast.fun, ...) {
     if (missing(dcast.fun)) {
-        if (inherits(x, "data.table"))
+        if (inherits(x, "data.table")) 
             dcast.fun = dcast.data.table
-        else
-            dcast.fun = dcast
+        else dcast.fun = dcast
     }
-    if (!isTRUE(is.function(dcast.fun)))
+    if (!isTRUE(is.function(dcast.fun))) 
         stop("provided dcast argument is not a function")
-    dcast_form = formula(paste(paste(lh, collapse = "+"), paste(rh, collapse = "+"), sep = "~"))
+    dcast_form = formula(paste(paste(lh, collapse = "+"), paste(rh, 
+        collapse = "+"), sep = "~"))
     return(dcast.fun(x, formula = dcast_form, ...))
 }
 
@@ -2746,7 +2901,7 @@ main = function(expr_6000525395_6907698684, return = F) {
 #' @name errr
 #' @title turn on verbose error tracing through call stack
 #'
-#' 
+#'
 #' @export
 errr = function(x = 2) {
     er = options()$error
@@ -2786,7 +2941,28 @@ gx = function(nm = "x") eval.parent(getdat2(nm = nm))
 #'
 #' @export
 withv = function(x, expr) {
-    eval(substitute(expr), enclos = parent.frame())
+    env = environment()
+    senv = stackenv(parent.frame())
+    suppressWarnings(eval(substitute(expr), env, enclos = senv))
+}
+
+#' @name stackenv
+#' @title stackenv
+#'
+#' 
+#'
+#' @export
+stackenv = function(env = environment(), asenv = TRUE) {
+    fms = sys.frames()
+    thisenv = as.list(env)
+    for (i in rev(seq_along(fms))) {
+        thisenv = c(thisenv, tryCatch(as.list(fms[[i]]), error = function(e) NULL))
+    }
+    thisenv = c(thisenv, as.list(globalenv()))
+    if (asenv)
+        return(as.environment(thisenv))
+    else
+        return(thisenv)
 }
 
 #' @name wv
@@ -2834,6 +3010,7 @@ file.info2 = function(fn, col = NULL, include.all = FALSE) {
 #' if the variable is arrived at through nested functions or long
 #' variable names
 #'
+#' @author Kevin Hadi
 #' @export
 subset2 = function(x, sub.expr, ...) {
     if (!missing(sub.expr)) {
@@ -2864,7 +3041,16 @@ subset2 = function(x, sub.expr, ...) {
     subset(x, this.sub, ...)
 }
 
-
+#' @name ss
+#' @title same as subset2
+#'
+#' convenience function to subset without having to type excessively
+#' if the variable is arrived at through nested functions or long
+#' variable names
+#'
+#' @author Kevin Hadi
+#' @export
+ss = subset2
 
 
 #' @name replace2
@@ -2932,6 +3118,46 @@ ave2 = function(x, ..., FUN = mean) {
     }
     x
 }
+
+#' @name ave3
+#' @title modification of ave
+#'
+#' slight update of ave
+#'
+#' @export
+ave3 = function(x, ..., FUN = mean) {
+  if (missing(...)) {
+    x[] = FUN(x)
+  } else {
+    g = interaction2(...)
+    lidx = .Internal(split(seq_along(x), g))
+    spl = split(x, g)
+    lst = lapply(spl, FUN)
+    return(rep(unlist(lst), lengths(lidx))[unlist(lidx)])
+  }
+  x
+}
+
+#' @name aved
+#' @title modification of ave
+#'
+#' slight update of ave
+#'
+#' @export
+aved = function(..., FUN = length, drop = TRUE) {
+  ## browser()
+  ## ddd = as.list(match.call(expand.dots = FALSE)[["..."]])
+  ## if (length(ddd) > 1) {
+  ##   do.call(function(...) interaction2(..., drop = drop), ddd, envir = parent.frame())
+  ## }
+  g = interaction2(..., drop = drop)
+  lidx = .Internal(split(seq_along(g), g))
+  spl = split(g, g)
+  lst = lapply(spl, FUN)
+  return(rep(unlist(lst), lengths(lidx))[unlist(lidx)])
+}
+
+
 
 
 
@@ -3145,8 +3371,8 @@ table3 = function(...) {
 #'
 #' @author Kevin Hadi
 #' @export
-dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALSE, 
-    recursive = FALSE, ignore.case = FALSE, include.dirs = FALSE, 
+dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALSE,
+    recursive = FALSE, ignore.case = FALSE, include.dirs = FALSE,
     no.. = FALSE, ...) {
     paths = dir(path = path, all.files = all.files,
                 full.names = full.names, recursive = recursive,
@@ -3165,8 +3391,8 @@ dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALS
 #'
 #' @author Kevin Hadi
 #' @export
-dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1, 
-    unlist = TRUE, ...) 
+dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
+    unlist = TRUE, ...)
 {
     if (is.null(pattern)) {
         pattern = list(NULL)
@@ -3192,8 +3418,8 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
 #'
 #' @author Kevin Hadi
 #' @export
-dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1, 
-    unlist = TRUE, ...) 
+dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
+    unlist = TRUE, ...)
 {
     if (is.null(pattern)) {
         pattern = list(NULL)
@@ -3338,7 +3564,7 @@ reassign = function(variables_lst, calling_env = parent.frame()) {
 #' precision, recall
 #' F1, mean f1, weighted mean f1, mean precision,
 #' mean recall, weighted mean recall, accuracy
-#' 
+#'
 #' @param real true class labels
 #' @param pred predicted class labels
 #' @return a list of various statistics for clasification task
@@ -3350,7 +3576,7 @@ classystat= function(real, pred) {
     pred = factor(pred)
   if (length(setdiff(levels(real), levels(pred))) > 0)
     stop("real and pred must have matching levels!")
-  if (! all(levels(real) == levels(pred))) 
+  if (! all(levels(real) == levels(pred)))
     pred = factor(pred, levels = levels(real))
   rp = (table2(real = real, pred = pred) %>% melt %>% asdt)
   acc = with(rp, {
@@ -3383,7 +3609,7 @@ classystat= function(real, pred) {
     mean_f1 = aggf1,
     weighted_mean_f1 = waggf1,
     accuracy = acc
-  ) 
+  )
 }
 
 #' @name mroclab
@@ -3405,7 +3631,7 @@ mroclab = function(y) {
 #' @title format predicted scores for multiROC
 #'
 #' from predict(...)
-#' 
+#'
 #' @param prd0 a matrix of prediction scores
 #' @return A prediction
 #' @export
@@ -3419,19 +3645,20 @@ mrocpred = function(prd0, nm = "agg") {
 #' @name mrocdat
 #' @title create a data frame for ggplotting multiroc
 #'
-#' 
-#' 
+#'
+#'
 #' @param lbl output from mroclab
 #' @param prd output from mrocpred
 #' @return A data.frame that can be fed into ggplot
 #' @export
-mrocdat = function(lbl, prd) {  
-  prd00 = rbind(0, asm(mrocpred(predrf(rfmod.rsv, rsv))))
+mrocdat = function(lbl, prd) {
+  prd00 = rbind(0, asm(mrocpred(prd)))
   mg = setcols(with((melt(prd00)), g2()[order(Var2, value),]), c("Var2", "value"), c("Group", "prd"))[, c("Group", "prd"), drop = F]
   cb = cbind(lbl, prd)
   roc_res = multiROC::multi_roc(cb, force_diag = T)
   plot_roc_df <- multiROC::plot_roc_data(roc_res)
   gdat = asdt(plot_roc_df)[Group %nin% c("Macro", "Micro")][, prd := mg$prd]
+  gdat[, Group := trimws(Group)]
   withAutoprint(gdat, echo = F)$value
 }
 
@@ -3440,7 +3667,7 @@ mrocdat = function(lbl, prd) {
 #' @title ggplot for multiROC
 #'
 #' helper function for outputting ggplot
-#' 
+#'
 #' @param lbl output from mroclab
 #' @param prd output from mrocpred
 #' @return A data.frame that can be fed into ggplot
@@ -3476,6 +3703,17 @@ ggmroc = function(gdat, palette = "Moonrise2") {
 ############################## factor helpers / forcats wrappers
 ##############################
 
+#' @name levelsinuse
+#' @title get the levels in use in a factor
+#'
+#'
+#'
+#' @return the levels of a factor that are represented in the factor
+#' @export
+levelsinuse = function(fct) {
+    levels(fct)[tabulate(fct, nbins = length(levels(fct))) != 0]
+}
+
 #' @name refactor
 #' @title refactor
 #'
@@ -3500,6 +3738,23 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 ##################################################
 ##################################################
 #################################################
+
+
+#' @name output_cols
+#' @title output the union columns from a Flow output
+#'
+#'
+#'
+#' @return character vector of all output columns to be expected
+#' @export
+output_cols = function(x, mc.cores = 1) {
+    lst = mclapply(dig_dir(x, "Job.rds"), function(x) {
+        op = outputs(readRDS(x))
+        cn = setdiff(colnames(op), key(op))
+        cn
+    }, mc.cores = mc.cores)
+    Reduce(f = union, lst)
+}
 
 
 #' @name viewtask
@@ -3684,6 +3939,67 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
+#' @name grab_cov
+#' @title convenience function to pull out coverage data from table
+#'
+#'
+#' @return GRanges of coverage data
+#' @export
+grabcov = function(pairs, id = NULL, field = "decomposed_cov", y.field = NULL, rel2abs = T) {
+  if (is.null(y.field)) {
+    if (identical(field, "decomposed_cov"))
+      y.field = "foreground"
+    else if (identical(field, "cbs_cov_rds"))
+      y.field = "ratio"
+  }
+  if (is.null(id) && nrow(pairs) == 1) {
+    covpath = pairs[[field]]
+    if (isTRUE(rel2abs))
+      jabpath = pairs$jabba_rds
+  } else if (!is.null(id) && length(id) == 1) {
+    covpath = pairs[id][[field]]
+    if (isTRUE(rel2abs))
+      jabpath = pairs$jabba_rds
+  }
+  cov = readRDS(covpath)
+  if (isTRUE(rel2abs)) {
+    lst.pp = with(readRDS(jabpath), list(purity = purity, ploidy = ploidy))
+    mcols(cov)[[paste0(y.field, "_old")]] = mcols(cov)[[y.field]]
+    mcols(cov)[[y.field]] = skitools::rel2abs(cov,
+                                   field = y.field,
+                                   purity = lst.pp$purity,
+                                   ploidy = lst.pp$ploidy)
+  }
+  coln = colnames(mcols(cov))
+  y.id = match3(y.field, coln)
+  nony.id = seq_along(coln)[-y.id]
+  return(et(sprintf("cov[,%s,drop=FALSE]", mkst(c(y.id, nony.id)))))
+}
+
+#' @name grabggtrack
+#' @title convenience function to pull out jabba model + coverage
+#'
+#'
+#' @return
+#' @export
+grabggtrack = function(pairs, pair = NULL, jab_field = "complex", cov_field = "decomposed_cov", cov_y_field = NULL) {
+  if (!is.null(pair)) {
+    if (length(pair) > 1) stop("provide only one id or index")
+    pairs = pairs[pair, nomatch = 0]
+  }
+  if (nrow(pairs) != 1) stop("something messed up")
+  this.env = environment()
+  gg = gG(jabba = pairs[[jab_field]])
+  gg = copy2(gg)
+  gg$edges$mark(col = NULL)
+  gg$nodes$mark(col = NULL)
+  cov = grabcov(pairs, field = cov_field, y.field = cov_y_field)
+  gt.cov = gTrack(cov, colnames(mcols(cov))[1], circles = T, lwd.border = 0.001)
+  gt = c(gt.cov, gg$gtrack())
+  return(gt)
+}
+
+
 setMethod("with", signature(data = "gTrack"), NULL)
 setMethod("with", signature(data = "gTrack"), function(data, expr) {
     df = as.data.frame(formatting(data))
@@ -3697,6 +4013,46 @@ setMethod("within", signature(data = "gTrack"), function(data, expr) {
     formatting(data) = as.data.frame(as.list(e))[, c(colnames(formatting(data))),drop = FALSE]
     return(data)
 })
+
+#' @name grabhjab
+#' @title convenience function to pull out jabba model with allelic cn
+#'
+#' Convenience function uses a pairs table entry
+#' and hunts for jabba. If allelic cn fields aren't present,
+#' will look for hetpileups data and run JaBbA:::jabba.alleles
+#'
+#' @return
+#' @export
+grabhjab = function(pairs, id = NULL) {
+
+    if (!is.null(id)) {
+        pairs = pairs[id]
+    } else if (len(pairs) != 1) {
+        stop("pairs must be length 1")
+    }
+
+    jab = readRDS(pairs$jabba_rds)
+    if (is.null(jab$agtrack)) {
+        het.sites = with(pairs, coalesce(het_pileups_wgs, maf_approx, hmf_germline_txt, bads = Negate(file.exists2)))
+        if (grepl(".rds$", het.sites)) {
+            het.sites = readRDS(het.sites) %>% within({alt = alt.count.t; ref = ref.count.t})
+        } else if (grepl(".txt(.gz){0,}", het.sites)) {
+            het.sites = df2gr(fread(het.sites), 1, 2, 3)
+            df = mcols(het.sites)
+            mcols(het.sites) = setcols(df, c("REF_AD", "ALT_AD"), c("ref", "alt"))
+        } else if (!file.exists2(het.sites)) {
+            warning("no hets")
+        }
+        jaba = JaBbA:::jabba.alleles(jab, het.sites, uncoupled = TRUE)
+        ## agt = jaba$agtrack
+    } else {
+        jaba = jab
+    }
+    
+    if (is.null(jaba$agtrack)) stop("no allelic cn available!")
+
+    return(jaba)
+}
 
 
 #' @name gt.fix
@@ -3742,10 +4098,10 @@ gg_mytheme = function(gg,
                       x_axis_cex = 1,
                       y_axis_cex = 1,
                       ylab_cex = 1,
-                      xlab_cex = 1,
+                      xlab_cex = 0,
                       title_cex = 1,
                       x_angle = 90,
-                      x_axis_hjust = 0.5,
+                      x_axis_hjust = 1,
                       x_axis_vjust = 0.5,
                       y_axis_hjust = 1,
                       print = FALSE) {
@@ -3912,7 +4268,8 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
     if (isTRUE(as.frac))
         gg = gg + geom_histogram(aes(y = ..count.. / sum(..count..)), bins = bins, ...)
     else
-        gg = gg + geom_histogram(stat = stat_bin(bins = bins), ...)
+        ## gg = gg + geom_histogram(stat = stat_bin(bins = bins), ...)
+        gg = gg + geom_histogram(bins = bins, ...)
     gg = gg + scale_x_continuous(trans = trans, limits = xlim, breaks = scales::pretty_breaks(n = x_breaks)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = y_breaks), limits = ylim, expand = expand)
     if (!is.null(xlab) && any(!is.na(xlab)) && nzchar(xlab))
@@ -4178,13 +4535,13 @@ merge.repl = function(dt.x,
                       keep_colorder = TRUE,
                       ...) {
     arg_lst = as.list(match.call())
-    by.y = eval(arg_lst$by.y, parent.frame())
-    by.x = eval(arg_lst$by.x, parent.frame())
-    by = eval(arg_lst$by, parent.frame())
-    all.x = eval(arg_lst$all.x, parent.frame())
-    all.y = eval(arg_lst$all.y, parent.frame())
-    all = eval(arg_lst$all, parent.frame())
-    allow.cartesian = eval(arg_lst$allow.cartesian)
+    by.y = eval(arg_lst[['by.y']], parent.frame())
+    by.x = eval(arg_lst[['by.x']], parent.frame())
+    by = eval(arg_lst[['by']], parent.frame())
+    all.x = eval(arg_lst[['all.x']], parent.frame())
+    all.y = eval(arg_lst[['all.y']], parent.frame())
+    all = eval(arg_lst[['all']], parent.frame())
+    allow.cartesian = eval(arg_lst[['allow.cartesian']])
     key_x = key(dt.x)
     if (is.null(all.x)) {
         all.x = TRUE
@@ -4206,18 +4563,18 @@ merge.repl = function(dt.x,
         dt.y = as.data.table(dt.y)
     }
     if (keep_order == TRUE) {
-        dt.x$tmp.2345098712340987 = seq_len(nrow(dt.x))
+        dt.x[['tmp.2345098712340987']] = seq_len(nrow(dt.x))
     }
 
-    dt.x$in.x.2345098712340987 = TRUE
-    dt.y$in.y.2345098712340987 = TRUE
+    dt.x[['in.x.2345098712340987']] = rep(TRUE, length.out = nrow(dt.x))
+    dt.y[['in.y.2345098712340987']] = rep(TRUE, length.out = nrow(dt.y))
 
     new_ddd_args = list(by = by, by.x = by.x, by.y = by.y, all.x = all.x, all.y = all.y, allow.cartesian = allow.cartesian)
 
     if (is.null(by.y) & is.null(by.x) & is.null(by)) {
 
-        if (length(attributes(dt.x)$sorted) > 0 &&
-            length(attributes(dt.y)$sorted) > 0) {
+        if (length(attributes(dt.x)[['sorted']]) > 0 &&
+            length(attributes(dt.y)[['sorted']]) > 0) {
             k.x = key(dt.x)
             k.y = key(dt.y)
         } else {
@@ -4225,7 +4582,7 @@ merge.repl = function(dt.x,
             if (length(k.x) == 0)
                 stop("no common columns to merge by!")
             message("intersecting by: ", paste(k.x, collapse = ", "))
-            new_ddd_args$by = k.x
+            new_ddd_args[['by']] = k.x
         }
         if (is.null(k.x) | is.null(k.y) || (k.x != k.y)) {
             stop("neither by.x/by.y  nor by are supplied, keys of dt.x and dt.y must be identical and non NULL")
@@ -4281,7 +4638,7 @@ merge.repl = function(dt.x,
                     } else {
                         new_col = x_col
                     }
-                    new_col[dt.repl$in.y.2345098712340987] = y_col[dt.repl$in.y.2345098712340987]
+                    new_col[dt.repl[['in.y.2345098712340987']]] = y_col[dt.repl[['in.y.2345098712340987']]]
                 }
             } else {
                 if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
@@ -4305,7 +4662,7 @@ merge.repl = function(dt.x,
     ## }
     if (keep_order == TRUE) {
         data.table::setorderv(dt.repl, "tmp.2345098712340987")
-        dt.repl$tmp.2345098712340987 = NULL
+        dt.repl[['tmp.2345098712340987']] = NULL
     }
     data.table::set(dt.repl, j = c("in.y.2345098712340987", "in.x.2345098712340987"),
                     value = list(NULL, NULL))
@@ -4589,7 +4946,7 @@ dt_f2char = function(dt, cols = NULL) {
 #' @author Michael Lawrence
 #' @author Dianne Cook
 #' @export
-shift_up = function (x, shift = 0L) 
+shift_up = function (x, shift = 0L)
 {
     strand = function(bla) {as.character(BiocGenerics::strand(bla))}
     neg <- strand(x) == "-"
@@ -4619,7 +4976,7 @@ shift_up = function (x, shift = 0L)
 #' @author Michael Lawrence
 #' @author Dianne Cook
 #' @export
-shift_down = function (x, shift = 0L) 
+shift_down = function (x, shift = 0L)
 {
     strand = function(bla) {as.character(BiocGenerics::strand(x))}
     neg <- strand(x) == "-"
@@ -4648,7 +5005,7 @@ shift_down = function (x, shift = 0L)
 #' @author Michael Lawrence
 #' @author Dianne Cook
 #' @export
-shift_left = function (x, shift = 0L) 
+shift_left = function (x, shift = 0L)
 {
     shift_l <- -1L * shift
     GenomicRanges::shift(x, shift_l)
@@ -4665,7 +5022,7 @@ shift_left = function (x, shift = 0L)
 #' @author Michael Lawrence
 #' @author Dianne Cook
 #' @export
-shift_right = function (x, shift = 0L) 
+shift_right = function (x, shift = 0L)
 {
     GenomicRanges::shift(x, shift)
 }
@@ -4685,7 +5042,7 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
     if (!allow_vertbar)
         ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,\\|_+\\[\\]]+$"
     else
-        ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,_+\\[\\]]+$"        
+        ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,_+\\[\\]]+$"
     fa = Biostrings::readDNAStringSet(fa)
     names(fa) = gsub(ptrn, "", khtools::names2(fa), perl = T)
     return(fa)
@@ -4693,28 +5050,30 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
 
 #' @name subgr
 #' @title subgr
-#' 
+#'
 #' @description
 #'
 #'
-#' 
+#'
 #'
 #' @return granges
 #' @author Kevin Hadi
 #' @export
 subgr = function(x, y) {
-  expr = as.expression(substitute(y))
-  x[S4Vectors::with(x, eval(expr))]
+    expr = as.expression(substitute(y))
+    pf = parent.frame()
+    x[S4Vectors:::safeEval(substitute(expr), S4Vectors::as.env(x, pf), pf)]
+    ## x[S4Vectors::with(x, eval(expr, enclos = pf))]
 }
 
 #' @name %Q%
 #' @title query
 #'
-#' 
+#'
 #' @description
 #'
 #'
-#' 
+#'
 #'
 #' @return granges
 #' @author Kevin Hadi
@@ -4726,7 +5085,7 @@ subgr = function(x, y) {
 #' @name %Q%.GRanges
 #' @title query on GRangesList
 #'
-#' 
+#'
 #' @description
 #'
 #'
@@ -4738,7 +5097,7 @@ subgr = function(x, y) {
 
 #' @name %Q%.GRangesList
 #' @title query on GRangesList
-#' 
+#'
 #' @description
 #'
 #'
@@ -4750,7 +5109,7 @@ subgr = function(x, y) {
 
 #' @name %Q%.CompressedGRangesList
 #' @title query on CompressedGRangesList
-#' 
+#'
 #' @description
 #'
 #'
@@ -4776,13 +5135,60 @@ subgr = function(x, y) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.genome
-gr.genome = function(si) {
+gr.genome = function(si, onlystandard = TRUE) {
     if (missing(si)) {
-        gr = si2gr(hg_seqlengths())
+        gr = si2gr(hg_seqlengths(include.junk = !onlystandard))
     } else {
         gr = si2gr(si)
     }
-    gr.sort(keepStandardChromosomes(gr, pruning.mode = "coarse"))
+    if (onlystandard) gr = keepStandardChromosomes(gr, pruning.mode = "coarse")
+    gr.sort(gr)
+}
+
+#' @name gr.fixseq
+#' @title get permissive seqlengths from multiple GRanges-like objects
+#' @description
+#'
+#' takes seqlengths
+#'
+#' May need to set either of these via
+#' Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
+#' Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.fixseq
+gr.fixseq = function(...) {
+    output = Reduce(function(x, y) {
+        if (!inherits(x, "data.frame")) x = within(enframe(x), {ord = seq_along(name)})
+        if (!inherits(y, "data.frame")) y = enframe(y)
+        df = merge(x, y, by = "name", all = T)
+        df = df[order(df$ord),]
+        out = data.frame(seqname = df$name, seqlength = pmax(df[['value.x']], df[['value.y']], na.rm = T))
+        out
+    }, lapply(list(...), seqlengths))
+    with(output, setNames2(seqlength, seqname))
+}
+
+#' @name gr.patch
+#' @title same as gr.fix basically
+#' @description
+#'
+#' need to change implementation...
+#' it doesn't add to gr.fix so far
+#' except to add default genome seqlengths
+#' on top of whatever is already part of the input
+#'
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.patch
+gr.patch = function(gr, patch, onlystandard = TRUE) {
+    if (missing(patch)) {
+        patch = gr.genome(onlystandard = onlystandard)
+    }
+    sl = gr.fixseq(gr, patch)
+    gr.fix(gr, sl)
 }
 
 #' @name gr2df
@@ -4826,7 +5232,7 @@ grl.undf = function(grl) {
 #' @title coerce to data table via setDT
 #' @description
 #'
-#' 
+#'
 #'
 #' @return data table
 #' @author Kevin Hadi
@@ -4840,7 +5246,7 @@ asdt = function(obj) {
 #' @title coerce to data frame
 #' @description
 #'
-#' 
+#'
 #'
 #' @return data frame
 #' @author Kevin Hadi
@@ -4853,7 +5259,7 @@ asdf = function(obj) {
 #' @title coerce to matrix
 #' @description
 #'
-#' 
+#'
 #'
 #' @return matrix
 #' @author Kevin Hadi
@@ -4905,13 +5311,12 @@ gr.strand = function(gr, str = "*") {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export df2gr
-df2gr = function(df,
-                 seqnames.field = "seqnames",
-                 start.field = "start",
-                 end.field = "end",
-                 strand.field = "strand",
-                 ignore.strand = FALSE,
-                 keep.extra.columns = TRUE) {
+df2gr = function (df, seqnames.field = "seqnames", start.field = "start", 
+    end.field = "end", strand.field = "strand", ignore.strand = FALSE, 
+    keep.extra.columns = TRUE, starts.in.df.are.0based = FALSE) {
+    if (!inherits(df, "data.frame")) {
+        df = as.data.frame(df)
+    }
     if (inherits(seqnames.field, c("numeric", "integer"))) {
         seqnames.field = colnames(df)[seqnames.field]
     }
@@ -4924,18 +5329,34 @@ df2gr = function(df,
     if (inherits(strand.field, c("numeric", "integer"))) {
         strand.field = colnames(df)[strand.field]
     }
-    if (!inherits(df, "data.frame")) {
-        df = as.data.frame(df)
+    badcols = c("seqnames", "start", "end", "strand", "ranges", 
+        "width", "element", "seqlengths", "seqlevels", "isCircular")
+    badcols = setdiff(badcols, c(seqnames.field, start.field, 
+        end.field, strand.field))
+    ix = which(colnames(df) %in% badcols)
+    if (length(ix) > 0) 
+        df = et(sprintf("df[, -%s]", mkst(ix)))
+    cnames = colnames(df)
+    names(cnames) = cnames
+    relevant_cols = match(c(seqnames.field, start.field, end.field, 
+        strand.field), cnames)
+    if (is.na(relevant_cols[4])) {
+        relevant_cols = relevant_cols[-4]
+        ignore.strand = TRUE
     }
-    makeGRangesFromDataFrame(df,
-                             seqnames.field = seqnames.field,
-                             start.field = start.field,
-                             end.field = end.field,
-                             strand.field = strand.field,
-                             ignore.strand = ignore.strand,
-                             keep.extra.columns = keep.extra.columns)
+    addon = rand.string()
+    cnames[relevant_cols] = paste(cnames[relevant_cols], addon, 
+        sep = "_")
+    colnames(df)[relevant_cols] = cnames[relevant_cols]
+    seqnames.field = paste(seqnames.field, addon, sep = "_")
+    start.field = paste(start.field, addon, sep = "_")
+    end.field = paste(end.field, addon, sep = "_")
+    strand.field = paste(strand.field, addon, sep = "_")
+    makeGRangesFromDataFrame(df, seqnames.field = seqnames.field, 
+        start.field = start.field, end.field = end.field, strand.field = strand.field, 
+        ignore.strand = ignore.strand, keep.extra.columns = keep.extra.columns, 
+        starts.in.df.are.0based = starts.in.df.are.0based)
 }
-
 
 #' @name df2grl
 #' @title data frame to GRangesList
@@ -4954,6 +5375,9 @@ df2grl = function(df,
                  split.field = "grl.ix",
                  ignore.strand = FALSE,
                  keep.extra.columns = TRUE) {
+    if (!inherits(df, "data.frame")) {
+        df = as.data.frame(df)
+    }
     if (inherits(seqnames.field, c("numeric", "integer"))) {
         seqnames.field = colnames(df)[seqnames.field]
     }
@@ -4969,9 +5393,35 @@ df2grl = function(df,
     if (inherits(split.field, c("numeric", "integer"))) {
         split.field = colnames(df)[split.field]
     }
-    if (!inherits(df, "data.frame")) {
-        df = as.data.frame(df)
+        badcols = c("seqnames", "start", "end", "strand", "ranges", "width", "element", "seqlengths", "seqlevels", "isCircular")
+    badcols = setdiff(badcols, c(seqnames.field, start.field, end.field, strand.field, split.field))
+    ix = which(colnames(df) %in% badcols)
+    if (length(ix) > 0) df = et(sprintf("df[, -%s]", mkst(ix)))
+    cnames = colnames(df) # makeGRangesFromDataFrame makes use of tolower()
+    names(cnames) = cnames
+    ## cnames = tolower(cnames)
+    ## relevant_cols = which(cnames %in% c(seqnames.field, start.field, end.field, strand.field))
+    ## relevant_cols[duplicated(cnames[relevant_cols])]
+    ## num = rleseq(cnames[relevant_cols], clump = T)$seq
+    ## deduped = paste0(names(cnames[relevant_cols]),
+    ##                  ifelse(num > 1, paste0(".", as.character(num)), ""))
+    ## names(cnames)
+    relevant_cols = match(c(seqnames.field, start.field, end.field, strand.field, split.field), cnames)
+    if (is.na(relevant_cols[4])) {
+        relevant_cols = relevant_cols[-4]
+        ignore.strand = TRUE
     }
+    if (is.na(relevant_cols[5])) {
+        relevant_cols = relevant_cols[-5]
+    }
+    addon = rand.string()
+    cnames[relevant_cols] = paste(cnames[relevant_cols], addon, sep = "_")
+    colnames(df)[relevant_cols] = cnames[relevant_cols]
+    seqnames.field = paste(seqnames.field, addon, sep = "_")
+    start.field = paste(start.field, addon, sep = "_")
+    end.field = paste(end.field, addon, sep = "_")
+    strand.field = paste(strand.field, addon, sep = "_")
+    split.field = paste(split.field, addon, sep = "_")
     makeGRangesListFromDataFrame(df,
                              seqnames.field = seqnames.field,
                              start.field = start.field,
@@ -5029,8 +5479,8 @@ gr.sort = function(gr, ignore.strand = TRUE) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.resize
-gr.resize = function (gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.strand = FALSE, 
-    fix = "center", reduce = FALSE) 
+gr.resize = function (gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.strand = FALSE,
+    fix = "center", reduce = FALSE)
 {
     wid = width
     if (pad) {
@@ -5041,14 +5491,14 @@ gr.resize = function (gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.str
     }
     else width.arg = pmax(wid, minwid)
     if (reduce) {
-        ## gr = GenomicRanges::reduce(gr + width.arg, ignore.strand = ignore.strand) - 
+        ## gr = GenomicRanges::reduce(gr + width.arg, ignore.strand = ignore.strand) -
         ##     width.arg
         out = gr.resize(gr, width, pad = pad, minwid = minwid, each = each, ignore.strand = ignore.strand, fix = fix, reduce = FALSE)
         out = GenomicRanges::reduce(out, ignore.strand = ignore.strand)
         out = gr.resize(out, width, pad = pad, minwid = minwid, each = each, ignore.strand = ignore.strand, fix = fix, reduce = FALSE)
-        return(out)               
+        return(out)
     }
-    return(GenomicRanges::resize(gr, width = width.arg, fix = fix, 
+    return(GenomicRanges::resize(gr, width = width.arg, fix = fix,
         ignore.strand = ignore.strand))
 }
 
@@ -5181,12 +5631,12 @@ std.calc.cov = function(anci, pad, field = NULL, baseline = NULL, FUN = "median"
 #' @title updated gr.disjoin from gUtils to work with GRangesList
 #' @description
 #'
-#' 
+#'
 #'
 #' @return GRanges or GRangesList
 #' @author Kevin Hadi
 #' @export gr.disjoin
-gr.disjoin = function (x, ..., ignore.strand = TRUE) 
+gr.disjoin = function (x, ..., ignore.strand = TRUE)
 {
     if (inherits(x, "GRangesList")) {
         gr = GenomicRanges:::deconstructGRLintoGR(x)
@@ -5205,7 +5655,7 @@ gr.disjoin = function (x, ..., ignore.strand = TRUE)
 #' @title disjoin on grangeslist
 #' @description
 #'
-#' 
+#'
 #'
 #' @return GRangesList
 #' @author Kevin Hadi
@@ -5230,7 +5680,7 @@ grl.disjoin = function(x, ..., ignore.strand = T) {
 #' @export gr.split
 gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
   lst = as.list(match.call())[-1]
-  ix = which(names(lst) != "gr", "sep")
+  ix = which(!names(lst) %in% c("gr", "sep"))
   tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
   tmpix = factor(tmpix, levels = unique(tmpix))
   grl = gr %>% GenomicRanges::split(tmpix)
@@ -5554,7 +6004,7 @@ setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 #' @rdname gr.splgaps
 #' @author Kevin Hadi
 #' @export gr.splgaps
-gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
+gr.splgaps = function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
   lst = as.list(match.call())[-1]
   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
   cl = sapply(lst[ix], class)
@@ -5565,10 +6015,12 @@ gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), 
   }
   if (!all(vars %in% colnames(mcols(gr))))
     stop("Must specify valid metadata columns in gr")
-  tmpix = do.call(function(...) paste(..., sep = sep),
+  tmpix = S4Vectors::do.call(function(...) paste(..., sep = sep),
     mcols(gr)[,vars,drop = F])
   unix = which(!duplicated(tmpix))
   tmpix = factor(tmpix, levels = tmpix[unix])
+  if (ignore.strand)
+      gr = gr.stripstrand(gr)
   grl = gr.noval(gr) %>% GenomicRanges::split(tmpix)
   ## out = tmpgrlgaps(grl, start = start, end = end)
   out = gaps(grl, start = start, end = end)
@@ -6313,6 +6765,136 @@ est_snv_cn = function(gr, jabba, somatic = FALSE) {
   return(dt)
 }
 
+#' @name behomology
+#' @title breakend exact homology
+#'
+#' @description
+#' pull out the
+#'
+#' @param gg gGraph (R6) object
+#' @param hg character path to fasta or rtracklayer representation of fasta-like file
+#' @export
+behomology = function (gg, hg, PAD = 2) {
+    if (inherits(gg, "gGraph")) {
+        gg = khtools::copy2(gg)
+        ed = gg$edges[type == "ALT"]
+        if (!length(ed)) {
+            gg$edges$mark(bh = NA_integer_)
+            gg$edges$mark(bh.1 = NA_integer_)
+            return(gg)
+        }
+        ## bp1 = ed$junctions$left %>% gr.flipstrand
+        bp1 = ed$junctions$left %>% gr.noval
+        bp2 = ed$junctions$right %>% gr.noval
+    }
+    else if (inherits(gg, "Junction")) {
+        if (!length(gg))
+            return(gg)
+        ## bp1 = gg$left %>% gr.flipstrand
+        bp1 = gg$left %>% gr.noval
+        bp2 = gg$right %>% gr.noval
+    }
+    else stop("Input must be either gGraph or Junction object")
+    if (is.character(hg))
+        hg = khtools::readinfasta(hg)
+    bp1 = dt2gr(gr2dt(bp1))
+    bp2 = dt2gr(gr2dt(bp2))
+    if (length(setdiff(c(seqnames(bp1), seqnames(bp1)), seqlevels(hg))))
+        stop("seqnames in breakpoints missing from the provided reference, plesae check and fix the seqlevels of the provided graph / junctions / and/or reference")
+    dodo.call = function(FUN, args) {
+        if (!is.character(FUN))
+            FUN = substitute(FUN)
+        cmd = paste(FUN, "(", paste("args[[", 1:length(args),
+            "]]", collapse = ","), ")", sep = "")
+        return(eval(parse(text = cmd)))
+    }
+    .getseq = function(hg, gr) {
+        res = dodo.call("c", mapply(function(c, s, e) subseq(hg[c],
+            start = s, end = e), seqnames(gr) %>% as.character,
+            start(gr), end(gr)))
+        res = ifelse(strand(gr) == "+", res, reverseComplement(res)) %>%
+            DNAStringSet
+        return(res)
+    }
+
+    collect_seq = function(bp1, bp2, hg, PAD = 50, shift_pos_bp = FALSE) {
+        suppressWarnings({
+            .getseq = function(hg, gr) {
+                res = dodo.call("c", mapply(function(c, s, e) subseq(hg[c],
+                                                                     start = s, end = e), seqnames(gr) %>% as.character,
+                                            start(gr), end(gr)))
+                res = ifelse(strand(gr) == "+", res, reverseComplement(res)) %>%
+                    DNAStringSet
+                return(res)
+            }
+            if (isTRUE(shift_pos_bp)) {
+                bp1 = shift_right(bp1, ifelse(as.logical(strand(bp1) == "+"), 1, 0))
+                bp2 = shift_right(bp2, ifelse(as.logical(strand(bp2) == "+"), 1, 0))
+            }
+            bpfrag1.l = gr.resize(rep_each(bp1, PAD), 1:PAD, F, fix = "start", ignore.strand = F)
+            bpfrag2.l = gr.flipstrand(gr.resize(rep_each(bp2, PAD), 1:PAD, pad = F, fix = "end", ignore.strand = F))
+            bpfrag1.r = gr.resize(rep_each(bp1, PAD), 1:PAD, pad = F, fix = "end", ignore.strand = F)
+            bpfrag2.r = gr.flipstrand(gr.resize(rep_each(bp2, PAD), 1:PAD, pad = F, fix = "start", ignore.strand = F))
+            bpfrag1.fu = gr.resize(rep_each(bp1, PAD), 1:PAD, pad = F, fix = "start", ignore.strand = F)
+            bpfrag2.fu = gr.flipstrand(gr.resize(rep_each(bp2, PAD), 1:PAD, pad = F, fix = "start", ignore.strand = F))
+            bpfrag1.c = gr.resize(rep_each(bp1, PAD), 1:PAD, pad = F, fix = "center", ignore.strand = F)
+            bpfrag2.c = gr.flipstrand(gr.resize(rep_each(bp2, PAD), 1:PAD, pad = F, fix = "center", ignore.strand = F))
+            ## exseq1.l = .getseq(hg, bpfrag1.l)
+            exseq1.l = tryCatch(hg[bpfrag1.l], error = function(e) .getseq(hg, bpfrag1.l))
+            ## exseq2.l = .getseq(hg, bpfrag2.l)
+            exseq2.l = tryCatch(hg[bpfrag2.l], error = function(e) .getseq(hg, bpfrag2.l))
+            ## exseq1.r = .getseq(hg, bpfrag1.r)
+            exseq1.r = tryCatch(hg[bpfrag1.r], error = function(e) .getseq(hg, bpfrag1.r))
+            ## exseq2.r = .getseq(hg, bpfrag2.r)
+            exseq2.r = tryCatch(hg[bpfrag2.r], error = function(e) .getseq(hg, bpfrag2.r))
+            ## exseq1.fu = .getseq(hg, bpfrag1.fu)
+            exseq1.fu = tryCatch(hg[bpfrag1.fu], error = function(e) .getseq(hg, bpfrag1.fu))
+            ## exseq2.fu = .getseq(hg, bpfrag2.fu)
+            exseq2.fu = tryCatch(hg[bpfrag2.fu], error = function(e) .getseq(hg, bpfrag2.fu))
+            exseq1.c = tryCatch(hg[bpfrag1.c], error = function(e) .getseq(hg, bpfrag1.c))
+            exseq2.c = tryCatch(hg[bpfrag2.c], error = function(e) .getseq(hg, bpfrag2.c))
+            dt = data.table(ix = rep(seq_along(bp1), each = PAD),
+                       PAD = as.numeric(rep(1:PAD, PAD)),
+                       lmatch = exseq1.l == exseq2.l,
+                       rmatch = exseq1.r == exseq2.r,
+                       fumatch = exseq1.fu == exseq2.fu,
+                       cmatch = exseq1.c == exseq2.c)
+            dt2 = dt[,
+                     .(bh.l = pmax(max(PAD[lmatch]), 0),
+                       bh.r = pmax(max(PAD[rmatch]), 0),
+                       bh.fu = pmax(max(PAD[fumatch]), 0),
+                       bh.c = pmax(max(PAD[cmatch]), 0)), by = ix]
+            return(dt2)
+
+        })
+    }
+    bhom = collect_seq(bp1, bp2, hg, PAD = PAD)
+    bhom.1 = collect_seq(bp1, bp2, hg, PAD = PAD, shift_pos_bp = TRUE)
+
+    if (inherits(gg, "gGraph")) {
+        et(sprintf("ed$mark(bh%s.fu = bhom$bh.fu)", PAD))
+        et(sprintf("ed$mark(bh%s.l = bhom$bh.l)", PAD))
+        et(sprintf("ed$mark(bh%s.r = bhom$bh.r)", PAD))
+        et(sprintf("ed$mark(bh%s.c = bhom$bh.c)", PAD))
+        et(sprintf("ed$mark(bh%s.1fu = bhom.1$bh.fu)", PAD))
+        et(sprintf("ed$mark(bh%s.1l = bhom.1$bh.l)", PAD))
+        et(sprintf("ed$mark(bh%s.1r = bhom.1$bh.r)", PAD))
+        et(sprintf("ed$mark(bh%s.1c = bhom.1$bh.c)", PAD))
+    }
+    else {
+        et(sprintf("gg$mark(bh%s.fu = bhom$bh.fu)", PAD))
+        et(sprintf("gg$mark(bh%s.l = bhom$bh.l)", PAD))
+        et(sprintf("gg$mark(bh%s.r = bhom$bh.r)", PAD))
+        et(sprintf("gg$mark(bh%s.1fu = bhom.1$bh.fu)", PAD))
+        et(sprintf("gg$mark(bh%s.c = bhom$bh.c)", PAD))
+        et(sprintf("gg$mark(bh%s.1l = bhom.1$bh.l)", PAD))
+        et(sprintf("gg$mark(bh%s.1r = bhom.1$bh.r)", PAD))
+        et(sprintf("gg$mark(bh%s.1c = bhom.1$bh.c)", PAD))
+    }
+    return(gg)
+
+}
+
 ##############################
 ##############################
 
@@ -6400,6 +6982,44 @@ pairs.process.events = function(pairs, events.field = "complex", id.field = "pai
     set(evs, j = paste0("f", id.field), value = fid)
 }
 
+#' @export pairs.process.homeology
+pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
+    coolp = pairs[file.exists2(homeology) & file.exists2(homeology_stats)]$pair
+    subp = pairs[coolp]
+    ifun =  function(x, debug = FALSE) {
+        try2({
+            if (debug) browser()
+            addon = c("iw", "jw", "r", "minpx")
+            homout = fread(x$homeology)
+            homstat = fread(x$homeology_stats)
+            if (len(homstat) == 0) return(NULL)
+            if (!all(colexists(addon, homstat))) {
+                homstat = cbind(homstat, lapply_dt(addon, homstat))
+            }
+            out = merge.repl(homstat, homout[, .(seq, edge.id)], by = "seq")[, pair := x$pair]
+            gri = parse.gr2(with(out, ifelse(nzchar(iw) & !is.na(iw), iw, "0:1-1")))
+            grj = parse.gr2(with(out, ifelse(nzchar(jw) & !is.na(jw), jw, "0:1-1")))
+            out[, atbp := gri %^% "Left:0-0" & grj %^% "Right:0-0"]
+            ## thresh 8 levenshtein dist... 32 / 40 bases must match per window
+            ## 80% similarity seems to work?
+            ## what does it mean if you have 5 pixels of match?
+            ## 5 + 40 bases of at least 80% sequence similarity
+            ## using a pad of 20 means that we cannot look for stretches smaller than 40 bp...
+            ## which is fine... it seems like that is a fine threshold to start at
+            ## since we stopped looking at 40 bp...
+            ## let's see what this distribution looks like
+            out = out[, .(
+                hlen = max(ifelse(na2false(r > 0.9), minpx, 0L)),
+                hlen_be = max(ifelse(na2false(r > 0.9) & atbp, minpx, 0L))),
+                by = .(pair, seq, edge.id)]
+            return(out)
+        })
+    }
+    out = rbindlist(mclapply(split(subp, subp$pair), ifun, mc.cores = mc.cores), fill = T)
+    et(sprintf("out[, f%s := %s]", id.field, id.field))
+    return(out)
+}
+
 #' @export pairs.collect.junctions
 pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz') {
     paths = subset2(pairs[[jn.field]], file.exists(x))
@@ -6455,7 +7075,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
             } %>% distinct(edge.id, .keep_all = TRUE)
             out = dplyr::left_join(out, seg_cn, by = "edge.id") %>% setDT(key = "sedge.id")
             out = gr2df(gr.val(df2gr(out),
-                               select(cx$nodes$gr, bp_scn = cn), "bp_scn"))
+                               plyranges::select(cx$nodes$gr, bp_scn = cn), "bp_scn"))
             out = df2gr(out) %>% mutate(bp.in.mask = (.) %^% mask) %>% gr2df
         }
         return(out)
@@ -6469,7 +7089,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     mod.dt = mltools::one_hot(cx.edt[, .(simple_type)])
     cx.edt = cbind(select(cx.edt, -matches("^simple_.*$")),
                    rename_all(mod.dt, ~paste0("simple", gsub("simple_type", "", tolower(.)))))
-    ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas")
+    ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas")
     cx.mat = as.matrix(mutate_all(replace_na(cx.edt[, ev.types,with = FALSE], 0), as.numeric))
     cx.mat = cx.mat > 0
     mode(cx.mat) = "integer"
@@ -6645,30 +7265,30 @@ asn2 = function (x, value, ns, pos = -1, envir = as.environment(pos)) {
     nf <- sys.nframe()
     if (missing(ns)) {
         nm <- attr(envir, "name", exact = TRUE)
-        if (is.null(nm) || substr(nm, 1L, 8L) != "package:") 
+        if (is.null(nm) || substr(nm, 1L, 8L) != "package:")
             stop("environment specified is not a package")
         ns <- asNamespace(substring(nm, 9L))
     }
     else ns <- asNamespace(ns)
     ns_name <- getNamespaceName(ns)
     ## if (nf > 1L) {
-    ##     if (ns_name %in% tools:::.get_standard_package_names()$base) 
-    ##         stop("locked binding of ", sQuote(x), " cannot be changed", 
+    ##     if (ns_name %in% tools:::.get_standard_package_names()$base)
+    ##         stop("locked binding of ", sQuote(x), " cannot be changed",
     ##             domain = NA)
     ## }
     if (bindingIsLocked(x, ns)) {
         in_load <- Sys.getenv("_R_NS_LOAD_")
         if (nzchar(in_load)) {
             if (in_load != ns_name) {
-                msg <- gettextf("changing locked binding for %s in %s whilst loading %s", 
+                msg <- gettextf("changing locked binding for %s in %s whilst loading %s",
                   sQuote(x), sQuote(ns_name), sQuote(in_load))
-                if (!in_load %in% c("Matrix", "SparseM")) 
+                if (!in_load %in% c("Matrix", "SparseM"))
                   warning(msg, call. = FALSE, domain = NA, immediate. = TRUE)
             }
         }
         else if (nzchar(Sys.getenv("_R_WARN_ON_LOCKED_BINDINGS_"))) {
-            warning(gettextf("changing locked binding for %s in %s", 
-                sQuote(x), sQuote(ns_name)), call. = FALSE, domain = NA, 
+            warning(gettextf("changing locked binding for %s in %s",
+                sQuote(x), sQuote(ns_name)), call. = FALSE, domain = NA,
                 immediate. = TRUE)
         }
         unlockBinding(x, ns)
@@ -6683,21 +7303,21 @@ asn2 = function (x, value, ns, pos = -1, envir = as.environment(pos)) {
     }
     if (!isBaseNamespace(ns)) {
         S3 <- .getNamespaceInfo(ns, "S3methods")
-        if (!length(S3)) 
+        if (!length(S3))
             return(invisible(NULL))
         S3names <- S3[, 3L]
         if (x %in% S3names) {
             i <- match(x, S3names)
             genfun <- get(S3[i, 1L], mode = "function", envir = parent.frame())
-            if (.isMethodsDispatchOn() && methods::is(genfun, 
-                "genericFunction")) 
+            if (.isMethodsDispatchOn() && methods::is(genfun,
+                "genericFunction"))
                 genfun <- methods::slot(genfun, "default")@methods$ANY
-            defenv <- if (typeof(genfun) == "closure") 
+            defenv <- if (typeof(genfun) == "closure")
                 environment(genfun)
             else .BaseNamespaceEnv
             S3Table <- get(".__S3MethodsTable__.", envir = defenv)
             remappedName <- paste(S3[i, 1L], S3[i, 2L], sep = ".")
-            if (exists(remappedName, envir = S3Table, inherits = FALSE)) 
+            if (exists(remappedName, envir = S3Table, inherits = FALSE))
                 assign(remappedName, value, S3Table)
         }
     }
@@ -6722,5 +7342,3 @@ wn = within
     message("khtools forcing functions to evaluate on attach...")
     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
 }
-
-

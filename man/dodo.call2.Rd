@@ -8,7 +8,7 @@ FUN can be an anonymous function call
 dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
 can also omit the brackets}
 \usage{
-dodo.call2(FUN, args)
+dodo.call2(FUN, args, use.names = T)
 }
 \arguments{
 \item{FUN}{function}

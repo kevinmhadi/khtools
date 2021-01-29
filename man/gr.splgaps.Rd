@@ -7,6 +7,7 @@
 gr.splgaps(
   gr,
   ...,
+  ignore.strand = TRUE,
   sep = paste0(" ", rand.string(length = 8), " "),
   start = 1L,
   end = seqlengths(gr),

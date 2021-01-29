@@ -19,4 +19,5 @@ find all duplicates in a vector
 find_dups(c(1,1,1,3,5))
 find_dups(c(1,3,1,3,1))
 find_dups(c(3,1,5,4,4))
+
 }

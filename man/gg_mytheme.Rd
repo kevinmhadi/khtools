@@ -14,10 +14,10 @@ gg_mytheme(
   x_axis_cex = 1,
   y_axis_cex = 1,
   ylab_cex = 1,
-  xlab_cex = 1,
+  xlab_cex = 0,
   title_cex = 1,
   x_angle = 90,
-  x_axis_hjust = 0.5,
+  x_axis_hjust = 1,
   x_axis_vjust = 0.5,
   y_axis_hjust = 1,
   print = FALSE

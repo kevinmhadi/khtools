@@ -17,3 +17,6 @@ convenience function to subset without having to type excessively
 if the variable is arrived at through nested functions or long
 variable names
 }
+\author{
+Kevin Hadi
+}

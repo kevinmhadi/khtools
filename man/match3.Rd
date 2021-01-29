@@ -7,7 +7,7 @@
 very slow version of keying a la data.table
 but for general/interactive use}
 \usage{
-match3(x, table, nomatch = NA_integer_)
+match3(x, table, nomatch = NA_integer_, old = TRUE)
 }
 \description{
 similar to setkey except a general use utility

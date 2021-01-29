@@ -6,7 +6,7 @@
 
 internal version that doesn't require library(tibble)}
 \usage{
-col2rn(.data, var = "rowname", force = T)
+col2rn(.data, var = "rowname", force = T, sep = " ")
 }
 \arguments{
 \item{.data}{a data frame/table}
