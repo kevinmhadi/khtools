@@ -637,6 +637,18 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+
+#' @name complete.cases2
+#' @title complete.cases wrapper
+#'
+#' @description
+#' can use this within data.table
+#'
+#' @export complete.cases2
+complete.cases2 = function(...) {
+    complete.cases(as.data.frame(list(...)))
+}
+
 #' @name uniqf
 #' @title Unique factor
 #'
@@ -687,7 +699,8 @@ qtrim = function(x, maxq = 0.99) {
 #' @export tailf
 tailf = function (x, n = NULL, grep = NULL) {
     oldscipen = options()$scipen
-    on.exit(options(scipen = oldscipen))
+    tmp = tempfile()
+    on.exit({options(scipen = oldscipen); unlink(tmp)})
     options(scipen = 999)
     if (is.null(grep)) {
         if (is.null(n)) {
@@ -701,7 +714,8 @@ tailf = function (x, n = NULL, grep = NULL) {
         x = paste("grep -H", grep, paste(x, collapse = " "),
             " | more")
     }
-    system(x)
+    writeLines(x, tmp)
+    system2("sh", tmp)
 }
 
 #' @name ne.na
@@ -871,10 +885,10 @@ nonacol = function(x, napattern = "^NA") {
 #' @param txt string to evaluate
 #' @author Kevin Hadi
 #' @export
-et = function(txt, eval = TRUE, envir = parent.frame()) {
+et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)) {
     out = parse(text = txt)
     if (eval) {
-        return(eval(out, envir = envir))
+        return(eval(out, envir = envir, enclos = enclos))
     } else {
         return(out)
     }
@@ -1015,90 +1029,93 @@ enframe = function(x, name = "name", value = "value", as.data.table = TRUE) {
 ppng = function (expr, filename = "plot.png", height = 10, width = 10,
                  dim = NULL, cex = 1, title = NULL,
                  h = height, w = width,
-    cex.title = 1, oma.scale = 0, units = "in", res = 300, oma.val = c(1,1,1,1), pars = list(), ...) {
+                 cex.title = 1, oma.scale = 0, units = "in", res = 300, oma.val = c(1,1,1,1), pars = list(), ...) {
+    suppressWarnings({
+        this.env = environment()
+        if (length(cex) == 1) {
+            cex = rep(cex, 2)
+        }
+        height = h
+        width = w
+        height = cex[1] * height
+        width = cex[2] * width
+        DEFAULT.OUTDIR = Sys.getenv("PPNG.DIR")
+        if (nchar(DEFAULT.OUTDIR) == 0)
+            DEFAULT.OUTDIR = normalizePath("~/public_html/")
+        if (!grepl("^[~/]", filename))
+            filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+        if (!file.exists(file.dir(filename)))
+            system(paste("mkdir -p", file.dir(filename)))
 
-    this.env = environment()
-    if (length(cex) == 1) {
-        cex = rep(cex, 2)
-    }
-    height = h
-    width = w
-    height = cex[1] * height
-    width = cex[2] * width
-    DEFAULT.OUTDIR = Sys.getenv("PPNG.DIR")
-    if (nchar(DEFAULT.OUTDIR) == 0)
-        DEFAULT.OUTDIR = normalizePath("~/public_html/")
-    if (!grepl("^[~/]", filename))
-        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
-    if (!file.exists(file.dir(filename)))
-        system(paste("mkdir -p", file.dir(filename)))
-
-    cat("rendering to", filename, "\n")
-    old_oma = par(no.readonly=T)$oma
-    lst.par = par(no.readonly=T)
-    goodnm = intersect(names(pars), names(lst.par))
-    lst.old.par = lst.par = lst.par[goodnm]
-    oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
-        paste0(names(lst.par)[i], "=c(",
-               paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
-                             lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
-               collapse = ",")
-    })), collapse = ",")
-    oldstr = paste0("par(", allpars, ")")
-    ## on.exit({
-    ##     for (i in seq_along(lst.old.par)) {
-    ##         arg = paste0(names(lst.old.par)[i], "=c(",
-    ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
-    ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
-    ##                      collapse = ",")
-    ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
-    ##     }
-
-    ## })
-    on.exit({eval(parse(text = oldstr), envir = parent.frame())})
-    if (length(pars) > 0) {
+        cat("rendering to", filename, "\n")
+        old_oma = par(no.readonly=T)$oma
+        lst.par = par(no.readonly=T)
         goodnm = intersect(names(pars), names(lst.par))
-        lst.par[goodnm] = pars[goodnm]
-        ## for (i in seq_along(lst.par)) {
-        ##     arg = paste0(names(lst.par)[i], "=c(",
-        ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
-        ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
-        ##                  collapse = ",")
-        ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
-        ## }
-        newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+        lst.old.par = lst.par = lst.par[goodnm]
+        oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
             paste0(names(lst.par)[i], "=c(",
                    paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
                                  lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
                    collapse = ",")
         })), collapse = ",")
-        newstr = paste0("par(", allpars, ")")
-        eval(parse(text = newstr), envir = parent.frame())
-    } else {
-        newstr = ""
-        newpars = ""
-    }
-    png(filename, height = height, width = width, units = units, res = res, ...) ## pointsize default is 12... maybe the default previously was 24?
+        oldstr = paste0("par(", allpars, ")")
+        ## on.exit({
+        ##     for (i in seq_along(lst.old.par)) {
+        ##         arg = paste0(names(lst.old.par)[i], "=c(",
+        ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
+        ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
+        ##                      collapse = ",")
+        ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
+        ##     }
 
-    if (oma.scale > 0) {
-        ## par(oma = oma.val * oma.scale)
-        newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
-    }
-    if (!is.null(dim)) {
-        if (length(dim) == 1)
-            dim = rep(dim, 2)
-        dim = dim[1:2]
-        layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
-            byrow = TRUE))
-    }
-    ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
-    ##      envir = parent.frame())
-    eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
-         envir = parent.frame())
-    ## eval(expr, envir = this.env)
-    if (!is.null(title))
-        title(title, cex.main = cex.title * max(cex))
-    dev.off()
+        ## })
+        on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+        if (length(pars) > 0) {
+            goodnm = intersect(names(pars), names(lst.par))
+            lst.par[goodnm] = pars[goodnm]
+            ## for (i in seq_along(lst.par)) {
+            ##     arg = paste0(names(lst.par)[i], "=c(",
+            ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+            ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+            ##                  collapse = ",")
+            ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
+            ## }
+            newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+                paste0(names(lst.par)[i], "=c(",
+                       paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                                     lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+                       collapse = ",")
+            })), collapse = ",")
+            newstr = paste0("par(", allpars, ")")
+            eval(parse(text = newstr), envir = parent.frame())
+        } else {
+            newstr = ""
+            newpars = ""
+        }
+        png(filename, height = height, width = width, units = units, res = res, ...) ## pointsize default is 12... maybe the default previously was 24?
+
+        if (oma.scale > 0) {
+            ## par(oma = oma.val * oma.scale)
+            newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
+        }
+        if (!is.null(dim)) {
+            if (length(dim) == 1)
+                dim = rep(dim, 2)
+            dim = dim[1:2]
+            layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
+                          byrow = TRUE))
+        }
+        ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+        ##      envir = parent.frame())
+        ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+        ##      envir = parent.frame(), enclos = stackenv(parent.frame(2)))
+        eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+             envir = parent.frame(), enclos = parent.frame(2))
+        ## eval(expr, envir = this.env)
+        if (!is.null(title))
+            title(title, cex.main = cex.title * max(cex))
+        silent({dev.off()})
+    })
 }
 
 #' @name ppdf
@@ -1112,87 +1129,91 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
                  h = height, w = width,
                  cex = 1, title = NULL, byrow = TRUE, dim = NULL, cex.title = 1,
                  oma.scale = 0, oma.val = c(1,1,1,1), useDingbats = FALSE, res = 0, pars = list(), ...) {
-    this.env = environment()
-    if (length(cex) == 1)
-        cex = rep(cex, 2)
-    height = h
-    width = w
-    height = cex[1] * height
-    width = cex[2] * width
-    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
-    if (nchar(DEFAULT.OUTDIR) == 0)
-        DEFAULT.OUTDIR = normalizePath("~/public_html/")
-    if (!grepl("^[~/]", filename))
-        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
-    if (!file.exists(file.dir(filename)))
-        system(paste("mkdir -p", file.dir(filename)))
-    cat("rendering to", filename, "\n")
+    suppressWarnings({
+        this.env = environment()
+        if (length(cex) == 1)
+            cex = rep(cex, 2)
+        height = h
+        width = w
+        height = cex[1] * height
+        width = cex[2] * width
+        DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+        if (nchar(DEFAULT.OUTDIR) == 0)
+            DEFAULT.OUTDIR = normalizePath("~/public_html/")
+        if (!grepl("^[~/]", filename))
+            filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+        if (!file.exists(file.dir(filename)))
+            system(paste("mkdir -p", file.dir(filename)))
+        cat("rendering to", filename, "\n")
 
-    old_oma = par(no.readonly=T)$oma
-    lst.par = par(no.readonly=T)
-    goodnm = intersect(names(pars), names(lst.par))
-    lst.old.par = lst.par = lst.par[goodnm]
-    oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
-        paste0(names(lst.par)[i], "=c(",
-               paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
-                             lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
-               collapse = ",")
-    })), collapse = ",")
-    oldstr = paste0("par(", allpars, ")")
-    ## on.exit({
-    ##     for (i in seq_along(lst.old.par)) {
-    ##         arg = paste0(names(lst.old.par)[i], "=c(",
-    ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
-    ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
-    ##                      collapse = ",")
-    ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
-    ##     }
-
-    ## })
-    on.exit({eval(parse(text = oldstr), envir = parent.frame())})
-    if (length(pars) > 0) {
+        old_oma = par(no.readonly=T)$oma
+        lst.par = par(no.readonly=T)
         goodnm = intersect(names(pars), names(lst.par))
-        lst.par[goodnm] = pars[goodnm]
-        ## for (i in seq_along(lst.par)) {
-        ##     arg = paste0(names(lst.par)[i], "=c(",
-        ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
-        ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
-        ##                  collapse = ",")
-        ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
-        ## }
-        newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+        lst.old.par = lst.par = lst.par[goodnm]
+        oldpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
             paste0(names(lst.par)[i], "=c(",
                    paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
                                  lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
                    collapse = ",")
         })), collapse = ",")
-        newstr = paste0("par(", allpars, ")")
-        eval(parse(text = newstr), envir = parent.frame())
-    } else {
-        newstr = ""
-        newpars = ""
-    }
-    pdf(filename, height = height, width = width,
-        useDingbats = useDingbats, ...) ## pointsize default is 12
+        oldstr = paste0("par(", allpars, ")")
+        ## on.exit({
+        ##     for (i in seq_along(lst.old.par)) {
+        ##         arg = paste0(names(lst.old.par)[i], "=c(",
+        ##                      paste0(ifelse(is.na(lst.old.par[[i]]) | !is.character(lst.old.par[[i]]),
+        ##                                    lst.old.par[[i]], paste0("'", lst.old.par[[i]], "'")), collapse = ","), ")",
+        ##                      collapse = ",")
+        ##         eval(parse(text = paste0("par(", arg, ")")), envir = this.env)
+        ##     }
 
-    if (oma.scale > 0) {
-        newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
-    }
-    if (!is.null(dim)) {
-        if (length(dim) == 1)
-            dim = rep(dim, 2)
-        dim = dim[1:2]
-        graphics::layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
-                                byrow = byrow))
-    }
-    ## eval(expr)
-    ## eval(parse(text = paste0("{", newstr, ";", as.character(as.expression(substitute(expr))), "}")),
-         ## envir = parent.frame())
-    eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
-         envir = parent.frame())
-    if (!is.null(title))
-        title(title, cex.main = cex.title * max(cex))
-    dev.off()
+        ## })
+        on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+        if (length(pars) > 0) {
+            goodnm = intersect(names(pars), names(lst.par))
+            lst.par[goodnm] = pars[goodnm]
+            ## for (i in seq_along(lst.par)) {
+            ##     arg = paste0(names(lst.par)[i], "=c(",
+            ##                  paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+            ##                                lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+            ##                  collapse = ",")
+            ##     eval(parse(text = paste0("par(", arg, ")")), envir = parent.frame())
+            ## }
+            newpars = allpars = paste(unlist(lapply(seq_along(lst.par), function(i) {
+                paste0(names(lst.par)[i], "=c(",
+                       paste0(ifelse(is.na(lst.par[[i]]) | !is.character(lst.par[[i]]),
+                                     lst.par[[i]], paste0("'", lst.par[[i]], "'")), collapse = ","), ")",
+                       collapse = ",")
+            })), collapse = ",")
+            newstr = paste0("par(", allpars, ")")
+            eval(parse(text = newstr), envir = parent.frame())
+        } else {
+            newstr = ""
+            newpars = ""
+        }
+        pdf(filename, height = height, width = width,
+            useDingbats = useDingbats, ...) ## pointsize default is 12
+
+        if (oma.scale > 0) {
+            newpars = paste0(newpars, "oma=c(", paste0(oma.val * oma.scale, collapse = ","), ")", collapse = ",")
+        }
+        if (!is.null(dim)) {
+            if (length(dim) == 1)
+                dim = rep(dim, 2)
+            dim = dim[1:2]
+            graphics::layout(matrix(1:prod(dim), nrow = dim[1], ncol = dim[2],
+                                    byrow = byrow))
+        }
+        ## eval(expr)
+        ## eval(parse(text = paste0("{", newstr, ";", as.character(as.expression(substitute(expr))), "}")),
+        ## envir = parent.frame())
+        ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+        ##      envir = parent.frame(), enclos = stackenv(parent.frame(2)))
+        eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
+             envir = parent.frame(), enclos = parent.frame(2))
+        if (!is.null(title))
+            title(title, cex.main = cex.title * max(cex))
+        silent({dev.off()})
+    })
 }
 
 #' @name names2
@@ -1539,6 +1560,21 @@ copy2 = function(x) {
     } else {
         x2 = rlang::duplicate(x)
         return(x2)
+    }
+}
+
+#' @name peepr6
+#' @title peepr6
+#'
+#' useful for dev
+#'
+#' @export peepr6
+peepr6 = function(x) {
+    if (inherits(x, "R6")) {
+        return(x$.__enclos_env__)
+    } else {
+        message("object is not R6...")
+        return(x)
     }
 }
 
@@ -2952,10 +2988,12 @@ withv = function(x, expr) {
 #' 
 #'
 #' @export
-stackenv = function(env = environment(), asenv = TRUE) {
+stackenv = function(env = environment(), onlyanc = TRUE, asenv = TRUE) {
     fms = sys.frames()
     thisenv = as.list(env)
-    for (i in rev(seq_along(fms))) {
+    these = seq_along(fms)
+    if (onlyanc) these = these[-1]
+    for (i in these) {
         thisenv = c(thisenv, tryCatch(as.list(fms[[i]]), error = function(e) NULL))
     }
     thisenv = c(thisenv, as.list(globalenv()))
@@ -3125,18 +3163,24 @@ ave2 = function(x, ..., FUN = mean) {
 #' slight update of ave
 #'
 #' @export
-ave3 = function(x, ..., FUN = mean) {
-  if (missing(...)) {
-    x[] = FUN(x)
-  } else {
-    g = interaction2(...)
-    lidx = .Internal(split(seq_along(x), g))
-    spl = split(x, g)
-    lst = lapply(spl, FUN)
-    return(rep(unlist(lst), lengths(lidx))[unlist(lidx)])
-  }
-  x
+ave3 = function (x, ..., FUN = mean) 
+{
+    if (missing(...)) {
+        x[] = FUN(x)
+    }
+    else {
+        rl = rleseq(..., clump = TRUE)
+        ## g = interaction2(...)
+        lidx = .Internal(split(seq_along(x), factor(rl$idx)))
+        spl = split(x, rl$idx)
+        ## spl = split(x, g)
+        lst = lapply(spl, FUN)
+        ## return(rep(unlist(lst), lengths(lidx))[unlist(lidx)])
+        return(unlist(rep(lst, lengths(lidx) - lengths(lst) + 1))[unlist(lidx)])
+    }
+    x
 }
+
 
 #' @name aved
 #' @title modification of ave
@@ -4935,6 +4979,42 @@ dt_f2char = function(dt, cols = NULL) {
 ##############################
 
 
+
+#' @name gr_construct_by
+#' @title adding on by field to seqnames for more efficient by queries
+#' 
+#' @description
+#'
+#' Uses by field from metadata column to insert into seqnames
+#' This is useful for more efficient queries findoverlaps queries between 2 ranges
+#' when we want to stratify the query with a "by" field.
+#' This feeds into the gr.findoverlaps family of gUtils tools.
+#'
+#' @return A GRanges with the by metadata field attached to the seqnames
+#' @author Kevin Hadi
+#' @export gr_construct_by
+gr_construct_by = function(x, by = NULL)
+{
+    this.sep1 = {set.seed(10); rand.string()}
+    this.sep2 = {set.seed(11); rand.string()}
+    ans = copy2(x)
+    f1 = do.call(paste, c(as.list(mcols(x)[, by, drop = FALSE]), sep = this.sep1))
+    f2 = as.character(seqnames(x))
+    f2i = as.integer(seqnames(x))
+    f12 = paste(f1, f2, sep = paste0(" ", this.sep2, " "))
+    ui = which(!duplicated(f12))
+    ans_seqlevels = f12[ui]
+    x_seqinfo <- seqinfo(x)
+    ans_seqlengths = unname(seqlengths(x_seqinfo)[f2i[ui]])
+    ans_isCircular <- unname(isCircular(x_seqinfo))[f2i[ui]]
+    ans_seqinfo <- Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
+    ans@seqnames <- Rle(factor(f12, ans_seqlevels))
+    ans@seqinfo <- ans_seqinfo
+    ans
+}
+
+
+
 #' @name shift_up
 #' @title shift_upstream from plyranges package
 #' @description
@@ -5368,13 +5448,15 @@ df2gr = function (df, seqnames.field = "seqnames", start.field = "start",
 #' @author Kevin Hadi
 #' @export df2grl
 df2grl = function(df,
-                 seqnames.field = "seqnames",
-                 start.field = "start",
-                 end.field = "end",
-                 strand.field = "strand",
-                 split.field = "grl.ix",
-                 ignore.strand = FALSE,
-                 keep.extra.columns = TRUE) {
+                  seqnames.field = "seqnames",
+                  start.field = "start",
+                  end.field = "end",
+                  strand.field = "strand",
+                  split.field = "grl.ix",
+                  ignore.strand = FALSE,
+                  keep.extra.columns = TRUE,
+                  asmcols = NULL,
+                  keepgrmeta=FALSE) {
     if (!inherits(df, "data.frame")) {
         df = as.data.frame(df)
     }
@@ -5391,9 +5473,13 @@ df2grl = function(df,
         strand.field = colnames(df)[strand.field]
     }
     if (inherits(split.field, c("numeric", "integer"))) {
-        split.field = colnames(df)[split.field]
+        split.field = copy2(colnames(df)[split.field])
     }
-        badcols = c("seqnames", "start", "end", "strand", "ranges", "width", "element", "seqlengths", "seqlevels", "isCircular")
+    if (!is.null(asmcols) && inherits(asmcols, c("numeric", "integer"))) {
+        asmcols = colnames(df)[asmcols]
+    }
+    o.split.field = copy2(split.field)
+    badcols = c("seqnames", "start", "end", "strand", "ranges", "width", "element", "seqlengths", "seqlevels", "isCircular")
     badcols = setdiff(badcols, c(seqnames.field, start.field, end.field, strand.field, split.field))
     ix = which(colnames(df) %in% badcols)
     if (length(ix) > 0) df = et(sprintf("df[, -%s]", mkst(ix)))
@@ -5422,14 +5508,30 @@ df2grl = function(df,
     end.field = paste(end.field, addon, sep = "_")
     strand.field = paste(strand.field, addon, sep = "_")
     split.field = paste(split.field, addon, sep = "_")
-    makeGRangesListFromDataFrame(df,
-                             seqnames.field = seqnames.field,
-                             start.field = start.field,
-                             end.field = end.field,
-                             strand.field = strand.field,
-                             split.field = split.field,
-                             ignore.strand = ignore.strand,
-                             keep.extra.columns = keep.extra.columns)
+    spl = df[[split.field]]
+    tmpix = which(!duplicated(spl))
+    if (!is.null(asmcols)) {
+        attach_to_mcols = qmat(df,cid = asmcols)
+        ## rows = which(!duped(attach_to_mcols))
+        rows = tmpix
+        ## ix = do.call(rleseq, list(attach_to_mcols, clump = TRUE))
+        if (!keepgrmeta)
+            df = qmat(df, ,-which(colnames(df) %in% asmcols))
+    }
+    out = makeGRangesListFromDataFrame(df,
+                                       seqnames.field = seqnames.field,
+                                       start.field = start.field,
+                                       end.field = end.field,
+                                       strand.field = strand.field,
+                                       split.field = split.field,
+                                       ignore.strand = ignore.strand,
+                                       keep.extra.columns = keep.extra.columns)
+    
+    mcols(out)[[o.split.field]] = spl[tmpix]
+    if (!is.null(asmcols)) {
+        mcols(out) = cbind(mcols(out), qmat(attach_to_mcols, rows))
+    }
+    return(out)
 }
 
 
@@ -6382,92 +6484,97 @@ sv_filter = function(sv, filt_sv, pad = 500)
 #' @param pad Exposed argument to skitools::ra.overlaps()
 #' @return GRangesList of breakpoint pairs with junctions that overlap removed
 #' @export
-parsesnpeff = function(vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, debug = FALSE) {
-  if (debug) browser()
-  out.name = paste0("tmp_", rand.string(), ".vcf.gz")
-  tmp.path = paste0(tempdir(), "/", out.name)
-  if (!keepfile)
-    on.exit(unlink(tmp.path))
-  try2({
-    onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
-    if (coding_alt_only) {
-      filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\""
-      if (filterpass)
-        cmd = sprintf("cat %s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, filt, tmp.path)
-      else
-        cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, filt, tmp.path)
-    } else {
-      filt = ""
-      if (filterpass)
-        cmd = sprintf("cat %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s", vcf, onepline, tmp.path)
-      else
-        cmd = sprintf("cat %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", vcf, onepline, tmp.path)
-    }
-    system(cmd)
-  })
-  if (!altpipe)
-    out = grok_vcf(tmp.path, long = TRUE, geno = geno, gr = gr)
-  else {
-    vcf = readVcf(tmp.path)
-    vcf = expand(vcf)
-    rr = within(rowRanges(vcf), {
-      REF = as.character(REF);
-      ALT = as.character(ALT)
+parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, 
+    geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, 
+    debug = FALSE) 
+{
+    if (debug) 
+        browser()
+    out.name = paste0("tmp_", rand.string(), ".vcf.gz")
+    tmp.path = paste0(tempdir(), "/", out.name)
+    if (!keepfile) 
+        on.exit(unlink(tmp.path))
+    try2({
+        catcmd = if (grepl("(.gz)$", vcf)) "zcat" else "cat"
+        onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
+        if (coding_alt_only) {
+            filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\""
+            if (filterpass)
+                cmd = sprintf(paste(catcmd, "%s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s"), 
+                  vcf, onepline, filt, tmp.path)
+            else cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", 
+                vcf, onepline, filt, tmp.path)
+        }
+        else {
+            filt = ""
+            if (filterpass) 
+                cmd = sprintf(paste(catcmd, "%s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s"), 
+                  vcf, onepline, tmp.path)
+            else cmd = sprintf(paste(catcmd, "%s | %s | bcftools norm -Ov -m-any | bgzip -c > %s"), 
+                vcf, onepline, tmp.path)
+        }
+        system(cmd)
     })
-    ann = as.data.table(tstrsplit(unlist(info(vcf)$ANN), "\\|"))[,1:15,with = FALSE, drop = FALSE]
-    fn = c('allele', 'annotation', 'impact', 'gene', 'gene_id', 'feature_type', 'feature_id', 'transcript_type', 'rank', 'variant.c', 'variant.p', 'cdna_pos', 'cds_pos', 'protein_pos', 'distance')
-    data.table::setnames(ann, fn)
-    ## gathering read depth
-    if ("AD" %in% names(geno(vcf))) {
-      adep = setnames(as.data.table(geno(vcf)$AD[,,1:2]), c("ref", "alt"))
-      gt = geno(vcf)$GT
-    } else if (all(c("AU", "GU", "CU", "TU", "TAR", "TIR") %in% c(names(geno(vcf))))) {
-
-      ## strelka2 has a ridiculous read depth output format for snv
-
-      ## AU,GU,CU,TU fields are the read counts with that base
-      ## have to parse this by matching REF and ALT to these columns
-      this.col = dim(geno(vcf)[["AU"]])[2]
-      d.a = geno(vcf)[['AU']][,,1, drop = F][,this.col,1]
-      d.g = geno(vcf)[['GU']][,,1, drop = F][,this.col,1]
-      d.t = geno(vcf)[['TU']][,,1, drop = F][,this.col,1]
-      d.c = geno(vcf)[['CU']][,,1, drop = F][,this.col,1]
-
-      mat = cbind("A" = d.a, "G" = d.g, "T" = d.t, "C" = d.c)
-      rm("d.a", "d.g", "d.t", "d.c")
-
-      refid = match(as.character(fixed(vcf)$REF), colnames(mat))
-      refid = ifelse(!isSNV(vcf), NA_integer_, refid)
-      altid = match(as.character(fixed(vcf)$ALT), colnames(mat))
-      altid = ifelse(!isSNV(vcf), NA_integer_, altid)
-
-      refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
-      altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
-
-      ## TAR = ref counts for indel
-      ## TIR = alt counts for indel
-      this.icol = dim(geno(vcf)[["TAR"]])[2]
-      refindel = d.tar = geno(vcf)[['TAR']][,,1, drop = F][,this.icol,1]
-      altindel = d.tir = geno(vcf)[['TIR']][,,1, drop = F][,this.icol,1]
-
-      adep = data.table(ref = coalesce(refsnv, refindel),
-                        alt = coalesce(altsnv, altindel))
-
-      gt = NULL
-
-    } else {
-      message("ref and alt count columns not recognized")
-
-      adep = NULL
-      gt = NULL
-
+    if (!altpipe) 
+        out = grok_vcf(tmp.path, long = TRUE, geno = geno, gr = gr)
+    else {
+        vcf = readVcf(tmp.path)
+        vcf = S4Vectors::expand(vcf)
+        rr = within(rowRanges(vcf), {
+            REF = as.character(REF)
+            ALT = as.character(ALT)
+        })
+        ann = as.data.table(tstrsplit(unlist(info(vcf)$ANN), 
+            "\\|"))[, 1:15, with = FALSE, drop = FALSE]
+        fn = c("allele", "annotation", "impact", "gene", "gene_id", 
+            "feature_type", "feature_id", "transcript_type", 
+            "rank", "variant.c", "variant.p", "cdna_pos", "cds_pos", 
+            "protein_pos", "distance")
+        data.table::setnames(ann, fn)
+        if ("AD" %in% names(geno(vcf))) {
+            adep = setnames(as.data.table(geno(vcf)$AD[, , 1:2]), 
+                c("ref", "alt"))
+            gt = geno(vcf)$GT
+        }
+        else if (all(c("AU", "GU", "CU", "TU", "TAR", "TIR") %in% 
+            c(names(geno(vcf))))) {
+            this.col = dim(geno(vcf)[["AU"]])[2]
+            d.a = geno(vcf)[["AU"]][, , 1, drop = F][, this.col, 
+                1]
+            d.g = geno(vcf)[["GU"]][, , 1, drop = F][, this.col, 
+                1]
+            d.t = geno(vcf)[["TU"]][, , 1, drop = F][, this.col, 
+                1]
+            d.c = geno(vcf)[["CU"]][, , 1, drop = F][, this.col, 
+                1]
+            mat = cbind(A = d.a, G = d.g, T = d.t, C = d.c)
+            rm("d.a", "d.g", "d.t", "d.c")
+            refid = match(as.character(fixed(vcf)$REF), colnames(mat))
+            refid = ifelse(!isSNV(vcf), NA_integer_, refid)
+            altid = match(as.character(fixed(vcf)$ALT), colnames(mat))
+            altid = ifelse(!isSNV(vcf), NA_integer_, altid)
+            refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
+            altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
+            this.icol = dim(geno(vcf)[["TAR"]])[2]
+            refindel = d.tar = geno(vcf)[["TAR"]][, , 1, drop = F][, 
+                this.icol, 1]
+            altindel = d.tir = geno(vcf)[["TIR"]][, , 1, drop = F][, 
+                this.icol, 1]
+            adep = data.table(ref = coalesce(refsnv, refindel), 
+                alt = coalesce(altsnv, altindel))
+            gt = NULL
+        }
+        else {
+            message("ref and alt count columns not recognized")
+            adep = NULL
+            gt = NULL
+        }
+        mcols(rr) = BiocGenerics::cbind(mcols(rr), ann, adep, 
+            gt = gt[, 1])
+        out = rr
     }
-
-    mcols(rr) = BiocGenerics::cbind(mcols(rr), ann, adep, gt = gt[,1])
-    out = rr
-  }
-  this.env = environment()
-  return(this.env$out)
+    this.env = environment()
+    return(this.env$out)
 }
 
 #' @name grok_vcf
@@ -6559,122 +6666,120 @@ grok_vcf = function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner 
 #' @param vcf path to vcf
 #' @param jab path to jabba
 #' @export
-est_snv_cn_stub = function(vcf, jab, tumbam = NULL, germ_subsample = 2e5, somatic = FALSE, saveme = FALSE) {
-  oldsaf = options()$stringsAsFactors
-  options(stringsAsFactors = FALSE)
-  oldscipen = options()$scipen
-  options(scipen = 999)
-  on.exit({ ## equivalent to trap cmd in shell
-    options(scipen = oldscipen)
-    options(stringsAsFactors = oldsaf)
-    unlink(tmpvcf)
-    unlink(tmpvcf2)
-  })
-  tmpvcf = tempfile(fileext = ".vcf")
-  tmpvcf2 = tempfile(fileext = ".vcf")
-  if (!somatic) {
-
-    message("starting germline processing")
-    ## getting a larger subsample from the VCF so as to get better
-    ## estimate of per segment average total read depth
-    system2("bcftools",
-            ## c("view -i 'FILTER==\"PASS\" && GT == \"0/1\"'",
-            c("view -i 'FILTER==\"PASS\"'",
-              vcf),
-            stdout = tmpvcf)
-
-    system2("java",
-            sprintf("-jar ~/software/jvarkit/dist/downsamplevcf.jar -N 10 -n %s %s", germ_subsample,
-                    tmpvcf),
-            stdout = tmpvcf2,
-            env = "module unload java; module load java/1.8;")
-
-    gvcf = parsesnpeff(vcf, coding_alt_only = TRUE, keepfile = FALSE, altpipe = TRUE)
-    gvcf_subsam = parsesnpeff(tmpvcf2, coding_alt_only = FALSE, keepfile = FALSE, altpipe = TRUE)
-    gvcf = unique(dt2gr(rbind(gr2dt(gvcf_subsam), gr2dt(gvcf))))
-    input = gvcf
-    rm("gvcf", "gvcf_subsam")
-    fif = file.info(dir("./"))
-    fif = arrange(cbind(path = rownames(fif), fif), desc(mtime))
-    tmp.t = grep("reg_.*.tsv", fif$path, value = TRUE)[1]
-    tmp.b = grep("reg_.*.bed", fif$path, value = TRUE)[1]
-    callout = grep("mpileup_", fif$path, value = TRUE)[1]
-    if (!file.exists(tmp.t))
-      tmp.t = tempfile(pattern = "reg_", fileext = ".tsv", tmpdir = ".")
-    if (!file.exists(tmp.b))
-      tmp.b = tempfile(pattern = "reg_", fileext = ".bed", tmpdir = ".")
-    if (!file.exists(callout))
-      callout = tempfile(pattern = "mpileup_", fileext = ".vcf", tmpdir = ".")
-    ## on.exit({unlink(tmp.t); unlink(callout); unlink(tmp.b)}, add = T)
-    input = within(input, {nref = nchar(REF);
-      nalt = nchar(ALT);
-      vartype =
-        ifelse(nref > 1 & nalt == 1,"DEL",
-               ifelse(nref == 1 & nalt > 1, "INS",
-                      ifelse(nref == 1 & nalt == 1, "SNV", NA_character_)));
-      maxchar = pmax(nref, nalt);
-      nref = NULL; nalt = NULL
+est_snv_cn_stub = function (vcf, jab, tumbam = NULL, germ_subsample = 200000, somatic = FALSE, 
+    saveme = FALSE) 
+{
+    oldsaf = options()$stringsAsFactors
+    options(stringsAsFactors = FALSE)
+    oldscipen = options()$scipen
+    options(scipen = 999)
+    on.exit({
+        options(scipen = oldscipen)
+        options(stringsAsFactors = oldsaf)
+        unlink(tmpvcf)
+        unlink(tmpvcf2)
     })
-    input2 = GenomicRanges::reduce(gr.resize(input, ifelse(input$maxchar > 1, 201, input$maxchar), pad = FALSE) %>% gr.sort)
-    fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, start := pmax(start, 1)][, end := pmax(end, 1)], tmp.t, sep = "\t", col.names = FALSE)
-    fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, start := pmax(start - 1, 0)][, end := pmax(end, 1)], tmp.b, sep = "\t", col.names = FALSE)
-    if (!file.exists(callout)) {
-    message("starting germline mpileup to call variants in tumor")
-    clock(system(
-      sprintf('(bcftools mpileup -d 8000 -Q 0 -q 0 -B -R %s -f ~/DB/GATK/human_g1k_v37_decoy.fasta %s | bcftools call -m --prior 0 -v) > %s',
-        tmp.t,
-        tumbam,
-        callout)))
+    tmpvcf = tempfile(fileext = ".vcf")
+    tmpvcf2 = tempfile(fileext = ".vcf")
+    if (!somatic) {
+        message("starting germline processing")
+        system2("bcftools", c("view -i 'FILTER==\"PASS\"'", vcf), 
+            stdout = tmpvcf)
+        system2("java", sprintf("-jar ~/software/jvarkit/dist/downsamplevcf.jar -N 10 -n %s %s", 
+            germ_subsample, tmpvcf), stdout = tmpvcf2, env = "module unload java; module load java/1.8;")
+        gvcf = parsesnpeff(tmpvcf, coding_alt_only = TRUE, keepfile = FALSE, 
+            altpipe = TRUE)
+        gvcf_subsam = parsesnpeff(tmpvcf2, coding_alt_only = FALSE, 
+            keepfile = FALSE, altpipe = TRUE)
+        gvcf = unique(dt2gr(rbind(gr2dt(gvcf_subsam), gr2dt(gvcf))))
+        input = gvcf
+        rm("gvcf", "gvcf_subsam")
+        fif = file.info(dir("./"))
+        fif = arrange(cbind(path = rownames(fif), fif), desc(mtime))
+        tmp.t = grep("reg_.*.tsv", fif$path, value = TRUE)[1]
+        tmp.b = grep("reg_.*.bed", fif$path, value = TRUE)[1]
+        callout = grep("mpileup_", fif$path, value = TRUE)[1]
+        if (!file.exists(tmp.t)) 
+            tmp.t = tempfile(pattern = "reg_", fileext = ".tsv", 
+                tmpdir = ".")
+        if (!file.exists(tmp.b)) 
+            tmp.b = tempfile(pattern = "reg_", fileext = ".bed", 
+                tmpdir = ".")
+        if (!file.exists(callout)) 
+            callout = tempfile(pattern = "mpileup_", fileext = ".vcf", 
+                tmpdir = ".")
+        input = within(input, {
+            nref = nchar(REF)
+            nalt = nchar(ALT)
+            vartype = ifelse(nref > 1 & nalt == 1, "DEL", ifelse(nref == 
+                1 & nalt > 1, "INS", ifelse(nref == 1 & nalt == 
+                1, "SNV", NA_character_)))
+            maxchar = pmax(nref, nalt)
+            nref = NULL
+            nalt = NULL
+        })
+        input2 = GenomicRanges::reduce(gr.resize(input, ifelse(input$maxchar > 
+            1, 201, input$maxchar), pad = FALSE) %>% gr.sort)
+        fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, `:=`(start, 
+            pmax(start, 1))][, `:=`(end, pmax(end, 1))], tmp.t, 
+            sep = "\t", col.names = FALSE)
+        fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, `:=`(start, 
+            pmax(start - 1, 0))][, `:=`(end, pmax(end, 1))], 
+            tmp.b, sep = "\t", col.names = FALSE)
+        if (!file.exists(callout)) {
+            message("starting germline mpileup to call variants in tumor")
+            clock(system(sprintf("(bcftools mpileup -d 8000 -Q 0 -q 0 -B -R %s -f ~/DB/GATK/human_g1k_v37_decoy.fasta %s | bcftools call -m --prior 0 -v) > %s", 
+                tmp.t, tumbam, callout)))
+        }
+        excls = tempfile(pattern = "excludesam_", fileext = ".txt", 
+            tmpdir = tempdir())
+        writeLines(system(sprintf("bcftools query -l %s", callout), 
+            intern = T), excls)
+        cntmp = tempfile(pattern = "cntmp_", fileext = ".vcf.gz", 
+            tmpdir = "./")
+        system(sprintf("(bcftools view -S ^%s %s | bcftools norm -c f -f /gpfs/commons/home/khadi/DB/GATK/human_g1k_v37_decoy.fasta | bcftools norm -Ov -m-any | bgzip -c) > %s", 
+            excls, callout, cntmp))
+        cnfin = S4Vectors::expand(readVcf(cntmp))
+        dp4mat = do.call(rbind, as.list(info(cnfin)$DP4))
+        altv = dp4mat[, 3] + dp4mat[, 4]
+        idv = info(cnfin)$IDV
+        refv = dp4mat[, 1] + dp4mat[, 2]
+        idrefv = (altv + refv) - idv
+        gr4est = rowRanges(cnfin)
+        gr4est$ref = coalesce(idrefv, refv)
+        gr4est$alt = coalesce(idv, altv)
+        gr4est$ALT = as.character(gr4est$ALT)
+        gr4est$REF = as.character(gr4est$REF)
+        gr4est = merge(gr2dt(input), gr2dt(gr4est)[, `:=`(pileupfound, 
+            TRUE)], by = c("seqnames", "start", "end", "REF", 
+            "ALT"), suffixes = c("_normal", ""), all = TRUE, 
+            allow.cartesian = TRUE)
+        gr4est = unique(gr4est)
+        gr4est[, `:=`(pileupfound, pileupfound %in% TRUE)]
+        if (saveme) 
+            saveRDS(gr4est, "gr4est_germline.rds")
+        hold = gr4est[is.na(ref)]
+        hold[, `:=`(pileupnotfound, TRUE)]
+        germbin = gr4est[is.na(ref_normal)]
+        if (saveme) 
+            saveRDS(germbin, "germpileupbin.rds")
+        gr4est = gr4est[!is.na(ref)][!is.na(ref_normal)]
     }
-    excls = tempfile(pattern = "excludesam_", fileext = ".txt", tmpdir = tempdir())
-    writeLines(system(sprintf("bcftools query -l %s", callout), intern = T),
-      excls)
-    cntmp = tempfile(pattern = "cntmp_", fileext = ".vcf.gz", tmpdir = "./")
-    ## on.exit({unlink(excls); unlink(cntmp)}, add = T)
-    system(sprintf("(bcftools view -S ^%s %s | bcftools norm -c f -f /gpfs/commons/home/khadi/DB/GATK/human_g1k_v37_decoy.fasta | bcftools norm -Ov -m-any | bgzip -c) > %s",
-      excls, callout, cntmp))
-    cnfin = S4Vectors::expand(readVcf(cntmp))
-    dp4mat = do.call(rbind, as.list(info(cnfin)$DP4))
-    altv = dp4mat[,3] + dp4mat[,4]
-    idv = info(cnfin)$IDV
-    refv = dp4mat[,1] + dp4mat[,2]
-    idrefv = (altv + refv) - idv
-    gr4est = rowRanges(cnfin)
-    gr4est$ref = coalesce(idrefv, refv)
-    gr4est$alt = coalesce(idv, altv)
-    gr4est$ALT = as.character(gr4est$ALT); gr4est$REF = as.character(gr4est$REF)
-    gr4est  = merge(gr2dt(input), gr2dt(gr4est)[, pileupfound := TRUE],
-      by = c("seqnames", "start", "end", "REF", "ALT"),
-      suffixes = c("_normal", ""), all = TRUE,
-      allow.cartesian = TRUE)
-    gr4est = unique(gr4est)
-    gr4est[, pileupfound := pileupfound %in% TRUE]
-    ## raw input into snv cn estimator
-    if (saveme)
-      saveRDS(gr4est, 'gr4est_germline.rds')
-    hold = gr4est[is.na(ref)]
-    hold[, pileupnotfound := TRUE]
-    ## calls made by mpileup but not by original caller
-    germbin = gr4est[is.na(ref_normal)]
-    if (saveme)
-      saveRDS(germbin, 'germpileupbin.rds')
-    gr4est = gr4est[!is.na(ref)][!is.na(ref_normal)]
-  } else {
-    message("reading in somatic variants")
-    gr4est = parsesnpeff(vcf, coding_alt_only = FALSE, keepfile = FALSE, altpipe = TRUE)
-    if (saveme)
-      saveRDS(gr4est, 'gr4est_somatic.rds')
-    hold = NULL
-  }
-
-  out = est_snv_cn(gr4est, jab, somatic = somatic)
-  out = rbind(out, hold, fill = TRUE)
-  if (saveme)
-    if (somatic)
-      saveRDS(out, 'est_snv_cn_somatic.rds')
-    else
-      saveRDS(out, 'est_snv_cn_germline.rds')
-  return(out)
+    else {
+        message("reading in somatic variants")
+        gr4est = parsesnpeff(vcf, coding_alt_only = FALSE, keepfile = FALSE, 
+            altpipe = TRUE)
+        if (saveme) 
+            saveRDS(gr4est, "gr4est_somatic.rds")
+        hold = NULL
+    }
+    out = est_snv_cn(gr4est, jab, somatic = somatic)
+    out = rbind(out, hold, fill = TRUE)
+    if (saveme) 
+        if (somatic) 
+            saveRDS(out, "est_snv_cn_somatic.rds")
+        else saveRDS(out, "est_snv_cn_germline.rds")
+    return(out)
 }
 
 #' @name est_snv_cn
@@ -7087,10 +7192,11 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     cx.edt$simple_type = factor(cx.edt$simple_type, levels = c("INV", "INVDUP", "TRA"))
     cx.edt[, simple_type := fct_explicit_na(simple_type, "NA")]
     mod.dt = mltools::one_hot(cx.edt[, .(simple_type)])
-    cx.edt = cbind(select(cx.edt, -matches("^simple_.*$")),
-                   rename_all(mod.dt, ~paste0("simple", gsub("simple_type", "", tolower(.)))))
-    ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas")
-    cx.mat = as.matrix(mutate_all(replace_na(cx.edt[, ev.types,with = FALSE], 0), as.numeric))
+    cx.edt = cbind(dplyr::select(cx.edt, -dplyr::matches("^simple_.*$")),
+                   dplyr::rename_all(mod.dt, ~paste0("simple", gsub("simple_type", "", tolower(.)))))
+    ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm")
+    ## cx.mat = as.matrix(mutate_all(replace_na(cx.edt[, ev.types,with = FALSE], 0), as.numeric))
+    cx.mat = as.matrix(dplyr::mutate_all(replace_na(dplyr::select(cx.edt, dplyr::one_of(ev.types)), 0), as.numeric))
     cx.mat = cx.mat > 0
     mode(cx.mat) = "integer"
     cx.edt[, unclassified := rowSums(cx.mat) == 0]

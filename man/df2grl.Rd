@@ -12,7 +12,9 @@ df2grl(
   strand.field = "strand",
   split.field = "grl.ix",
   ignore.strand = FALSE,
-  keep.extra.columns = TRUE
+  keep.extra.columns = TRUE,
+  asmcols = NULL,
+  keepgrmeta = FALSE
 )
 }
 \value{

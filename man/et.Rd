@@ -4,7 +4,7 @@
 \alias{et}
 \title{shortcut for eval(parse(text = <string>))}
 \usage{
-et(txt, eval = TRUE, envir = parent.frame())
+et(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2))
 }
 \arguments{
 \item{txt}{string to evaluate}
