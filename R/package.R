@@ -111,7 +111,7 @@ selfname = function(char) {setNames2(char, char)}
 #' @param lst A list
 #' @return a logical vector marking which elements are try-errors"
 #' @export
-check_lst = function(lst, class_condition = c("try-error", "error", "errored", "err"))
+check_lst = function(lst, class_condition = c("simpleError", "try-error", "error", "errored", "err"))
 {
     ## unlist(lapply(lst, function(x) class(x)[1])) %in% class_condition
     return(vapply(lst, function(x) class(x)[1], "") %in% class_condition)
@@ -126,7 +126,7 @@ check_lst = function(lst, class_condition = c("try-error", "error", "errored", "
 #' @param lst A list
 #' @return a logical vector marking which elements are try-errors"
 #' @export
-iderr = function(lst, class_condition = c("try-error", "error", "errored", "err")) {
+iderr = function(lst, class_condition = c("simpleError", "try-error", "error", "errored", "err")) {
   which(check_lst(lst))
 }
 
@@ -150,7 +150,7 @@ whicherr = iderr
 #' @param lst A list (usually the output of lapply(... , function(x) try({}))
 #' @return only returns the non-errors in the list
 #' @export
-ret_no_err = function(lst, class_condition = c("try-error", "error", "errored", "err"))
+ret_no_err = function(lst, class_condition = c("simpleError", "try-error", "error", "errored", "err"))
 {
     return(lst[!check_lst(lst, class_condition = class_condition)])
 }
@@ -162,7 +162,7 @@ ret_no_err = function(lst, class_condition = c("try-error", "error", "errored", 
 #' @param lst A list (usually the output of lapply(... , function(x) try({}))
 #' @return only returns the errors in the list
 #' @export
-ret_err = function(lst, class_condition = c("try-error", "error", "errored", "err"))
+ret_err = function(lst, class_condition = c("simpleError", "try-error", "error", "errored", "err"))
 {
     return(lst[check_lst(lst, class_condition = class_condition)])
 }
@@ -1069,7 +1069,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         ##     }
 
         ## })
-        on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = parent.frame(2))})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -1087,7 +1087,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
                        collapse = ",")
             })), collapse = ",")
             newstr = paste0("par(", allpars, ")")
-            eval(parse(text = newstr), envir = parent.frame())
+            eval(parse(text = newstr), envir = parent.frame(), enclos = parent.frame(2))
         } else {
             newstr = ""
             newpars = ""
@@ -1167,7 +1167,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         ##     }
 
         ## })
-        on.exit({eval(parse(text = oldstr), envir = parent.frame())})
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclose = parent.frame(2))})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -1185,7 +1185,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
                        collapse = ",")
             })), collapse = ",")
             newstr = paste0("par(", allpars, ")")
-            eval(parse(text = newstr), envir = parent.frame())
+            eval(parse(text = newstr), envir = parent.frame(), enclos = parent.frame(2))
         } else {
             newstr = ""
             newpars = ""
@@ -1492,14 +1492,14 @@ file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", 
 #' @param ... an expression
 #' @return NULL
 #' @export
-silent = function(this_expr, this_env = parent.frame()) {
+silent = function(this_expr, this_env = parent.frame(), enclos = parent.frame(2)) {
     eval(expr = {capture.output(
             capture.output(... = this_expr,
                            file = "/dev/null",
                            type = c("output")),
             file = "/dev/null",
             type = "message")
-    }, envir = this_env)
+    }, envir = this_env, enclos = parent.frame(2))
     invisible()
 }
 
@@ -3176,7 +3176,7 @@ ave3 = function (x, ..., FUN = mean)
         ## spl = split(x, g)
         lst = lapply(spl, FUN)
         ## return(rep(unlist(lst), lengths(lidx))[unlist(lidx)])
-        return(unlist(rep(lst, lengths(lidx) - lengths(lst) + 1))[unlist(lidx)])
+        return(unlist(rep(lst, lengths(lidx) - lengths(lst) + 1))[order(unlist(lidx))])
     }
     x
 }
@@ -4979,6 +4979,43 @@ dt_f2char = function(dt, cols = NULL) {
 ##############################
 
 
+#' @name gr_deconstruct_by
+#' @title removing by field and random string barcode to seqnames for more efficient by queries
+#' 
+#' @description
+#'
+#' to be used with gr_construct_by
+#'
+#' @return A GRanges with the by metadata field attached to the seqnames
+#' @author Kevin Hadi
+#' @export gr_deconstruct_by
+gr_deconstruct_by = function (x) {
+  this.sep1 = {
+    set.seed(10)
+    rand.string()
+  }
+  this.sep2 = {
+    set.seed(11)
+    rand.string()
+  }
+  ans = copy2(x)
+  f1 = as.character(seqnames(x))
+  f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
+  f2 = trimws(gsub(paste0(".*", this.sep1), "", f2))
+  ui = which(!duplicated(f1))
+  x_seqinfo <- seqinfo(x)
+  seql = rleseq(f2[ui], clump = T)
+  lst = lapply(split(seqlengths(x_seqinfo)[f1[ui]], seql$idx), function(x) max(x))
+  uii = which(!duplicated(f2[ui]))
+  ans_seqlevels = f2[ui][uii]
+  ans_seqlengths = setNames(unlist(lst), ans_seqlevels)
+  ans_isCircular <- unname(isCircular(x_seqinfo))[ans_seqlevels]
+  ans_seqinfo <- Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
+  ans@seqnames <- Rle(factor(f2, ans_seqlevels))
+  ans@seqinfo <- ans_seqinfo
+  return(ans)
+}
+
 
 #' @name gr_construct_by
 #' @title adding on by field to seqnames for more efficient by queries
@@ -5010,7 +5047,7 @@ gr_construct_by = function(x, by = NULL)
     ans_seqinfo <- Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
     ans@seqnames <- Rle(factor(f12, ans_seqlevels))
     ans@seqinfo <- ans_seqinfo
-    ans
+    return(ans)
 }
 
 
@@ -5041,7 +5078,7 @@ shift_up = function (x, shift = 0L)
         x[neg] <- shift_right(x[neg], shift)
         x[pos] <- shift_left(x[pos], shift)
     }
-    x
+    return(x)
 }
 
 
@@ -5071,7 +5108,7 @@ shift_down = function (x, shift = 0L)
         x[neg] <- shift_left(x[neg], shift)
         x[pos] <- shift_right(x[pos], shift)
     }
-    x
+    return(x)
 }
 
 #' @name shift_left
@@ -5088,7 +5125,7 @@ shift_down = function (x, shift = 0L)
 shift_left = function (x, shift = 0L)
 {
     shift_l <- -1L * shift
-    GenomicRanges::shift(x, shift_l)
+    return(GenomicRanges::shift(x, shift_l))
 }
 
 #' @name shift_right
@@ -5104,7 +5141,7 @@ shift_left = function (x, shift = 0L)
 #' @export
 shift_right = function (x, shift = 0L)
 {
-    GenomicRanges::shift(x, shift)
+    return(GenomicRanges::shift(x, shift))
 }
 
 #' @name readinfasta
@@ -5142,7 +5179,9 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
 subgr = function(x, y) {
     expr = as.expression(substitute(y))
     pf = parent.frame()
-    x[S4Vectors:::safeEval(substitute(expr), S4Vectors::as.env(x, pf), pf)]
+    pf2 = parent.frame(2)
+    ## enclos_pf = sys.frame(sys.parent())
+    return(x[S4Vectors:::safeEval(substitute(expr), S4Vectors::as.env(x, pf), pf2)])
     ## x[S4Vectors::with(x, eval(expr, enclos = pf))]
 }
 

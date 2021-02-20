@@ -7,7 +7,10 @@
 checking a list for any elements that are try-errors
 usually from an lapply(..., function(x) try({})) call}
 \usage{
-iderr(lst, class_condition = c("try-error", "error", "errored", "err"))
+iderr(
+  lst,
+  class_condition = c("simpleError", "try-error", "error", "errored", "err")
+)
 }
 \arguments{
 \item{lst}{A list}

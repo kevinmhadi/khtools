@@ -7,7 +7,7 @@
 execute expression without any output to console.
 silent({var = function_that_has_explicit_print(...)})}
 \usage{
-silent(this_expr, this_env = parent.frame())
+silent(this_expr, this_env = parent.frame(), enclos = parent.frame(2))
 }
 \arguments{
 \item{...}{an expression}
