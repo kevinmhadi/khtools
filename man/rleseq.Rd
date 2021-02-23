@@ -6,7 +6,7 @@
 \usage{
 rleseq(
   ...,
-  clump = FALSE,
+  clump = TRUE,
   recurs = FALSE,
   na.clump = TRUE,
   na.ignore = FALSE,

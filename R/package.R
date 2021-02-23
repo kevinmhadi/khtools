@@ -887,6 +887,7 @@ nonacol = function(x, napattern = "^NA") {
 #' @export
 et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)) {
     out = parse(text = txt)
+    enclos = stackenv2()
     if (eval) {
         return(eval(out, envir = envir, enclos = enclos))
     } else {
@@ -1069,7 +1070,8 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         ##     }
 
         ## })
-        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = parent.frame(2))})
+        pf2 = stackenv2()
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2)})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -1087,7 +1089,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
                        collapse = ",")
             })), collapse = ",")
             newstr = paste0("par(", allpars, ")")
-            eval(parse(text = newstr), envir = parent.frame(), enclos = parent.frame(2))
+            eval(parse(text = newstr), envir = parent.frame(), enclos = pf2)
         } else {
             newstr = ""
             newpars = ""
@@ -1110,7 +1112,7 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
         ##      envir = parent.frame(), enclos = stackenv(parent.frame(2)))
         eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
-             envir = parent.frame(), enclos = parent.frame(2))
+             envir = parent.frame(), enclos = pf2)
         ## eval(expr, envir = this.env)
         if (!is.null(title))
             title(title, cex.main = cex.title * max(cex))
@@ -1167,7 +1169,8 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         ##     }
 
         ## })
-        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclose = parent.frame(2))})
+        pf2 = stackenv2()
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2)})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -1185,7 +1188,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
                        collapse = ",")
             })), collapse = ",")
             newstr = paste0("par(", allpars, ")")
-            eval(parse(text = newstr), envir = parent.frame(), enclos = parent.frame(2))
+            eval(parse(text = newstr), envir = parent.frame(), enclos = pf2)
         } else {
             newstr = ""
             newpars = ""
@@ -1209,7 +1212,7 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         ## eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
         ##      envir = parent.frame(), enclos = stackenv(parent.frame(2)))
         eval(parse(text = paste0("{ par(", newpars, ");", as.character(as.expression(substitute(expr))), "}")),
-             envir = parent.frame(), enclos = parent.frame(2))
+             envir = parent.frame(), enclos = pf2)
         if (!is.null(title))
             title(title, cex.main = cex.title * max(cex))
         silent({dev.off()})
@@ -2199,7 +2202,7 @@ rand.string <- function(n=1, length=12)
 #' @return a list of idx and seq
 #' @author Kevin Hadi
 #' @export
-rleseq = function(..., clump = FALSE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
+rleseq = function(..., clump = TRUE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
                   sep = paste0(" ", rand.string(length = 6), " ")) {
     force(sep)
     rand.string <- function(n=1, length=12)
@@ -2978,7 +2981,7 @@ gx = function(nm = "x") eval.parent(getdat2(nm = nm))
 #' @export
 withv = function(x, expr) {
     env = environment()
-    senv = stackenv(parent.frame())
+    senv = stackenv2(parent.frame())
     suppressWarnings(eval(substitute(expr), env, enclos = senv))
 }
 
@@ -2991,7 +2994,8 @@ withv = function(x, expr) {
 stackenv = function(env = environment(), onlyanc = TRUE, asenv = TRUE) {
     fms = sys.frames()
     thisenv = as.list(env)
-    these = seq_along(fms)
+    ## these = rev(seq_along(fms))
+    these = rev(seq_len(sys.nframe()))
     if (onlyanc) these = these[-1]
     for (i in these) {
         thisenv = c(thisenv, tryCatch(as.list(fms[[i]]), error = function(e) NULL))
@@ -3001,6 +3005,62 @@ stackenv = function(env = environment(), onlyanc = TRUE, asenv = TRUE) {
         return(as.environment(thisenv))
     else
         return(thisenv)
+}
+
+
+#' @name stackenv2
+#' @title stackenv2
+#'
+#' 
+#'
+#' @export
+stackenv2 = function(overwrite = FALSE, onlyanc = TRUE, verbose = FALSE) {
+    fms = sys.frames()
+    thisenv = new.env()
+    parent.env(thisenv) = parent.frame()
+    ## these = rev(seq_along(fms))
+    these = rev(seq_len(sys.nframe()))
+    if (onlyanc) these = these[-1]
+    for (i in these) {
+        thisenv = suppressWarnings(appendEnv(thisenv, tryCatch(fms[[i]], error = function(e) NULL), overwrite = overwrite))
+        if (verbose) {
+            message("frame i: ", i)
+            print(ls(thisenv))
+        }
+    }
+    thisenv = suppressWarnings(appendEnv(thisenv, globalenv(), overwrite = overwrite))
+    return(thisenv)
+}
+
+#' @name appendEnv
+#' @title appendEnv
+#'
+#' 
+#' @author qedqed from Stackoverflow
+#' @export
+appendEnv = function(e1, e2 = NULL, overwrite = FALSE) {
+    if (is.null(e2))
+        return(e1)
+    e1name = deparse(substitute(e1))
+    e2name = deparse(substitute(e2))
+    listE1 = ls(e1, sorted = FALSE)
+    listE2 = ls(e2, sorted = FALSE)
+    rstring = rand.string()
+    for(v in listE2) {
+        if (v %in% listE1) {
+            msg = sprintf("Variable %s is in e1, too!", v)
+            if (!isTRUE(overwrite)) {
+                paste0(msg, " ... skipping ...")
+                next
+            }
+            warning(msg)
+        }
+        this = tryCatch(get0(v, envir = e2, ifnotfound = structure("missing", class = rstring)),
+                        error = function(e) structure("missing", class = rstring))
+        if (!class(this)[1] == rstring)
+            e1[[v]] = e2[[v]]
+    }
+    return(e1)
 }
 
 #' @name wv
@@ -4989,7 +5049,8 @@ dt_f2char = function(dt, cols = NULL) {
 #' @return A GRanges with the by metadata field attached to the seqnames
 #' @author Kevin Hadi
 #' @export gr_deconstruct_by
-gr_deconstruct_by = function (x) {
+gr_deconstruct_by = function (x, by = NULL) {
+  if (is.null(by) || length(x) == 0) return(x)
   this.sep1 = {
     set.seed(10)
     rand.string()
@@ -5032,6 +5093,7 @@ gr_deconstruct_by = function (x) {
 #' @export gr_construct_by
 gr_construct_by = function(x, by = NULL)
 {
+    if (is.null(by) || length(x) == 0) return(x)
     this.sep1 = {set.seed(10); rand.string()}
     this.sep2 = {set.seed(11); rand.string()}
     ans = copy2(x)
@@ -5179,8 +5241,8 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
 subgr = function(x, y) {
     expr = as.expression(substitute(y))
     pf = parent.frame()
-    pf2 = parent.frame(2)
-    ## enclos_pf = sys.frame(sys.parent())
+    ## pf2 = parent.frame(2)
+    pf2 = stackenv2()
     return(x[S4Vectors:::safeEval(substitute(expr), S4Vectors::as.env(x, pf), pf2)])
     ## x[S4Vectors::with(x, eval(expr, enclos = pf))]
 }
@@ -6096,7 +6158,6 @@ setMethod("within", signature(data = "IRanges"), function(data, expr) {
 })
 
 tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
-  seqlevels = seqlevels(x)
   ## if (!is.null(names(start)))
   ##   start <- start[seqlevels]
   ## if (!is.null(names(end)))
@@ -6107,9 +6168,11 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   ## end <- rep(end, each = 3L)
   gr = GenomicRanges:::deconstructGRLintoGR(x)
   grlix = formatC(seq_along(x), width = floor(log10(length(x))) + 1, format = "d", flag = "0")
+  ## seqlevels = seqlevels(x)
+  seqlevels = GenomeInfoDb::seqlevelsInUse(x)
   slix = formatC(seq_along(seqlevels), width = floor(log10(length(seqlevels))) + 1, format = "d", flag = "0")
   cdt = data.table::CJ(Var1 = grlix, Var2 = slix)[, oix := seq_len(.N)]
-  cdt = merge(cdt, data.frame(sl = seqlengths(x), Var2 = slix), by = "Var2")
+  cdt = merge(cdt, data.frame(sl = seqlengths(x)[seqlevels], Var2 = slix), by = "Var2")
   setkey(cdt, oix)
   nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
   seqlevels(gr) = nseqlevels
