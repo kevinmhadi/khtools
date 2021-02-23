@@ -6169,8 +6169,10 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   gr = GenomicRanges:::deconstructGRLintoGR(x)
   grlix = formatC(seq_along(x), width = floor(log10(length(x))) + 1, format = "d", flag = "0")
   ## seqlevels = seqlevels(x)
-  seqlevels = GenomeInfoDb::seqlevelsInUse(x)
-  slix = formatC(seq_along(seqlevels), width = floor(log10(length(seqlevels))) + 1, format = "d", flag = "0")
+  ## seqlevels = GenomeInfoDb::seqlevelsInUse(x)
+  ## slix = formatC(seq_along(seqlevels), width = floor(log10(length(seqlevels))) + 1, format = "d", flag = "0")
+  seqlevels= unique(as.integer(seqnames(x@unlistData)))
+  slix = formatC(seqlevels, width = floor(log10(max(seqlevels))) + 1, format = "d", flag = "0")
   cdt = data.table::CJ(Var1 = grlix, Var2 = slix)[, oix := seq_len(.N)]
   cdt = merge(cdt, data.frame(sl = seqlengths(x)[seqlevels], Var2 = slix), by = "Var2")
   setkey(cdt, oix)
