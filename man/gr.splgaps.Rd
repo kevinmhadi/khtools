@@ -11,7 +11,8 @@ gr.splgaps(
   sep = paste0(" ", rand.string(length = 8), " "),
   start = 1L,
   end = seqlengths(gr),
-  cleannm = TRUE
+  cleannm = TRUE,
+  expand.levels = TRUE
 )
 }
 \value{

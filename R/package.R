@@ -324,7 +324,7 @@ setNames2 = function(vec, nm, useempty = FALSE) {
 #' @examples
 #' intercalate(c("a","d","f"), c("b", "e", "g", "z"))
 #' @export
-intercalate = function(...) {
+intercalate = function(..., fillin = FALSE) {
     isNested <- function(x) {
         if (class(x) != "list") {
             stop("Expecting 'x' to be a list")
@@ -335,6 +335,10 @@ intercalate = function(...) {
     args = list(...)
     if (isNested(args)) {
         args = unlist(args, recursive = F)
+    }
+    if (fillin) {
+      mx = max(lengths(args))
+      args = lapply(args, function(x) x[rep_len(seq_along(x), mx)])
     }
     s_along = lapply(args, seq_along)
     ord = order(do.call(c, s_along))
@@ -638,6 +642,23 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 
 
+#' @name reset.dev
+#' @title reset.dev
+#'
+#' @description
+#' dealing with annoying plot resets
+#'
+#' @export reset.dev
+reset.dev = function(x) {
+  err = NULL
+  while (is.null(err)) {
+    err = tryCatch({eval(quote(dev.off()), globalenv()); NULL}, error = function(e) structure("", class = "err"))
+    ## err = tryCatch({evalq(dev.off(), globalenv()); NULL}, error = function(e) structure("", class = "err"))
+  }
+}
+
+
+
 #' @name complete.cases2
 #' @title complete.cases wrapper
 #'
@@ -844,7 +865,7 @@ dodo.call2 = function (FUN, args, use.names = T)
     if (!is.character(FUN))
       FUN = substitute(FUN)
     if (isTRUE(use.names) && !is.null(names(args)))
-      argn = paste(names(args), "=")
+      argn = paste0("\"", names(args), "\"", "=")
     else
         argn = NULL
     if (!is.matrix(args)) {
@@ -1070,8 +1091,8 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
         ##     }
 
         ## })
-        pf2 = stackenv2()
-        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2)})
+        pf2 = parent.frame(2)
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2); reset.dev()})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -1169,8 +1190,8 @@ ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
         ##     }
 
         ## })
-        pf2 = stackenv2()
-        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2)})
+        pf2 = parent.frame(2)
+        on.exit({eval(parse(text = oldstr), envir = parent.frame(), enclos = pf2); reset.dev()})
         if (length(pars) > 0) {
             goodnm = intersect(names(pars), names(lst.par))
             lst.par[goodnm] = pars[goodnm]
@@ -2275,6 +2296,84 @@ rleseq = function(..., clump = TRUE, recurs = FALSE, na.clump = TRUE, na.ignore 
     
 }
 
+## rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE, 
+##                    na.ignore = FALSE, sep = paste0(" ", rand.string(length = 6), 
+##                      " "), use.data.table = TRUE) 
+## {
+##   force(sep)
+##   out = if (use.data.table) {
+##     tryCatch(
+##     {
+##       dt = data.table(...)
+##       setnames(dt, make.names(rep("", ncol(dt)), unique = T))
+##       ## make.unique
+##       cmd = sprintf("dt[, I := .I][, .(idx = .GRP, seq = seq_len(.N), lns = .N, I), by = %s]", mkst(colnames(dt), "list"))
+##       dt = eval(parse(text = cmd))
+##       setkey(dt, I)[, .(idx, seq, lns)]
+##     }, error = function(e) structure("data table didn't work...", class = "err"))
+##   }
+##   if (!(is.null(out) || class(out)[1] == "err"))
+##     return(as.list(out))
+##   rand.string <- function(n = 1, length = 12) {
+##     randomString <- c(1:n)
+##     for (i in 1:n) {
+##       randomString[i] <- paste(sample(c(0:9, letters, LETTERS), 
+##         length, replace = TRUE), collapse = "")
+##     }
+##     return(randomString)
+##   }
+##   if (isTRUE(na.clump)) 
+##     paste = function(..., sep) base::paste(..., sep = sep)
+##   else paste = function(..., sep) base::paste(stringr::str_c(..., 
+##     sep = sep))
+##   lns = lengths(list(...))
+##   if (!all(lns == lns[1])) 
+##     warning("not all vectors provided have same length")
+##   fulllens = max(lns, na.rm = T)
+##   vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+##   if (length(vec) == 0) {
+##     out = list(idx = integer(0), seq = integer(0), lns = integer(0))
+##     return(out)
+##   }
+##   if (na.ignore) {
+##     isnotna = which(rowSums(as.data.frame(lapply(list(...), 
+##       is.na))) == 0)
+##     out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
+##       lns = rep(NA, fulllens))
+##     if (length(isnotna)) 
+##       vec = vec[isnotna]
+##     tmpout = do.call(rleseq, c(alist(... = vec), alist(clump = clump, 
+##       recurs = recurs, na.clump = na.clump, na.ignore = FALSE, use.data.table = FALSE)))
+##     for (i in seq_along(out)) out[[i]][isnotna] = tmpout[[i]]
+##     return(out)
+##   }
+##   if (!isTRUE(clump)) {
+##     rlev = rle(vec)
+##     if (isTRUE(recurs)) {
+##       return(unlist(unname(lapply(rlev$lengths, seq_len))))
+##     }
+##     else {
+##       out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
+##         seq = unlist(unname(lapply(rlev$lengths, seq_len))))
+##       out$lns = ave(out[[1]], out[[1]], FUN = length)
+##       return(out)
+##     }
+##   }
+##   else {
+##     if (!isTRUE(na.clump)) {
+##       vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
+##                                                           "NA"]))
+##     }
+##     vec = setNames(vec, seq_along(vec))
+##     lst = split(vec, factor(vec, levels = unique(vec)))
+##     ord = as.integer(names(unlist(unname(lst))))
+##     idx = rep(seq_along(lst), times = lengths(lst))
+##     out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
+##       recurs = TRUE, use.data.table = FALSE)[order(ord)])
+##     out$lns = ave(out[[1]], out[[1]], FUN = length)
+##     return(out)
+##   }
+## }
 
 
 
@@ -6166,24 +6265,58 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   ## start <- rep(start, each = 3L)
   ## end <- S4Vectors:::recycleVector(end, length(seqlevels))
   ## end <- rep(end, each = 3L)
-  gr = GenomicRanges:::deconstructGRLintoGR(x)
+  expand.levels = TRUE
+  gr = GenomicRanges:::deconstructGRLintoGR(x, expand.levels = expand.levels)
   grlix = formatC(seq_along(x), width = floor(log10(length(x))) + 1, format = "d", flag = "0")
-  ## seqlevels = seqlevels(x)
-  ## seqlevels = GenomeInfoDb::seqlevelsInUse(x)
-  ## slix = formatC(seq_along(seqlevels), width = floor(log10(length(seqlevels))) + 1, format = "d", flag = "0")
-  seqlevels= unique(as.integer(seqnames(x@unlistData)))
-  slix = formatC(seqlevels, width = floor(log10(max(seqlevels))) + 1, format = "d", flag = "0")
+  snid = as.integer(seqnames(x@unlistData))
+  if (isTRUE(expand.levels)) seql = seq_along(seqlevels(x)) else seql = unique(snid)
+  slix = formatC(seql, width = floor(log10(max(seql))) + 1, format = "d", flag = "0")
   cdt = data.table::CJ(Var1 = grlix, Var2 = slix)[, oix := seq_len(.N)]
-  cdt = merge(cdt, data.frame(sl = seqlengths(x)[seqlevels], Var2 = slix), by = "Var2")
+  cdt = merge(cdt, data.frame(sl = seqlengths(x)[seql], Var2 = slix), by = "Var2")
   setkey(cdt, oix)
   nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
-  seqlevels(gr) = nseqlevels
-  seqlengths(gr) = cdt$sl
+  f1 = rep(grlix, lengths(x))
+  f2 = slix[snid]
+  seqn = paste(f1, f2, sep = "|")
+  seqlevels(gr) = c(nseqlevels)
+  seqlengths(gr) = c(cdt$sl)
+  seqnames(gr) = S4Vectors::Rle(factor(seqn, nseqlevels))
   rgl = GenomicRanges:::deconstructGRintoRGL(gr)
   ## rgl2 = gaps(rgl, start = rep(rep(start, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
   rgl2 = gaps(rgl, start = rep(rep(1, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
   GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)
 }
+
+tmpgrlgaps2 = function(x, start = 1L, end = seqlengths(x), expand.levels = TRUE) {
+  ## if (!is.null(names(start)))
+  ##   start <- start[seqlevels]
+  ## if (!is.null(names(end)))
+  ##   end <- end[seqlevels]
+  ## start <- S4Vectors:::recycleVector(start, length(seqlevels))
+  ## start <- rep(start, each = 3L)
+  ## end <- S4Vectors:::recycleVector(end, length(seqlevels))
+  ## end <- rep(end, each = 3L)
+  gr = GenomicRanges:::deconstructGRLintoGR(x, expand.levels = expand.levels)
+  grlix = formatC(seq_along(x), width = floor(log10(length(x))) + 1, format = "d", flag = "0")
+  snid = as.integer(seqnames(x@unlistData))
+  if (isTRUE(expand.levels)) seql = seq_along(seqlevels(x)) else seql = unique(snid)
+  slix = formatC(seql, width = floor(log10(max(seql))) + 1, format = "d", flag = "0")
+  cdt = data.table::CJ(Var1 = grlix, Var2 = slix)[, oix := seq_len(.N)]
+  cdt = merge(cdt, data.frame(sl = seqlengths(x)[seql], Var2 = slix), by = "Var2")
+  setkey(cdt, oix)
+  nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
+  f1 = rep(grlix, lengths(x))
+  f2 = slix[snid]
+  seqn = paste(f1, f2, sep = "|")
+  seqlevels(gr) = c(nseqlevels)
+  seqlengths(gr) = c(cdt$sl)
+  seqnames(gr) = S4Vectors::Rle(factor(seqn, nseqlevels))
+  rgl = GenomicRanges:::deconstructGRintoRGL(gr)
+  ## rgl2 = gaps(rgl, start = rep(rep(start, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
+  rgl2 = gaps(rgl, start = rep(rep(1, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
+  GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)
+}
+
 
 #' @name gaps
 #' @title gaps on GRangesList
@@ -6210,9 +6343,9 @@ setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 #' @rdname gr.splgaps
 #' @author Kevin Hadi
 #' @export gr.splgaps
-gr.splgaps = function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
+gr.splgaps = function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE, expand.levels = TRUE) {
   lst = as.list(match.call())[-1]
-  ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
+  ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end", "expand.levels"))
   cl = sapply(lst[ix], class)
   vars = unlist(sapply(lst[ix], function(x) unlist(sapply(x, toString))))
   if (length(vars) == 1) {
@@ -6228,8 +6361,8 @@ gr.splgaps = function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.stri
   if (ignore.strand)
       gr = gr.stripstrand(gr)
   grl = gr.noval(gr) %>% GenomicRanges::split(tmpix)
-  ## out = tmpgrlgaps(grl, start = start, end = end)
-  out = gaps(grl, start = start, end = end)
+  out = tmpgrlgaps2(grl, start = start, end = end, expand.levels = expand.levels)
+  ## out = gaps(grl, start = start, end = end)
   mcols(out) = mcols(gr)[unix,vars, drop = F]
   if (cleannm)
     names(out) = gsub(sep, " ", names(out))

@@ -6,7 +6,7 @@
 
 interleave vectors together}
 \usage{
-intercalate(...)
+intercalate(..., fillin = FALSE)
 }
 \arguments{
 \item{...}{A set of vectors to collate}
