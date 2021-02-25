@@ -4142,6 +4142,31 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
+
+
+#' @name gt.each
+#' @title convenience function to plot each element separately
+#'
+#' useful for grangeslists and gwalks to plot each one on a separate track
+#' good for visualization
+#'
+#' @return gTrack
+#' @export gt.each
+gt.each = function(gr) {
+    ix = seq_along(gr)
+    gtrackfun = function(x, ...) {
+        if (inherits(x, c("gWalk", "gGraph")))
+            return(x$gtrack(...))
+        else if (inherits(x, c("GRanges", "GRangesList")))
+            return(gTrack(x, ...))
+    }
+    fx = function(i) {
+        this = gr[i]
+        gtrackfun(this, name = i)
+    }
+    lapply(ix, fx) %>% dodo.call2(FUN = c)
+}
+
 #' @name grab_cov
 #' @title convenience function to pull out coverage data from table
 #'
@@ -5415,9 +5440,9 @@ subgr = function(x, y) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.genome
-gr.genome = function(si, onlystandard = TRUE) {
+gr.genome = function(si, onlystandard = TRUE, genome = NULL) {
     if (missing(si)) {
-        gr = si2gr(hg_seqlengths(include.junk = !onlystandard))
+        gr = si2gr(hg_seqlengths(include.junk = !onlystandard, genome = genome))
     } else {
         gr = si2gr(si)
     }
@@ -6276,7 +6301,8 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   setkey(cdt, oix)
   nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
   f1 = rep(grlix, lengths(x))
-  f2 = slix[snid]
+  ## f2 = slix[snid]
+  f2 = setkey(data.table(seql, slix), seql)[list(snid)]$slix
   seqn = paste(f1, f2, sep = "|")
   seqlevels(gr) = c(nseqlevels)
   seqlengths(gr) = c(cdt$sl)
@@ -6286,6 +6312,7 @@ tmpgrlgaps = function(x, start = 1L, end = seqlengths(x)) {
   rgl2 = gaps(rgl, start = rep(rep(1, cdt[,.N]), each = 3L), end = rep(cdt$sl, each = 3L))
   GenomicRanges:::reconstructGRLfromGR(GenomicRanges:::reconstructGRfromRGL(rgl2, gr), x)
 }
+
 
 tmpgrlgaps2 = function(x, start = 1L, end = seqlengths(x), expand.levels = TRUE) {
   ## if (!is.null(names(start)))
@@ -6306,7 +6333,8 @@ tmpgrlgaps2 = function(x, start = 1L, end = seqlengths(x), expand.levels = TRUE)
   setkey(cdt, oix)
   nseqlevels = cdt[, paste(Var1, Var2, sep = "|")]
   f1 = rep(grlix, lengths(x))
-  f2 = slix[snid]
+  ## f2 = slix[snid]
+  f2 = setkey(data.table(seql, slix), seql)[list(snid)]$slix
   seqn = paste(f1, f2, sep = "|")
   seqlevels(gr) = c(nseqlevels)
   seqlengths(gr) = c(cdt$sl)
@@ -6387,9 +6415,11 @@ gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = T
       subject = gr.stripstrand(subject)
     }
     sl = seqlengths(query)
-    if (new)
-      gp = do.call(gr.splgaps, c(alist(gr = gr.fix(subject, query)), ... = lapply(by, str2lang)))
-    else {
+    if (new) {
+      ## gp = do.call(gr.splgaps, c(alist(gr = gr.fix(subject, query)), ... = lapply(by, str2lang)))
+      cmd = sprintf("gr.splgaps(gr.fix(subject, query), %s, expand.levels = TRUE)", paste(collapse = ",", by))
+      gp = eval(parse(text = cmd))
+    } else {
       tmp = gr2dt(subject)
       tmp$strand = factor(tmp$strand, c("+", "-", "*"))
       gp = dt2gr(tmp[, as.data.frame(gaps(GRanges(seqnames,
@@ -6419,8 +6449,16 @@ gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = T
       gp = gaps(subject)
     }
   }
-  out = gr.findoverlaps(query, gp, qcol = names(values(query)),
-    ignore.strand = ignore.strand, by = by, ...)
+  if (new) {
+    out = suppressWarnings({gr.findoverlaps(gr_construct_by(query, by), gr_construct_by(gp, by),
+      qcol = names(values(query)),
+      ignore.strand = ignore.strand, ...)})
+    out = gr.fix(gr_deconstruct_by(out, by = by), query)
+  } else {
+    out = gr.findoverlaps(query, gp,
+      qcol = names(values(query)),
+      ignore.strand = ignore.strand, by = by, ...)
+  }
   return(out)
 }
 

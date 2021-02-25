@@ -4,7 +4,7 @@
 \alias{gr.genome}
 \title{create GRanges of full genome coordinates}
 \usage{
-gr.genome(si, onlystandard = TRUE)
+gr.genome(si, onlystandard = TRUE, genome = NULL)
 }
 \value{
 GRanges
