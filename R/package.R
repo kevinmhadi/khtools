@@ -65,15 +65,17 @@ match2 = function(x, y) {
 #' find_dups(c(3,1,5,4,4))
 #'
 #' @export
-find_dups = function(..., re_sort = FALSE, sep = " ") {
+find_dups = function(..., re_sort = FALSE, sep = " ", as.logical = FALSE) {
   lst = as.list(match.call())[-1]
-  ix = setdiff(seq_along(lst), which(names(lst) %in% c("re_sort", "sep")))
+  ix = setdiff(seq_along(lst), which(names(lst) %in% c("re_sort", "sep", "as.logical")))
   ## cl = sapply(lst[ix], class)
   if (length(ix) > 1)
     vec = do.call(function(...) paste(..., sep = sep), list(...))
   else
-    vec = unlist(list(...))
-  dupix = which(duplicated(vec))
+      vec = unlist(list(...))
+  duplg = duplicated(vec)
+  if (as.logical) return(duplg)
+  dupix = which(duplg); rm(duplg)
   if (!re_sort) {
     return(which(vec %in% vec[dupix]))
   } else {
@@ -250,32 +252,36 @@ setrownames = setRownames
 #' @return colnamed object
 #' @export
 setcols = function(dt, old, new) {
-    cnames = colnames2(dt)
-    if (missing(new) || missing(old)) {
-        if (missing(old)) {
-            old = new
-        }
-        if (is.character(old) && length(old) == length(cnames)) {
-            colnames(dt) = old
-            return(dt)
-        } else {
-            stop("names provided must be same length as ncol(dt)")
-        }
+  if (inherits(dt, c("GRanges", "GRangesList"))) {
+    mcols(dt) = setcols(mcols(dt), old, new)
+    return(dt)
+  }
+  cnames = colnames2(dt)
+  if (missing(new) || missing(old)) {
+    if (missing(old)) {
+      old = new
     }
-    if (is.character(old)) {
-        out = merge(data.frame(cnames, seq_along(cnames)), data.frame(cnames = old, new = new),
-                    allow.cartesian = T)
-        cnames[out[[2]]] = out[[3]]
-        colnames(dt) = cnames
-        return(dt)
+    if (is.character(old) && length(old) == length(cnames)) {
+      colnames(dt) = old
+      return(dt)
+    } else {
+      stop("names provided must be same length as ncol(dt)")
     }
-    if (is.logical(old)) {
-        if (! length(old) == length(cnames)) stop("logical vector must be same length as ncol(dt)")
-        old = which(old)
-    }
-    cnames[old] = new
+  }
+  if (is.character(old)) {
+    out = merge(data.frame(cnames, seq_along(cnames)), data.frame(cnames = old, new = new),
+      allow.cartesian = T)
+    cnames[out[[2]]] = out[[3]]
     colnames(dt) = cnames
     return(dt)
+  }
+  if (is.logical(old)) {
+    if (! length(old) == length(cnames)) stop("logical vector must be same length as ncol(dt)")
+    old = which(old)
+  }
+  cnames[old] = new
+  colnames(dt) = cnames
+  return(dt)
 }
 
 
@@ -642,6 +648,18 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 
 
+#' @name seevar
+#' @title see variables in environment
+#'
+#' @description
+#' seevar
+#'
+#' @export
+seevar = function(calling_env = parent.frame()) {
+    setdiff(ls(envir = calling_env), lsf.str(envir = calling_env))
+}
+
+
 #' @name reset.dev
 #' @title reset.dev
 #'
@@ -908,7 +926,7 @@ nonacol = function(x, napattern = "^NA") {
 #' @export
 et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)) {
     out = parse(text = txt)
-    enclos = stackenv2()
+    ## enclos = stackenv2()
     if (eval) {
         return(eval(out, envir = envir, enclos = enclos))
     } else {
@@ -1587,6 +1605,40 @@ copy2 = function(x) {
     }
 }
 
+#' @name copy3
+#' @title make deep copy, recursively
+#'
+#' useful for dev
+#' makes deep copy of R6 object, S4 object, or anything else really
+#'
+#' @export copy3
+copy3 = function (x, recurse_list = TRUE) {
+    if (inherits(x, "R6")) {
+        x2 = rlang::duplicate(x$clone(deep = T))
+        for (name in intersect(names(x2$.__enclos_env__), c("private", 
+            "public"))) for (nname in names(x2$.__enclos_env__[[name]])) tryCatch({
+            x2$.__enclos_env__[[name]][[nname]] = copy3(x2$.__enclos_env__[[name]][[nname]])
+        }, error = function(e) NULL)
+        return(x2)
+    } else if (isS4(x)) {
+        x2 = rlang::duplicate(x)
+        slns = slotNames(x2)
+        for (sln in slns) {
+            tryCatch({
+                slot(x2, sln) = copy3(slot(x2, sln))
+            }, error = function(e) NULL)
+        }
+        return(x2)
+    } else if (inherits(x, c("list"))) {
+        x2 = rlang::duplicate(x)
+        x2 = rapply(x2, copy3, how = "replace")
+        return(x2)
+    } else {
+        x2 = rlang::duplicate(x)
+        return(x2)
+    }
+}
+
 #' @name peepr6
 #' @title peepr6
 #'
@@ -1729,40 +1781,49 @@ qmat = function(mat, rid = NULL, cid = NULL) {
 #' but for general/interactive use
 #'
 #' @export
-match3 = function(x, table, nomatch = NA_integer_, old = TRUE) {
-    if (old) {
-        dx = within(data.frame(x = x), {id.x = seq_along(x)})
-        dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
-        res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
-                    allow.cartesian = TRUE)
-        return(res$id.tb[order(res$id.x)])
-    } else  {
-        m = match(table,x)
-        mat = cbind(m, seq_along(m))
-        mat = mat[!is.na(mat[,1]),,drop=FALSE]
-        mat = mat[order(mat[,1], na.last = FALSE),,drop = FALSE]
-        mat = cbind(mat, seq_len(dim(mat)[1]))
-        m2 = match(x,table)
-        ix = which(!duplicated(m2) & !is.na(m2))
-        mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
-        ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
-        ix = rep(1, length.out = length(m2))
-        ## original line
-        ## ix[!is.na(m2)] = base::tabulate(m)[!is.na(m2)]
-        ix[!is.na(m2)] = base::tabulate(m)[m][m2][!is.na(m2)]
-        out = rep(m2, ix)
-        out[!is.na(out)] = mat[mat_rix,,drop=F][,2]
-        return(out)
-        ## m = match(table, x)
-        ## mat = cbind(m, seq_along(m))
-        ## mat = mat[!is.na(mat[, 1]), , drop = FALSE]
-        ## mat = mat[order(mat[, 1]), , drop = FALSE]
-        ## mat = cbind(mat, seq_len(dim(mat)[1]))
-        ## m2 = match(x, table)
-        ## ix = which(!duplicated(m2))
-        ## mat_rix = unlist(rep(split(mat[, 3], mat[, 1]), base::tabulate(m2)[m2][ix]))
-        ## mat[mat_rix, , drop = F][, 2]
-    }
+match3 = function(x, table, nomatch = NA_integer_, old = TRUE, use.data.table = TRUE) {
+  out = if (use.data.table) {
+    tryCatch({
+      dx = data.table(x = x)[, id.x := seq_len(.N)]
+      dtb = data.table(table = table)[, id.tb := seq_len(.N)]
+      ## setkey(dx, x)[list(dtb$table)]$id.x
+      setkey(dtb, table)[list(dx$x)]$id.tb
+    }, error = function(e) structure("err", class = "err"))
+  }
+  if (!is.null(out) && !inherits(out, "err")) return(out)
+  if (old) {
+    dx = within(data.frame(x = x), {id.x = seq_along(x)})
+    dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
+    res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+      allow.cartesian = TRUE)
+    return(res$id.tb[order(res$id.x)])
+  } else  {
+    m = match(table,x)
+    mat = cbind(m, seq_along(m))
+    mat = mat[!is.na(mat[,1]),,drop=FALSE]
+    mat = mat[order(mat[,1], na.last = FALSE),,drop = FALSE]
+    mat = cbind(mat, seq_len(dim(mat)[1]))
+    m2 = match(x,table)
+    ix = which(!duplicated(m2) & !is.na(m2))
+    mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+    ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+    ix = rep(1, length.out = length(m2))
+    ## original line
+    ## ix[!is.na(m2)] = base::tabulate(m)[!is.na(m2)]
+    ix[!is.na(m2)] = base::tabulate(m)[m][m2][!is.na(m2)]
+    out = rep(m2, ix)
+    out[!is.na(out)] = mat[mat_rix,,drop=F][,2]
+    return(out)
+    ## m = match(table, x)
+    ## mat = cbind(m, seq_along(m))
+    ## mat = mat[!is.na(mat[, 1]), , drop = FALSE]
+    ## mat = mat[order(mat[, 1]), , drop = FALSE]
+    ## mat = cbind(mat, seq_len(dim(mat)[1]))
+    ## m2 = match(x, table)
+    ## ix = which(!duplicated(m2))
+    ## mat_rix = unlist(rep(split(mat[, 3], mat[, 1]), base::tabulate(m2)[m2][ix]))
+    ## mat[mat_rix, , drop = F][, 2]
+  }
 }
 
 #' @name %K%
@@ -1799,32 +1860,36 @@ match3 = function(x, table, nomatch = NA_integer_, old = TRUE) {
 #' @return a data frame/table with rownames from a column
 #' @export
 column_to_rownames = function(.data, var = "rowname", force = T, sep = " ") {
-    ## if (inherits(.data, c("data.frame", "DFrame"))) {
-    if (!is.null(dim(.data))) {
-        tmpfun = function(...) paste(..., sep = sep)
-        if (!is.null(rownames(.data)) || force) {
-            ## rn = .data[[var]]
-            if (is.numeric(var)) {
-                eva = eval(parse(text = paste(".data[,", paste("c(", paste0(var, collapse = ", "), ")"), ",drop=FALSE]")))
-                if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
-                rn = unname(unlist(eva))
-                colix = setdiff(seq_len(ncol(.data)), var)
-            } else if (is.character(var)) {
-                eva = eval(parse(text = paste(".data[,", paste("c(", paste0(paste0("\"", var, "\""), collapse = ", "), ")"), ",drop=FALSE]")))
-                if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
-                rn = unname(unlist(eva))
-                colix = setdiff(seq_len(ncol(.data)), match3(var,colnames(.data)))
-            }
-            eval(parse(text = paste(".data = .data[,", paste("c(", paste0(colix, collapse = ", "), ")"), ", drop = FALSE]")))
-            ## .data = .data[, colix,drop = FALSE]
-            if (inherits(.data, "tbl"))
-                .data = as.data.frame(.data)
-            rownames(.data) = replace(as.character(rn), is.na(rn), "")
-            return(.data)
-        } else
-            return(.data)
+  ## if (inherits(.data, c("data.frame", "DFrame"))) {
+  if (!is.null(dim(.data))) {
+    tmpfun = function(...) paste(..., sep = sep)
+    if (!is.null(rownames(.data)) || force) {
+      ## rn = .data[[var]]
+      if (is.numeric(var)) {
+        eva = eval(parse(text = paste(".data[,", paste("c(", paste0(var, collapse = ", "), ")"), ",drop=FALSE]")))
+        if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
+        rn = unname(unlist(eva))
+        colix = setdiff(seq_len(ncol(.data)), var)
+      } else if (is.character(var)) {
+        eva = eval(parse(text = paste(".data[,", paste("c(", paste0(paste0("\"", var, "\""), collapse = ", "), ")"), ",drop=FALSE]")))
+        if (ncol(eva) > 1) eva = dodo.call2(dg(tmpfun), eva)
+        rn = unname(unlist(eva))
+        colix = setdiff(seq_len(ncol(.data)), match3(var,colnames(.data)))
+      }
+      eval(parse(text = paste(".data = .data[,", paste("c(", paste0(colix, collapse = ", "), ")"), ", drop = FALSE]")))
+      ## .data = .data[, colix,drop = FALSE]
+      if (inherits(.data, "tbl"))
+        .data = as.data.frame(.data)
+      if (inherits(.data, "data.frame")) {
+        rownames(.data) = make.unique(replace(as.character(rn), is.na(rn), "NA"))
+      } else {
+        rownames(.data) = replace(as.character(rn), is.na(rn), "NA")
+      }
+      return(.data)
     } else
-        stop("must be a data frame-like object")
+      return(.data)
+  } else
+    stop("must be a data frame-like object")
 }
 
 #' @name col2rn
@@ -1854,7 +1919,7 @@ rownames_to_column = function(.data, var = "rowname", keep.rownames = FALSE,
         if (!is.null(rownames(.data))) {
             rn = rownames(.data)
             if (as.data.frame)
-                .data = cbind(u.var5912349879872349876 = rn, as.data.frame(.data))
+                .data = cbind(u.var5912349879872349876 = rn, as.data.frame(.data, row.names = make.unique(rn)))
             else
                 .data = cbind(u.var5912349879872349876 = rn, .data)
             colnames(.data)[1] = var
@@ -2223,157 +2288,158 @@ rand.string <- function(n=1, length=12)
 #' @return a list of idx and seq
 #' @author Kevin Hadi
 #' @export
-rleseq = function(..., clump = TRUE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
-                  sep = paste0(" ", rand.string(length = 6), " ")) {
-    force(sep)
-    rand.string <- function(n=1, length=12)
+rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE, 
+                   na.ignore = FALSE, sep = paste0(" ", rand.string(length = 6), 
+                     " "), use.data.table = TRUE) 
+{
+  force(sep)
+  out = if (use.data.table) {
+    tryCatch(
     {
-        randomString <- c(1:n)                  # initialize vector
-        for (i in 1:n)
-        {
-            randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                            length, replace=TRUE),
-                                     collapse="")
-        }
-        return(randomString)
+      dt = data.table(...)
+      setnames(dt, make.names(rep("", ncol(dt)), unique = T))
+      ## make.unique
+      cmd = sprintf("dt[, I := .I][, .(idx = .GRP, seq = seq_len(.N), lns = .N, I), by = %s]", mkst(colnames(dt), "list"))
+      dt = eval(parse(text = cmd))
+      setkey(dt, I)[, .(idx, seq, lns)]
+    }, error = function(e) structure("data table didn't work...", class = "err"))
+  }
+  if (!(is.null(out) || class(out)[1] == "err"))
+    return(as.list(out))
+  rand.string <- function(n = 1, length = 12) {
+    randomString <- c(1:n)
+    for (i in 1:n) {
+      randomString[i] <- paste(sample(c(0:9, letters, LETTERS), 
+        length, replace = TRUE), collapse = "")
     }
-    if (isTRUE(na.clump))
-        paste = function(...,
-                         sep) base::paste(..., sep = sep)
-    else
-        paste = function(...,
-                         sep) base::paste(stringr::str_c(..., sep = sep))
-    lns = lengths(list(...))
-    if (!all(lns == lns[1]))
-        warning("not all vectors provided have same length")
-    fulllens = max(lns, na.rm = T)
-    vec = setNames(paste(..., sep = sep), seq_len(fulllens))
-    if (length(vec) == 0) {
-        out = list(idx = integer(0), seq = integer(0), lns = integer(0))
-        return(out)
+    return(randomString)
+  }
+  if (isTRUE(na.clump)) 
+    paste = function(..., sep) base::paste(..., sep = sep)
+  else paste = function(..., sep) base::paste(stringr::str_c(..., 
+    sep = sep))
+  lns = lengths(list(...))
+  if (!all(lns == lns[1])) 
+    warning("not all vectors provided have same length")
+  fulllens = max(lns, na.rm = T)
+  vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+  if (length(vec) == 0) {
+    out = list(idx = integer(0), seq = integer(0), lns = integer(0))
+    return(out)
+  }
+  if (na.ignore) {
+    isnotna = which(rowSums(as.data.frame(lapply(list(...), 
+      is.na))) == 0)
+    out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
+      lns = rep(NA, fulllens))
+    if (length(isnotna)) 
+      vec = vec[isnotna]
+    tmpout = do.call(rleseq, c(alist(... = vec), alist(clump = clump, 
+      recurs = recurs, na.clump = na.clump, na.ignore = FALSE, use.data.table = FALSE)))
+    for (i in seq_along(out)) out[[i]][isnotna] = tmpout[[i]]
+    return(out)
+  }
+  if (!isTRUE(clump)) {
+    rlev = rle(vec)
+    if (isTRUE(recurs)) {
+      return(unlist(unname(lapply(rlev$lengths, seq_len))))
     }
-    ## rlev = rle(paste(as.character(vec)))
-    if (na.ignore) {
-        isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
-        out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), lns = rep(NA, fulllens))
-        if (length(isnotna))
-            vec = vec[isnotna]
-        tmpout = do.call(rleseq, c(alist(... = vec),
-                                   alist(clump = clump, recurs = recurs, na.clump = na.clump, na.ignore = FALSE)))
-        ## tmpout = rleseq(..., clump = clump, recurs = recurs, na.clump = FALSE, na.ignore = FALSE)
-        for (i in seq_along(out))
-            out[[i]][isnotna] = tmpout[[i]]
-        return(out)
+    else {
+      out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
+        seq = unlist(unname(lapply(rlev$lengths, seq_len))))
+      out$lns = ave(out[[1]], out[[1]], FUN = length)
+      return(out)
     }
-    if (!isTRUE(clump)) {
-        rlev = rle(vec)
-        if (isTRUE(recurs)) {
-            return(unlist(unname(lapply(rlev$lengths, seq_len))))
-        } else {
-            out = list(
-                idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
-                seq = unlist(unname(lapply(rlev$lengths, seq_len))))
-            out$lns = ave(out[[1]], out[[1]], FUN = length)
-            ## if (na.ignore)
-            ##     complete.cases(as.data.frame(lapply(list(...), is.na)))
-            return(out)
-        }
-    } else {
-        if (!isTRUE(na.clump)) {
-            vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == "NA"]))
-        }
-        ## vec = setNames(paste(as.character(vec)), seq_along(vec))
-        vec = setNames(vec, seq_along(vec))
-        lst = split(vec, factor(vec, levels = unique(vec)))
-        ord = as.integer(names(unlist(unname(lst))))
-        idx = rep(seq_along(lst), times = lengths(lst))
-        out = list(
-            idx = idx[order(ord)],
-            seq = rleseq(idx, clump = FALSE, recurs = TRUE)[order(ord)])
-        out$lns = ave(out[[1]], out[[1]], FUN = length)
-        return(out)
+  }
+  else {
+    if (!isTRUE(na.clump)) {
+      vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
+                                                          "NA"]))
     }
-    
+    vec = setNames(vec, seq_along(vec))
+    lst = split(vec, factor(vec, levels = unique(vec)))
+    ord = as.integer(names(unlist(unname(lst))))
+    idx = rep(seq_along(lst), times = lengths(lst))
+    out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
+      recurs = TRUE, use.data.table = FALSE)[order(ord)])
+    out$lns = ave(out[[1]], out[[1]], FUN = length)
+    return(out)
+  }
 }
 
-## rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE, 
-##                    na.ignore = FALSE, sep = paste0(" ", rand.string(length = 6), 
-##                      " "), use.data.table = TRUE) 
-## {
-##   force(sep)
-##   out = if (use.data.table) {
-##     tryCatch(
+## rleseq = function(..., clump = TRUE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
+##                   sep = paste0(" ", rand.string(length = 6), " ")) {
+##     force(sep)
+##     rand.string <- function(n=1, length=12)
 ##     {
-##       dt = data.table(...)
-##       setnames(dt, make.names(rep("", ncol(dt)), unique = T))
-##       ## make.unique
-##       cmd = sprintf("dt[, I := .I][, .(idx = .GRP, seq = seq_len(.N), lns = .N, I), by = %s]", mkst(colnames(dt), "list"))
-##       dt = eval(parse(text = cmd))
-##       setkey(dt, I)[, .(idx, seq, lns)]
-##     }, error = function(e) structure("data table didn't work...", class = "err"))
-##   }
-##   if (!(is.null(out) || class(out)[1] == "err"))
-##     return(as.list(out))
-##   rand.string <- function(n = 1, length = 12) {
-##     randomString <- c(1:n)
-##     for (i in 1:n) {
-##       randomString[i] <- paste(sample(c(0:9, letters, LETTERS), 
-##         length, replace = TRUE), collapse = "")
+##         randomString <- c(1:n)                  # initialize vector
+##         for (i in 1:n)
+##         {
+##             randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+##                                             length, replace=TRUE),
+##                                      collapse="")
+##         }
+##         return(randomString)
 ##     }
-##     return(randomString)
-##   }
-##   if (isTRUE(na.clump)) 
-##     paste = function(..., sep) base::paste(..., sep = sep)
-##   else paste = function(..., sep) base::paste(stringr::str_c(..., 
-##     sep = sep))
-##   lns = lengths(list(...))
-##   if (!all(lns == lns[1])) 
-##     warning("not all vectors provided have same length")
-##   fulllens = max(lns, na.rm = T)
-##   vec = setNames(paste(..., sep = sep), seq_len(fulllens))
-##   if (length(vec) == 0) {
-##     out = list(idx = integer(0), seq = integer(0), lns = integer(0))
-##     return(out)
-##   }
-##   if (na.ignore) {
-##     isnotna = which(rowSums(as.data.frame(lapply(list(...), 
-##       is.na))) == 0)
-##     out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
-##       lns = rep(NA, fulllens))
-##     if (length(isnotna)) 
-##       vec = vec[isnotna]
-##     tmpout = do.call(rleseq, c(alist(... = vec), alist(clump = clump, 
-##       recurs = recurs, na.clump = na.clump, na.ignore = FALSE, use.data.table = FALSE)))
-##     for (i in seq_along(out)) out[[i]][isnotna] = tmpout[[i]]
-##     return(out)
-##   }
-##   if (!isTRUE(clump)) {
-##     rlev = rle(vec)
-##     if (isTRUE(recurs)) {
-##       return(unlist(unname(lapply(rlev$lengths, seq_len))))
+##     if (isTRUE(na.clump))
+##         paste = function(...,
+##                          sep) base::paste(..., sep = sep)
+##     else
+##         paste = function(...,
+##                          sep) base::paste(stringr::str_c(..., sep = sep))
+##     lns = lengths(list(...))
+##     if (!all(lns == lns[1]))
+##         warning("not all vectors provided have same length")
+##     fulllens = max(lns, na.rm = T)
+##     vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+##     if (length(vec) == 0) {
+##         out = list(idx = integer(0), seq = integer(0), lns = integer(0))
+##         return(out)
 ##     }
-##     else {
-##       out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
-##         seq = unlist(unname(lapply(rlev$lengths, seq_len))))
-##       out$lns = ave(out[[1]], out[[1]], FUN = length)
-##       return(out)
+##     ## rlev = rle(paste(as.character(vec)))
+##     if (na.ignore) {
+##         isnotna = which(rowSums(as.data.frame(lapply(list(...), is.na))) == 0)
+##         out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), lns = rep(NA, fulllens))
+##         if (length(isnotna))
+##             vec = vec[isnotna]
+##         tmpout = do.call(rleseq, c(alist(... = vec),
+##                                    alist(clump = clump, recurs = recurs, na.clump = na.clump, na.ignore = FALSE)))
+##         ## tmpout = rleseq(..., clump = clump, recurs = recurs, na.clump = FALSE, na.ignore = FALSE)
+##         for (i in seq_along(out))
+##             out[[i]][isnotna] = tmpout[[i]]
+##         return(out)
 ##     }
-##   }
-##   else {
-##     if (!isTRUE(na.clump)) {
-##       vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
-##                                                           "NA"]))
+##     if (!isTRUE(clump)) {
+##         rlev = rle(vec)
+##         if (isTRUE(recurs)) {
+##             return(unlist(unname(lapply(rlev$lengths, seq_len))))
+##         } else {
+##             out = list(
+##                 idx = rep(seq_along(rlev$lengths), times = rlev$lengths),
+##                 seq = unlist(unname(lapply(rlev$lengths, seq_len))))
+##             out$lns = ave(out[[1]], out[[1]], FUN = length)
+##             ## if (na.ignore)
+##             ##     complete.cases(as.data.frame(lapply(list(...), is.na)))
+##             return(out)
+##         }
+##     } else {
+##         if (!isTRUE(na.clump)) {
+##             vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == "NA"]))
+##         }
+##         ## vec = setNames(paste(as.character(vec)), seq_along(vec))
+##         vec = setNames(vec, seq_along(vec))
+##         lst = split(vec, factor(vec, levels = unique(vec)))
+##         ord = as.integer(names(unlist(unname(lst))))
+##         idx = rep(seq_along(lst), times = lengths(lst))
+##         out = list(
+##             idx = idx[order(ord)],
+##             seq = rleseq(idx, clump = FALSE, recurs = TRUE)[order(ord)])
+##         out$lns = ave(out[[1]], out[[1]], FUN = length)
+##         return(out)
 ##     }
-##     vec = setNames(vec, seq_along(vec))
-##     lst = split(vec, factor(vec, levels = unique(vec)))
-##     ord = as.integer(names(unlist(unname(lst))))
-##     idx = rep(seq_along(lst), times = lengths(lst))
-##     out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
-##       recurs = TRUE, use.data.table = FALSE)[order(ord)])
-##     out$lns = ave(out[[1]], out[[1]], FUN = length)
-##     return(out)
-##   }
+    
 ## }
+
 
 
 
@@ -4237,7 +4303,7 @@ setMethod("with", signature(data = "gTrack"), function(data, expr) {
 setMethod("within", signature(data = "gTrack"), NULL)
 setMethod("within", signature(data = "gTrack"), function(data, expr) {
     e = list2env(as.list(formatting(data)))
-    eval(substitute(expr, parent.frame()), e)
+    eval(substitute(expr, parent.frame()), e, parent.frame())
     formatting(data) = as.data.frame(as.list(e))[, c(colnames(formatting(data))),drop = FALSE]
     return(data)
 })
@@ -5162,6 +5228,30 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name gr.flipstrand
+#' @title works with GRangesLists
+#' 
+#' @description
+#'
+#' to be used with gr_construct_by
+#'
+#' @return A GRanges with the by metadata field attached to the seqnames
+#' @author Kevin Hadi
+#' @export gr.flipstrand
+gr.flipstrand = function(gr) {
+    if (!inherits(gr, c("GRanges" ,"GRangesList"))) {
+        stop("not a GRanges / GRangesList")
+    }
+    if (is(gr, "GRangesList")) {
+        this.strand = gr@unlistData@strand
+        gr@unlistData@strand = S4Vectors::Rle(factor(c("*" = "*", "+" = "-", "-" = "+")[as.character(this.strand)], levels(this.strand)))
+    } else {
+        this.strand = gr@strand
+        gr@strand = S4Vectors::Rle(factor(c("*" = "*", "+" = "-", "-" = "+")[as.character(this.strand)], levels(this.strand)))
+    }
+    return(gr)
+}
+
 
 #' @name gr_deconstruct_by
 #' @title removing by field and random string barcode to seqnames for more efficient by queries
@@ -5175,14 +5265,10 @@ dt_f2char = function(dt, cols = NULL) {
 #' @export gr_deconstruct_by
 gr_deconstruct_by = function (x, by = NULL) {
   if (is.null(by) || length(x) == 0) return(x)
-  this.sep1 = {
-    set.seed(10)
-    rand.string()
-  }
-  this.sep2 = {
-    set.seed(11)
-    rand.string()
-  }
+  ## this.sep1 = {set.seed(10); rand.string()}
+  this.sep1 = " G89LbS7RCine "
+  ## this.sep2 = {set.seed(11); rand.string()}
+  this.sep2 = " VxTofMAXRbkl "
   ans = copy2(x)
   f1 = as.character(seqnames(x))
   f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
@@ -5218,13 +5304,15 @@ gr_deconstruct_by = function (x, by = NULL) {
 gr_construct_by = function(x, by = NULL)
 {
     if (is.null(by) || length(x) == 0) return(x)
-    this.sep1 = {set.seed(10); rand.string()}
-    this.sep2 = {set.seed(11); rand.string()}
+    ## this.sep1 = {set.seed(10); paste0(" ", rand.string(), " ")}
+    this.sep1 = " G89LbS7RCine "
+    ## this.sep2 = {set.seed(11); paste0(" ", rand.string(), " ")}
+    this.sep2 = " VxTofMAXRbkl "
     ans = copy2(x)
     f1 = do.call(paste, c(as.list(mcols(x)[, by, drop = FALSE]), sep = this.sep1))
     f2 = as.character(seqnames(x))
     f2i = as.integer(seqnames(x))
-    f12 = paste(f1, f2, sep = paste0(" ", this.sep2, " "))
+    f12 = paste(f1, f2, sep = this.sep2)
     ui = which(!duplicated(f12))
     ans_seqlevels = f12[ui]
     x_seqinfo <- seqinfo(x)
@@ -5509,8 +5597,16 @@ gr2df = function(gr, var = "rowname") {
     sf = options()$stringsAsFactors
     on.exit({options(stringsAsFactors = sf)})
     options(stringsAsFactors = FALSE)
-    return(dt_f2char(setDT(rn2col(GenomicRanges::as.data.frame(gr), var = var, keep.rownames = T)),
-                     c("seqnames", "strand")))
+    rn = names(gr)
+    if (!is.null(rn))
+        rn2 = make.unique(rn)
+    else
+        rn2 = as.character(seq_along(gr))
+    df = GenomicRanges::as.data.frame(gr, row.names = rn2)
+    setDT(df)
+    cmd = sprintf("cbind(%s = rn2, df)", var)
+    df = et(cmd)
+    return(dt_f2char(df,c("seqnames", "strand")))
 }
 
 #' @name grl.undf
@@ -5857,19 +5953,26 @@ parse.gr2 = function(...) {
 #' @return GRangesList
 #' @author Kevin Hadi
 #' @export parse.grl2
-parse.grl2 = function(str, meta = NULL) {
-    ## library(stringi)
+parse.grl2 = function (str, meta = NULL, fixna = FALSE) 
+{
     tmp = stringi::stri_split_regex(str, pattern = ",|;")
     grl.ix = rep(seq_along(tmp), lengths(tmp))
     tmp = unlist(tmp)
-    tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)", "\\1 \\2 \\3 \\4 \\5 \\6", tmp)
+    if (fixna) {
+        wasna = is.na(tmp)
+        tmp = ifelse(wasna, "1:0--1", tmp)
+    }
+    tmp = gsub("(\\w+)(:)([[:punct:]]?\\w+)(-)([[:punct:]]?\\w+)([[:punct:]]?)", 
+        "\\1 \\2 \\3 \\4 \\5 \\6", tmp)
     mat = stringi::stri_split_fixed(tmp, pattern = " ", simplify = "TRUE")
-    gr = GRanges(seqnames = mat[,1],
-                 ranges = IRanges(as.integer(mat[,3]), as.integer(mat[,5])),
-                 strand = ifelse(nchar(mat[,6]) == 0 | !mat[,6] %in% c("+", "-"), "*", mat[,6]),
-                 grl.ix = grl.ix)
-    gr = gr.noval(GenomicRanges::split(gr, gr$grl.ix))
-    if (!is.null(meta) && nrow(meta) == length(gr))
+    gr = GRanges(seqnames = mat[, 1], ranges = IRanges(as.integer(mat[, 
+        3]), as.integer(mat[, 5])), strand = ifelse(nchar(mat[, 
+        6]) == 0 | !mat[, 6] %in% c("+", "-"), "*", mat[, 6]))
+    if (fixna) {
+        gr$was_na = wasna
+    }
+    gr = GenomicRanges::split(gr, grl.ix)
+    if (!is.null(meta) && nrow(meta) == length(gr)) 
         S4Vectors::values(gr) = meta
     return(gr)
 }
@@ -6005,12 +6108,18 @@ grl.disjoin = function(x, ..., ignore.strand = T) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.split
-gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " ")) {
+gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), addmcols = TRUE) {
   lst = as.list(match.call())[-1]
-  ix = which(!names(lst) %in% c("gr", "sep"))
-  tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
-  tmpix = factor(tmpix, levels = unique(tmpix))
+  ix = which(!names(lst) %in% c("gr", "sep", "addmcols"))
+  tmpix = eval(quote(do.call(paste, c(lst[ix], alist(sep = sep)))), S4Vectors::as.env(mcols(gr), environment()), parent.frame())
+  ## tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
+  uix = which(!duplicated(tmpix))
+  tmpix = factor(tmpix, levels = tmpix[uix])
   grl = gr %>% GenomicRanges::split(tmpix)
+  these = unlist(strsplit(toString(lst[ix]), ", "))
+  if (addmcols) {
+    grl@elementMetadata = mcols(gr)[uix, these,drop = F]
+  }
   return(grl)
 }
 
@@ -6158,7 +6267,7 @@ gr.within = function(data, expr) {
             return(NULL)
     }))
     neword = union(union(orig.names, newn), colnames(tmp))
-    mcols(data) = tmp[,match3(neword, colnames(tmp)), drop = FALSE]
+    mcols(data) = tmp[,na.omit(match3(neword, colnames(tmp))), drop = FALSE]
     if (nD) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
@@ -6219,7 +6328,7 @@ tmpgrlwithin = function(data, expr) {
             return(NULL)
     }))
     neword = union(union(orig.names, newn), colnames(tmp))
-    mcols(data) = tmp[,match3(neword, colnames(tmp)), drop = FALSE]
+    mcols(data) = tmp[,na.omit(match3(neword, colnames(tmp))), drop = FALSE]
     ## mcols(data) = as(l, "DataFrame")
     if (nD) {
         for (nm in del)
@@ -6632,12 +6741,11 @@ grl2bedpe = function(grl) {
 #' converting bedpe to grl
 #'
 #' @export
-bedpe2grl = function(bdpe) {
-    pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "id"), names_pattern = "([A-Za-z]+)([12]$)")%>%
-        mutate_at(vars(matches("^start(1|2)$")), ~(. + 1)) %>%
-        dt2gr %>%
-        split(.$name) %>%
-        gr.fix(hg_seqlengths())
+bedpe2grl = function(bdpe, genome = NULL) {
+    dat = tidyr::pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "id"), names_pattern = "([A-Za-z]+)([12]$)")
+    dat = dplyr::mutate_at(dat, vars(matches("^start(1|2)$")), ~(. + 1))
+    dat = dt2gr(dat)
+    return(gr.fix(split(dat, .$name), hg_seqlengths(genome = genome)))
 }
 
 gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
@@ -6824,9 +6932,9 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
                 1]
             mat = cbind(A = d.a, G = d.g, T = d.t, C = d.c)
             rm("d.a", "d.g", "d.t", "d.c")
-            refid = match(as.character(fixed(vcf)$REF), colnames(mat))
+            refid = match(as.character(VariantAnnotation::fixed(vcf)$REF), colnames(mat))
             refid = ifelse(!isSNV(vcf), NA_integer_, refid)
-            altid = match(as.character(fixed(vcf)$ALT), colnames(mat))
+            altid = match(as.character(VariantAnnotation::fixed(vcf)$ALT), colnames(mat))
             altid = ifelse(!isSNV(vcf), NA_integer_, altid)
             refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
             altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
@@ -6990,9 +7098,9 @@ est_snv_cn_stub = function (vcf, jab, tumbam = NULL, germ_subsample = 200000, so
                 1 & nalt > 1, "INS", ifelse(nref == 1 & nalt == 
                 1, "SNV", NA_character_)))
             maxchar = pmax(nref, nalt)
-            nref = NULL
-            nalt = NULL
         })
+        input$nref = NULL
+        input$nalt = NULL
         input2 = GenomicRanges::reduce(gr.resize(input, ifelse(input$maxchar > 
             1, 201, input$maxchar), pad = FALSE) %>% gr.sort)
         fwrite(gr2dt(input2[, c()])[, 1:3, with = F][, `:=`(start, 

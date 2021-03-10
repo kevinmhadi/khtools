@@ -4,7 +4,7 @@
 \alias{parse.grl2}
 \title{a robust parse.grl}
 \usage{
-parse.grl2(str, meta = NULL)
+parse.grl2(str, meta = NULL, fixna = FALSE)
 }
 \arguments{
 \item{str}{A string that can be parsed as ranged data "A:1-10+"}

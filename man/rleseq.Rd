@@ -10,7 +10,8 @@ rleseq(
   recurs = FALSE,
   na.clump = TRUE,
   na.ignore = FALSE,
-  sep = paste0(" ", rand.string(length = 6), " ")
+  sep = paste0(" ", rand.string(length = 6), " "),
+  use.data.table = TRUE
 )
 }
 \arguments{
