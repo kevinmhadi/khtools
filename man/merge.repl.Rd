@@ -17,6 +17,7 @@ for columns common between x and y that are not used to merge
   overwrite_x = FALSE,
   keep_order = FALSE,
   keep_colorder = TRUE,
+  keep_factor = TRUE,
   ...
 )
 }

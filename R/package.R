@@ -647,6 +647,26 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name fillby
+#' @title fill in variables of data table by combos
+#'
+#' @description
+#' especially useful for expanding factors excluded from a query
+#'
+#' @export
+fillby = function(x, by, fillcol, fill = 0L, use_factor_levels = TRUE) {
+    strby = paste0(by, "=", "unique(", by, ")")
+    fc = which(sapply(x[, by, with = FALSE], inherits, "factor"))
+    if (use_factor_levels && any(fc)) strby[fc] = paste0(by[fc], "=", "levels(", by[fc],")")
+    cj = et(sprintf("x[, CJ(%s)]", strby))
+    out = suppressWarnings(setkeyv(copy3(x), by)[cj])
+    fill = rep_len(fill, length(fillcol))
+    for (i in seq_along(fillcol)) {
+        data.table::set(out, j = fillcol[i], value = replace_na(out[[fillcol[i]]], fill))
+    }
+    return(out)
+}
+
 
 #' @name seevar
 #' @title see variables in environment
@@ -743,10 +763,10 @@ tailf = function (x, n = NULL, grep = NULL) {
     options(scipen = 999)
     if (is.null(grep)) {
         if (is.null(n)) {
-            x = paste("tail -f", paste(x, collapse = " "))
+            x = paste("tail -F", paste(x, collapse = " "))
         }
         else {
-            x = paste("tail -n", n, "-f", paste(x, collapse = " "))
+            x = paste("tail -n", n, "-F", paste(x, collapse = " "))
         }
     }
     else {
@@ -784,8 +804,8 @@ flag2int = function(flags) {
 #'
 #'
 #' @export
-mkst = function(v, f = "c", collapse = ",") {
-    return(paste0(f, "(", paste0(v, collapse = collapse), ")"))
+mkst = function(v, f = "c", po = "(", pc = ")", collapse = ",") {
+    return(paste0(f, po, paste0(v, collapse = collapse), pc))
 }
 
 
@@ -1703,19 +1723,53 @@ copys4 = function(x) {
 #' useful for dev purposes.
 #'
 #' @export overwritefun
-overwritefun = function(newfun, oldfun, package, envir = globalenv()) {
-    if (is.character(package))
-        envpkg = asNamespace(package)
-    else if (isNamespace(package))
-        envpkg = package
+overwritefun = function (newfun, oldfun, package, envir = globalenv())
+{
+    if (is.character(newfun) && is.character(oldfun) && missing(package))
+        stop("must specify package for oldfun")
+    if (!missing(package)) {
+        if (is.character(package))
+            envpkg = asNamespace(package)
+        else if (isNamespace(package))
+            envpkg = package
+    } else {
+        if (missing(package)) {
+            envpkg = asNamespace(environment(oldfun))
+        }
+    }
+    if (!is.character(oldfun)) {
+        oldfun = deparse(tail(as.list(substitute(oldfun)), 1)[[1]])
+    }
+    if (!is.character(newfun)) {
+        newfunenv = asNamespace(environment(newfun))
+        newfun = deparse(tail(as.list(substitute(newfun)), 1)[[1]])
+    } else {
+        newfunenv = parent.frame()
+    }
     nmpkg = environmentName(envpkg)
     tmpfun = get(oldfun, envir = envpkg)
-    .newfun = get(newfun)
+    .newfun = get(newfun, envir = newfunenv)
     environment(.newfun) = environment(tmpfun)
     attributes(.newfun) = attributes(tmpfun)
-    eval(asn2(oldfun, .newfun, ns = nmpkg), globalenv())
+    evalq(asn2(oldfun, .newfun, ns = nmpkg), environment(), parent.frame())
     globasn(.newfun, oldfun, vareval = T)
 }
+
+## overwritefun = function(newfun, oldfun, package, envir = globalenv()) {
+##     if (is.character(package))
+##         envpkg = asNamespace(package)
+##     else if (isNamespace(package))
+##         envpkg = package
+##     nmpkg = environmentName(envpkg)
+##     tmpfun = get(oldfun, envir = envpkg)
+##     .newfun = get(newfun)
+##     environment(.newfun) = environment(tmpfun)
+##     attributes(.newfun) = attributes(tmpfun)
+##     eval(asn2(oldfun, .newfun, ns = nmpkg), globalenv())
+##     globasn(.newfun, oldfun, vareval = T)
+## }
+
+
 
 
 #' @name write.ctab
@@ -3220,7 +3274,8 @@ appendEnv = function(e1, e2 = NULL, overwrite = FALSE) {
             }
             warning(msg)
         }
-        this = tryCatch(get0(v, envir = e2, ifnotfound = structure("missing", class = rstring)),
+        this = tryCatch(get0(v, envir = e2, inherits = FALSE,
+                             ifnotfound = structure("missing", class = rstring)),
                         error = function(e) structure("missing", class = rstring))
         if (!class(this)[1] == rstring)
             e1[[v]] = e2[[v]]
@@ -4130,9 +4185,9 @@ getcache = function(object) {
 #' @return A GLM model
 #' @export glm.nb2
 glm.nb2 = function(...) {
-    mod = tryCatch(glm.nb(...), error = function(e) {
+    mod = tryCatch(MASS::glm.nb(...), error = function(e) {
         warning("glm.nb broke... using poisson")
-        return(glm(..., family = "poisson"))
+        return(stats::glm(..., family = "poisson"))
     })
     ## mod = tryCatch(glm.nb(...), error = function(e) as.character(e))
     ## if (is.character(mod) &&
@@ -4827,6 +4882,7 @@ merge.repl = function(dt.x,
                       overwrite_x = FALSE,
                       keep_order = FALSE,
                       keep_colorder = TRUE,
+                      keep_factor = TRUE,
                       ...) {
     arg_lst = as.list(match.call())
     by.y = eval(arg_lst[['by.y']], parent.frame())
@@ -4912,30 +4968,58 @@ merge.repl = function(dt.x,
     } else {
         dt.repl = suppressWarnings(do.call("merge", args = c(list(x = dt.x, y = dt.y), new_ddd_args)))
         dt_na2false(dt.repl, c("in.x.2345098712340987", "in.y.2345098712340987"))
+        in.x = which(dt.repl[["in.x.2345098712340987"]])
+        in.y = which(dt.repl[["in.y.2345098712340987"]])
         this_env = environment()
         for (this_col in these_cols) {
             x_cname = paste0(this_col, ".x")
             y_cname = paste0(this_col, ".y")
             x_col = dt.repl[[x_cname]]
             y_col = dt.repl[[y_cname]]
+            xf = inherits(x_col, "factor")
+            yf = inherits(y_col, "factor")
+            if ( {xf || yf} && keep_factor) {
+                if (!xf) { x_col = factor(x_col); xf = TRUE }
+                if (!yf) { y_col = factor(y_col); yf = TRUE }
+            }
+            if (xf && !keep_factor) { x_col = as.character(x_col); xf = FALSE } 
+            if (yf && !keep_factor) { y_col = as.character(y_col); yf = FALSE }
             if (force_y) {
                 if (!overwrite_x) {
-                    if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                    ## if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                    ##     new_col = factor(y_col, forcats::lvls_union(list(y_col, x_col)))
+                    ##     new_col[is.na(new_col)] = x_col[is.na(new_col)]
+                    ## } else {
+                    ##     new_col = ifelse(!is.na(y_col), y_col, x_col)
+                    ## }                    
+                    if (xf || yf) {
                         new_col = factor(y_col, forcats::lvls_union(list(y_col, x_col)))
                         new_col[is.na(new_col)] = x_col[is.na(new_col)]
                     } else {
                         new_col = ifelse(!is.na(y_col), y_col, x_col)
                     }
                 } else {
-                    if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                    ## if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                    ##     new_col = factor(x_col, forcats::lvls_union(list(y_col, x_col)))
+                    ## } else {
+                    ##     new_col = x_col
+                    ## }
+                    ## new_col[dt.repl[['in.y.2345098712340987']]] = y_col[dt.repl[['in.y.2345098712340987']]]
+                    if (xf || yf) {
                         new_col = factor(x_col, forcats::lvls_union(list(y_col, x_col)))
                     } else {
                         new_col = x_col
                     }
-                    new_col[dt.repl[['in.y.2345098712340987']]] = y_col[dt.repl[['in.y.2345098712340987']]]
+                    new_col[in.y] = y_col[in.y]
                 }
             } else {
-                if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                ## if (inherits(x_col, "factor") & inherits(y_col, "factor")) {
+                ##     new_col = factor(x_col, forcats::lvls_union(list(x_col, y_col)))
+                ##     new_col[is.na(new_col) & !is.na(y_col)] = y_col[is.na(new_col) & !is.na(y_col)]
+                ## } else {
+                ##     new_col = ifelse(is.na(x_col) & !is.na(y_col), y_col, x_col)
+                ## }
+                if (xf | yf) {
                     new_col = factor(x_col, forcats::lvls_union(list(x_col, y_col)))
                     new_col[is.na(new_col) & !is.na(y_col)] = y_col[is.na(new_col) & !is.na(y_col)]
                 } else {
