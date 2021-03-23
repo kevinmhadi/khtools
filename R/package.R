@@ -647,6 +647,31 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name printerr
+#' @title print error message from tryCatch
+#'
+#' @description
+#' useful for tryCatch(..., error = function(e) printerr(<some_custom_msg>))
+#'
+#' @export
+printerr = function(msg = "", e) {
+    if (missing(e)) {
+        e = dg(e)
+    }
+    cm = as.character(conditionMessage(e))
+    cc = as.character(conditionCall(e))
+    eval(quote(print(structure(paste("error: ", msg, cm, cc), class = "err"))))
+}
+
+#' @name nott
+#' @title nott
+#'
+#' @description
+#' especially useful for expanding factors excluded from a query
+#'
+#' @export
+nott = Negate
+
 #' @name fillby
 #' @title fill in variables of data table by combos
 #'
@@ -658,6 +683,7 @@ fillby = function(x, by, fillcol, fill = 0L, use_factor_levels = TRUE) {
     strby = paste0(by, "=", "unique(", by, ")")
     fc = which(sapply(x[, by, with = FALSE], inherits, "factor"))
     if (use_factor_levels && any(fc)) strby[fc] = paste0(by[fc], "=", "levels(", by[fc],")")
+    strby = paste(strby, collapse = ",")
     cj = et(sprintf("x[, CJ(%s)]", strby))
     out = suppressWarnings(setkeyv(copy3(x), by)[cj])
     fill = rep_len(fill, length(fillcol))
@@ -967,8 +993,9 @@ et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)
 #' @param bads a set of values to clobber, or a function that returns a logical
 #' @param r2l merge from left to right per pair of vectors
 #' @param fromLast if TRUE, merge from last vector to first
+#' @param comparefun A 2 argument function (i.e. function(x,y) x < y), if r2l = FALSE, then the greater value will be chosen as y is on the right, for function(x,y) x < y. if r2l = TRUE, then the lesser value will be chosen
 #' @export
-clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE) {
+clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE, comparefun = NULL) {
     lst = list(...)
     lens = lengths(lst)
     maxlen = max(lens)
@@ -1007,11 +1034,95 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
         ix = intersect(badsx, nbadsy)
         return(replace(x, ix, rep(y[ix], length.out = length(ix))))
     }
-    if (!r2l)
-        return(Reduce(function(x,y) dofun(x,y), lst, right = fromLast))
-    else
-        return(Reduce(function(x,y) dofun(y,x), lst, right = fromLast))
+    if (is.null(comparefun)) {
+        if (!r2l)
+            return(Reduce(function(x,y) dofun(x,y), lst, right = fromLast))
+        else
+            return(Reduce(function(x,y) dofun(y,x), lst, right = fromLast))
+    } else {
+        yfun = get("identity", mode = "function")
+        if (!r2l) {
+            return(Reduce(function(x,y) {
+                if (is.function(bads.x))
+                    badsx = which(bads.x(x))
+                else
+                    badsx = which(x %in% bads.x)
+                if (is.function(bads.y))
+                    nbadsy = which(yfun(bads.y(y)))
+                else
+                    nbadsy = which(yfun(y %in% bads.y))
+                lg = which(comparefun(x,y))
+                lg = setdiff(lg, nbadsy)
+                out = x
+                out[badsx] = y[badsx]
+                out[lg] = y[lg]
+                out
+            }, lst, right = fromLast))
+        } else {
+            return(Reduce(function(x,y) {
+                if (is.function(bads.x))
+                    badsx = which(bads.x(x))
+                else
+                    badsx = which(x %in% bads.x)
+                if (is.function(bads.y))
+                    nbadsy = which(yfun(bads.y(y)))
+                else
+                    nbadsy = which(yfun(y %in% bads.y))
+                lg = which(comparefun(x,y))
+                lg = setdiff(lg, nbadsy)
+                out = y
+                out[nbadsy] = x[nbadsy]
+                out[lg] = x[lg]
+                out
+            }, lst, right = fromLast))
+        }
+    }
 }
+
+## clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE) {
+##     lst = list(...)
+##     lens = lengths(lst)
+##     maxlen = max(lens)
+##     if (length(unique(lens)) > 1)
+##         lst = lapply(lst, function(x) rep(x, length.out = maxlen))
+##     if ( !length(bads) && !length(bads.x) && !length(bads.y))
+##         stop("You gotta set one of bads, bads.x, or bads.y")
+##     if ({ length(bads.x) && length(bads.y) }) {
+##         message("bads.x and bads.y both set explicitly")
+##         message("setting opposite to FALSE")
+##         opposite = FALSE
+##     }
+##     anytrue = function(vec) rep(TRUE, length.out = length(vec))
+##     if (isTRUE(bads) || !length(bads)) {
+##         message("bads set to NULL or TRUE")
+##         message("setting opposite to FALSE")
+##         bads = anytrue
+##         opposite = FALSE
+##     }
+##     if (opposite) {
+##         yfun = get("!", mode = "function")
+##     } else {
+##         yfun = get("identity", mode = "function")
+##     }
+##     if (!length(bads.x)) bads.x = bads
+##     if (!length(bads.y)) bads.y = bads
+##     dofun = function(x,y) {
+##         if (is.function(bads.x))
+##             badsx = which(bads.x(x))
+##         else
+##             badsx = which(x %in% bads.x)
+##         if (is.function(bads.y))
+##             nbadsy = which(yfun(bads.y(y)))
+##         else
+##             nbadsy = which(yfun(y %in% bads.y))
+##         ix = intersect(badsx, nbadsy)
+##         return(replace(x, ix, rep(y[ix], length.out = length(ix))))
+##     }
+##     if (!r2l)
+##         return(Reduce(function(x,y) dofun(x,y), lst, right = fromLast))
+##     else
+##         return(Reduce(function(x,y) dofun(y,x), lst, right = fromLast))
+## }
 
 ## clobber = function (..., bads = NA, r2l = FALSE, fromLast = FALSE, opposite = TRUE)
 ## {
@@ -2326,7 +2437,7 @@ rand.string <- function(n=1, length=12)
                                  collapse="")
     }
     return(randomString)
-    }
+}
 
 
 #' @name rleseq
@@ -2509,20 +2620,24 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
 #' @return A numeric vector of lengths of each list
 #' @export
 lens = function(x, use.names = TRUE) {
-    out = vapply(x, function(x) {
-        out = dim(x)[1L]
-        if (!is.null(out))
-            return(out)
-        else
-            return(length(x))
-    }, FUN.VALUE = 1L, USE.NAMES = use.names)
+    
+    ## out = vapply(x, function(x) {
+    ##     out = dim(x)[1L]
+    ##     if (!is.null(out))
+    ##         return(out)
+    ##     else
+    ##         return(length(x))
+    ## }, FUN.VALUE = 1L, USE.NAMES = use.names)
+    
     ## dlst = lapply(x, nrow)
     ## dlst = lapply(x, dim)
     ## out = lengths(x, use.names = use.names)
     ## ix = which(!dlst == "NULL")
     ## if (length(ix))
     ##     out[ix] = vapply(x[ix], nrow, 1L, USE.NAMES=use.names)
-    out
+
+    out = vapply(x, NROW, FUN.VALUE  = 1L, USE.NAMES = use.names)
+    return(out)
 }
 
 #' @name len
@@ -2530,18 +2645,22 @@ lens = function(x, use.names = TRUE) {
 #'
 #' @description
 #' figure out length or nrow of an object
+#' lol... this is base::NROW
+#' also see base::NCOL for the alternative
 #'
 #' @param x an object
 #' @return length or nrow of an object
 #' @export
-len = function(x, use.names = TRUE) {
-    nr = dim(x)[1]
-    n = length(x)
-    if (!is.null(nr))
-        return(nr)
-    else
-        return(n)
-}
+len = NROW
+
+## len = function(x, use.names = TRUE) {
+##     nr = dim(x)[1]
+##     n = length(x)
+##     if (!is.null(nr))
+##         return(nr)
+##     else
+##         return(n)
+## }
 
 
 
@@ -4349,19 +4468,20 @@ grabggtrack = function(pairs, pair = NULL, jab_field = "complex", cov_field = "d
 }
 
 
-setMethod("with", signature(data = "gTrack"), NULL)
-setMethod("with", signature(data = "gTrack"), function(data, expr) {
-    df = as.data.frame(formatting(data))
-    eval(substitute(expr, parent.frame()), df, parent.frame())
-})
 
-setMethod("within", signature(data = "gTrack"), NULL)
-setMethod("within", signature(data = "gTrack"), function(data, expr) {
-    e = list2env(as.list(formatting(data)))
-    eval(substitute(expr, parent.frame()), e, parent.frame())
-    formatting(data) = as.data.frame(as.list(e))[, c(colnames(formatting(data))),drop = FALSE]
-    return(data)
-})
+## setMethod("with", signature(data = "gTrack"), NULL)
+## setMethod("with", signature(data = "gTrack"), function(data, expr) {
+##     df = as.data.frame(formatting(data))
+##     eval(substitute(expr, parent.frame()), df, parent.frame())
+## })
+
+## setMethod("within", signature(data = "gTrack"), NULL)
+## setMethod("within", signature(data = "gTrack"), function(data, expr) {
+##     e = list2env(as.list(formatting(data)))
+##     eval(substitute(expr, parent.frame()), e, parent.frame())
+##     formatting(data) = as.data.frame(as.list(e))[, c(colnames(formatting(data))),drop = FALSE]
+##     return(data)
+## })
 
 #' @name grabhjab
 #' @title convenience function to pull out jabba model with allelic cn
@@ -5312,6 +5432,28 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+
+#' @name findov
+#' @title GenomicRanges::findOverlaps wrapper
+#' 
+#' @description
+#'
+#'
+#' @author Kevin Hadi
+#' @export
+findov = function(query, subject, by = NULL, ...) {
+    query = gr_construct_by(query, by = by)
+    subject = gr_construct_by(subject, by = by)
+    h = tryCatch(GenomicRanges::findOverlaps(query, subject, ...), error = function(e) {
+        warning("findOverlaps applied to ranges with non-identical seqlengths")
+        query = gUtils::gr.fix(query, subject)
+        subject = gUtils::gr.fix(subject, query)
+        return(GenomicRanges::findOverlaps(query, subject, ...))
+    })
+    tmp = setcols(asdt(h), c("query.id", "subject.ids"))
+    return(tmp)
+}
+
 #' @name gr.flipstrand
 #' @title works with GRangesLists
 #' 
@@ -5353,7 +5495,8 @@ gr_deconstruct_by = function (x, by = NULL) {
   this.sep1 = " G89LbS7RCine "
   ## this.sep2 = {set.seed(11); rand.string()}
   this.sep2 = " VxTofMAXRbkl "
-  ans = copy2(x)
+  ## ans = copy2(x)
+  ans = x
   f1 = as.character(seqnames(x))
   f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
   f2 = trimws(gsub(paste0(".*", this.sep1), "", f2))
@@ -5385,14 +5528,15 @@ gr_deconstruct_by = function (x, by = NULL) {
 #' @return A GRanges with the by metadata field attached to the seqnames
 #' @author Kevin Hadi
 #' @export gr_construct_by
-gr_construct_by = function(x, by = NULL)
-{
+gr_construct_by = function(x, by = NULL) {
     if (is.null(by) || length(x) == 0) return(x)
     ## this.sep1 = {set.seed(10); paste0(" ", rand.string(), " ")}
     this.sep1 = " G89LbS7RCine "
     ## this.sep2 = {set.seed(11); paste0(" ", rand.string(), " ")}
     this.sep2 = " VxTofMAXRbkl "
-    ans = copy2(x)
+    ## ans = copy2(x)
+    ans = x
+    thisp = function(...) paste(..., sep = this.sep1)
     f1 = do.call(paste, c(as.list(mcols(x)[, by, drop = FALSE]), sep = this.sep1))
     f2 = as.character(seqnames(x))
     f2i = as.integer(seqnames(x))
@@ -6826,10 +6970,12 @@ grl2bedpe = function(grl) {
 #'
 #' @export
 bedpe2grl = function(bdpe, genome = NULL) {
-    dat = tidyr::pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "id"), names_pattern = "([A-Za-z]+)([12]$)")
-    dat = dplyr::mutate_at(dat, vars(matches("^start(1|2)$")), ~(. + 1))
+    bdpe$chrom1 = as.character(bdpe$chrom1)
+    bdpe$chrom2 = as.character(bdpe$chrom2)
+    dat = tidyr::pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "name"), names_pattern = "([A-Za-z]+)([12]$)")
+    dat = dplyr::mutate_at(dat, vars(matches("^start$")), ~(. + 1))
     dat = dt2gr(dat)
-    return(gr.fix(split(dat, .$name), hg_seqlengths(genome = genome)))
+    return(grl.pivot(gr.fix(split(dat, dat$name), hg_seqlengths(genome = genome))))
 }
 
 gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
@@ -7906,12 +8052,12 @@ ww = with
 wn = within
 
 
-.onLoad = function(libname, pkgname) {
-    message("khtools forcing functions to evaluate on load...")
-    forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
-}
+## .onLoad = function(libname, pkgname) {
+##     message("khtools forcing functions to evaluate on load...")
+##     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
+## }
 
-.onAttach = function(libname, pkgname) {
-    message("khtools forcing functions to evaluate on attach...")
-    forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
-}
+## .onAttach = function(libname, pkgname) {
+##     message("khtools forcing functions to evaluate on attach...")
+##     forceall(T, envir = asNamespace("khtools"), evalenvir = globalenv())
+## }

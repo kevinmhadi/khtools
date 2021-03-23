@@ -14,7 +14,8 @@ coalesce(
   bads.y = NULL,
   r2l = FALSE,
   fromLast = FALSE,
-  opposite = TRUE
+  opposite = TRUE,
+  comparefun = NULL
 )
 }
 \description{

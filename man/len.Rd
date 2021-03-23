@@ -4,7 +4,7 @@
 \alias{len}
 \title{similar to length except gets nrows for those items that have dimensions}
 \usage{
-len(x, use.names = TRUE)
+len(x)
 }
 \arguments{
 \item{x}{an object}
@@ -14,4 +14,6 @@ length or nrow of an object
 }
 \description{
 figure out length or nrow of an object
+lol... this is base::NROW
+also see base::NCOL for the alternative
 }

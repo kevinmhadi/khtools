@@ -14,7 +14,8 @@ clobber(
   bads.y = NULL,
   r2l = FALSE,
   fromLast = FALSE,
-  opposite = TRUE
+  opposite = TRUE,
+  comparefun = NULL
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ clobber(
 \item{r2l}{merge from left to right per pair of vectors}
 
 \item{fromLast}{if TRUE, merge from last vector to first}
+
+\item{comparefun}{A 2 argument function (i.e. function(x,y) x < y), if r2l = FALSE, then the greater value will be chosen as y is on the right, for function(x,y) x < y. if r2l = TRUE, then the lesser value will be chosen}
 }
 \description{
 same as dplyr::coalesce
