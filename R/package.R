@@ -90,8 +90,16 @@ find_dups = function(..., re_sort = FALSE, sep = " ", as.logical = FALSE) {
 #' @param obj an R vector
 #' @return unique values of obj with names preserved
 #' @export
-undup = function(obj, fromLast = FALSE, nmax = NA) {
-    obj[!duplicated(obj, fromLast = fromLast, nmax = NA)]
+undup = function(obj, fromLast = FALSE, nmax = NA, na.rm = FALSE) {
+  dupid = which(duplicated(obj, fromLast = fromLast, nmax = NA))
+  if (isTRUE(na.rm)) {
+    naid = which(is.na(obj))
+    dupid = union(naid, dupid)
+  }
+  if (NROW(dupid))
+    return(obj[-dupid])
+  else
+    return(obj)
 }
 
 
@@ -428,7 +436,8 @@ ix_sdiff = function(obj, filt_out) {
 na2false = function(v)
 {
     ## v = ifelse(is.na(v), v, FALSE)
-    v[is.na(v)] = FALSE
+    ## v[is.na(v)] = FALSE
+    v[isNA(v)] = FALSE
     ## mode(v) = "logical"
     v
 }
@@ -445,7 +454,8 @@ na2false = function(v)
 na2true = function(v)
 {
     ## v = ifelse(is.na(v), v, FALSE)
-    v[is.na(v)] = TRUE
+    ## v[is.na(v)] = TRUE
+    v[isNA(v)] = TRUE
     ## as.logical(v)
     ## mode(v) = "logical"
     v
@@ -460,7 +470,8 @@ na2true = function(v)
 #' @export
 na2zero = function(v) {
     ## v = ifelse(is.na(v), v, FALSE)
-    v[is.na(v)] = 0
+    ## v[is.na(v)] = 0
+    v[isNA(v)] = 0
     return(v)
 }
 
@@ -487,7 +498,8 @@ nan2zero = function(v) {
 #' @export
 na2empty = function(v) {
     ## v = ifelse(is.na(v), v, FALSE)
-    v[is.na(v)] = ""
+    ## v[is.na(v)] = ""
+    v[isNA(v)] = ""
     as.character(v)
 }
 
@@ -647,6 +659,267 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name make_dummy
+#' @title make table of dummy encodings
+#'
+#' @description
+#'
+#' @export
+make_dummy = function(x, field = ".", sep = ".", levelsOnly = FALSE, fullRank = FALSE, return.data.table = T) {
+  paste(field, collapse = ", ")
+  this.str = paste0(" ~ ", field)
+  mod = caret::dummyVars(this.str, data = x, sep = sep, levelsOnly = levelsOnly,
+    fullRank = fullRank)
+  out = caret:::predict.dummyVars(mod, newdata = x)
+  if (return.data.table)
+    return(as.data.table(out))
+  else
+    return(out)
+}
+
+
+#' @name jitter2
+#' @title jitter with consistent seed
+#'
+#' @description
+#'
+#' @export
+jitter2 = function(x, factor = 1, amount = NULL, seed = 10) {
+    set_rngseed(seed)
+    jitter(x, factor = factor, amount = amount)
+}
+
+#' @name matrify2
+#' @title create matrix from table like obj with dplyr syntax
+#'
+#' @description
+#'
+#' @export
+matrify2 = function(df, ..., rownames = 1, rnsep = " ") {
+    vec = c()
+    arglst = match.call(expand.dots = F)$`...`
+    if (NROW(arglst)) {
+        for (thisexpr in arglst) {
+            vec = c(vec, deparse(substitute(thisexpr)))
+        }
+        expr = paste(vec, collapse = ", ")
+    } else {
+        expr = "-1"
+    }
+    if ( !inherits(df, "data.frame") && (!is.null(dim(df)) | is.list(df)) ) {
+        df = as.data.frame(df)
+    }
+    rnexpr = deparse(substitute(rownames))
+    rncols = eval(parse(text = sprintf("dplyr::select(df, %s)", rnexpr)))
+    rn = dodo.call2(paste, c(as.list(rncols), sep = rnsep))
+    mat = as.matrix(eval(parse(text = sprintf("dplyr::select(df, %s)", expr))))
+    rownames(mat) = rn
+    return(mat)
+}
+
+
+#' @name upset2
+#' @title wrapper around UpSetR::upset()
+#'
+#' @description
+#'
+#' @export
+upset2 = function(data, text.scale = 1.5, mb.ratio = c(0.7, 0.3), empty.intersections = "on", ...) {
+    if (class(data)[1] != "data.frame") data = as.data.frame(data)
+    coercethese = which(sapply(data, nott(inherits), c("integer")))
+    for (i in coercethese) {
+        data[[i]] = sign(data[[i]])
+    }
+    UpSetR::upset(data, order.by = "freq", text.scale = text.scale, keep.order = TRUE, sets = rev(colnames(data)), mb.ratio = c(0.6, 0.4), nsets = 1e6, empty.intersections = empty.intersections, ...)
+}
+
+
+#' @name sampler
+#' @title sample elements of vector or rows of table
+#'
+#' @description
+#'
+#' @export
+sampler = function(x, n = NROW(x), seed = 10, rngkind = "L'Ecuyer-CMRG", verbose = FALSE, replace = FALSE, prob = NULL) {
+    if (NROW(seed) & !isNA(seed)) {
+        current.rng = .Random.seed
+        txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
+        set_rngseed(seed = seed, rngkind = rngkind, verbose = verbose)
+        on.exit(eval(txt, envir = parent.frame()))
+    }
+
+    x_nrow = NROW(x)
+    ix = seq_len(x_nrow)
+    
+    if (isFALSE(replace) && n > x_nrow) {
+        warning("replace = FALSE, but n supplied is greater than dimension of input")
+        warning("requested n=", n, " sampled points; ", "sampling n=", n, " instead")
+        n = x_nrow
+    }
+    
+    randid = sample(ix, n, replace = replace, prob = prob)
+
+    if (!is.null(dim(x)))
+        return(x[randid,,drop=F])
+    else
+        return(x[randid])
+}
+
+#' @name enframe_list
+#' @title data table-ize list elements and add name column
+#'
+#' @description
+#'
+#' @export
+enframe_list = function(lst, name = "name", value = "value", as.data.table = TRUE, rbind = TRUE, mc.cores = 1) {
+    nms = names(lst)
+    expr = parse(text = sprintf("cbind(%s = nm, df)", name, value))
+    out = mcmapply(function(el, nm) {
+        if (NROW(el)) {
+            if (is.null(dim(el)))
+                df = setColnames(as.data.frame(el), value)
+            else
+                df = as.data.frame(el)
+            if (as.data.table)
+                setDT(df)
+            eval(expr)
+        }
+    }, lst, nms, SIMPLIFY = FALSE, mc.cores = mc.cores)
+    if (rbind) {
+        if (as.data.table)
+            return(rbindlist(out))
+        else
+            return(do.call(rbind, out))
+    }
+}
+
+
+
+#' @name isNA
+#' @title is.na but also tests for "NA" character
+#'
+#' @description
+#'
+#' @export
+isNA = function(x, na.char = c("NA", "NULL", "na", "null")) {
+    if (is.character(x)) {
+        return(is.na(x) | x %in% na.char)
+    } else {
+        return(is.na(x))
+    }
+}
+
+
+#' @name uncut
+#' @title get upper and lower bounds of cut labels
+#'
+#' @description
+#' grab the upper and lower bounds from the default factor output
+#' of cut()
+#'
+#' @export
+uncut = function(v) {
+    lst = lapply(tstrsplit(levels(v), ", "), function(x) as.numeric(gsub("[][)]+", "", x)))
+    names(lst) = c("lb", "ub")
+    return(lst)
+}
+
+#' @name nodim
+#' @title testing if object is empty
+#'
+#' @description
+#' 
+#'
+#' @export
+nodim = function(x) {
+    any(DIM(x) == 0)
+}
+
+#' @name DIM
+#' @title extending NROW and NCOL
+#'
+#' @description
+#' 
+#'
+#' @export
+DIM = function(x) {
+    return(c(NROW(x), NCOL(x)))
+}
+
+
+#' @name w.quantile
+#' @title weighted quantile
+#'
+#' @description
+#' 
+#'
+#' @export w.quantile
+w.quantile = function(x, w = 1, qs) {
+    ix = order(x)
+    if (length(x) != length(x)) 
+        w = rep_len(w, NROW(x))
+    tot = sum(w)
+    x[ix]
+    cs = cumsum(w[ix])
+    selectix = sapply(qs, function(thisx) which.max(cumsum(cs <= (tot * thisx))))
+    return(x[ix][selectix])
+}
+
+
+#' @name metanames
+#' @title metanames
+#'
+#' @description
+#' 
+#'
+#' @export
+metanames = function(x) {
+    if (inherits(x, c("GRanges", "GRangesList")) || "elementMetadata" %in% slotNames(x)) {
+        x = mcols(x)
+    }
+    nm = colnames(x)
+    if (is.null(nm)) {
+        return(rep_len("", NCOL(x)))
+    } else {
+        return(nm)
+    }
+}
+
+#' @name split_by
+#' @title split data frame-like object based on columns
+#'
+#' @description
+#' 
+#'
+#' @export
+split_by = function(dt, fields, do.unname = TRUE) {
+    in_type_is_granges = inherits(dt, c("GRanges", "IRanges", "GRangesList", "IRangesList"))
+    if (in_type_is_granges) {
+        out = dt
+        dt = mcols(dt)
+        si = seqinfo(out)
+        if (!NROW(out))
+            return(gr.fix(GRangesList(), si))
+    }
+    if (!NROW(dt)) return(list())
+    colix = match3(fields, names(dt))
+    ## colix = which(names(dt) %in% fields)
+    expr = parse(text = sprintf("dt[,%s,drop=FALSE]", mkst(colix)))
+    cols = eval(expr)
+    uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+    ## rles = dodo.call2(FUN = rleseq, as.list(cols))
+    if (in_type_is_granges) {
+        out = split(out, uf)
+        mcols(out) = dt[!duplicated(uf), fields]
+        if (do.unname) out = unname(out)
+        return(out)
+    }
+    out = split(dt, uf)
+    if (do.unname) out = unname(out)
+    return(out)
+}
+
+
 #' @name printerr
 #' @title print error message from tryCatch
 #'
@@ -667,7 +940,7 @@ printerr = function(msg = "", e) {
 #' @title nott
 #'
 #' @description
-#' especially useful for expanding factors excluded from a query
+#' 
 #'
 #' @export
 nott = Negate
@@ -744,6 +1017,10 @@ complete.cases2 = function(...) {
 #' @export uniqf
 uniqf = function(..., sep = paste0(" ", rand.string(length = 8), 
                                    " ")) {
+    current.rng = .Random.seed
+    txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
+    set_rngseed(seed = 10, verbose = FALSE)
+    on.exit(eval(txt, envir = globalenv()))
     lst = as.list(match.call()[-1])
     ix = which(names2(lst) != "sep")
     senv = suppressWarnings(stackenv(parent.frame()))
@@ -867,21 +1144,112 @@ log10p = function(x) {
 #' @param ptrn pattern
 #' @author Kevin Hadi
 #' @export
-.gc = function(df, ptrn, ignore.case = FALSE) {
+.gc = function(df, ptrn, invert = F, ignore.case = FALSE, exact = FALSE) {
     if (inherits(df, c("GRanges", "GRangesList")))
         cnames = colnames2(df@elementMetadata)
     else
         cnames = colnames2(df)
     if (is.character(ptrn)) {
-        ix = loop_grep(ptrn, cnames, ignore.case = ignore.case)
+        if (!exact) {
+            ## ptrn = paste0("^(", ptrn, ")$")
+            ix = loop_grep(ptrn, cnames, ignore.case = ignore.case)
+        } else {
+            ix = which(cnames %in% ptrn)
+        }
     } else {
         ix = ptrn
     }
-    return(et(sprintf("df[,%s,drop=F]",
-                      paste0("c(", paste(ix, collapse = ","), ")"))))
+    if (NROW(ix)) {
+        if (isTRUE(invert)) inv = "-" else inv = ""
+        return(et(sprintf("df[,%s%s,drop=F]", inv,
+                          paste0("c(", paste(ix, collapse = ","), ")"))))
+    } else {
+        if (isTRUE(invert))
+            return(df)
+        else
+            return(df[,0,drop=F])
+    }
+}
+
+#' @name rmcol
+#' @title rmcol
+#'
+#'
+#'
+#' @param df object with !is.null(df) == TRUE
+#' @author Kevin Hadi
+#' @export rmcol
+rmcol = function(df, rmcol = 1, usekey = T, invert = T, exact = FALSE) {
+    if (is.data.table(df) && !is.null(key(df)) && usekey) {
+        rmcol = key(df)
+        exact = TRUE
+        invert = TRUE
+    }
+    return(.gc(df, rmcol, invert = invert, exact = exact))
+}
+
+#' @name do.cols
+#' @title do.cols
+#'
+#'
+#'
+#' @param x object with ncol >= 1
+#' @author Kevin Hadi
+#' @export do.cols
+do.cols = function(x, rmcol = 1, FUN = rowSums, by.FUN = NULL, exact = F, invert = T) {
+    if (NROW(by.FUN)) {
+        if (names(as.list(args(by.FUN))[1]) == "...") {
+            return(as.data.table(.gc(x, rmcol, invert = invert, exact = exact))[, I := .I][, do.call(by.FUN, .SD), by = I]$V1)
+        } else {
+            return(as.data.table(.gc(x, rmcol, invert = invert, exact = exact))[, I := .I][, by.FUN(.SD), by = I]$V1)
+        }
+    } else if (NROW(FUN)) {
+        FUN(.gc(x, rmcol, invert = invert, exact = exact))
+    } else {
+        return(x)
+    }
 }
 
 
+#' @name parasn
+#' @title assign parallel columns
+#'
+#'
+#'
+#' @param x data.table
+#' @param y data.table
+#' @author Kevin Hadi
+#' @export
+parasn = function(x, y, cols, sans_key = TRUE, use.data.table = T) {
+    if (missing(cols)) {
+        if (sans_key)
+            cols = setdiff(colnames(y), key(x))
+        else
+            cols = colnames(y)
+    }
+    dimx = DIM(x)
+    dimy = DIM(y)
+    if (dimx[1] != dimy[1]) {
+        nr.x = dimx[1]
+        id.x = seq_len(nr.x)
+        nr.y = dimy[1]
+        id.y = seq_len(nr.y)
+        id.x = rep_len(nr.x, id.x)
+        id.y = rep_len(nr.y, id.y)
+        x = x[id.x]
+        y = y[id.y]
+    }
+    if (use.data.table) {
+        for (col in cols) {
+            set(x, j = col, value = y[[col]])
+        }
+    } else {
+        for (col in cols) {
+            x[[col]] = y[[col]]
+        }
+    }
+    return(x)
+}
 
 #' @name duped
 #' @title duped
@@ -1435,7 +1803,7 @@ rownames2 = function(x) {
 colnames2 = function(x) {
     nm = colnames(x)
     if (is.null(nm))
-        return(rep("", length.out = ncol(x)))
+        return(rep("", length.out = NCOL(x)))
     else
         return(nm)
 }
@@ -1521,13 +1889,13 @@ rm_mparen  = function(str) {
 #' @param k number of groups
 #' @return a list of row ids corresponding to each fold and training and test split
 #' @export
-make_xfold = function(dat, k = 10, nested = FALSE, times = 5, transpose = TRUE, seed = 10) {
+make_xfold = function(dat, k = 10, nested = FALSE, times = 1, transpose = TRUE, seed = 10) {
   obs.id = seq_along2(dat)
   set.seed(seed)
   if (!nested) {
     train = caret::createFolds(obs.id, k = k, returnTrain = T)
   } else
-    train = caret::createMultiFolds(obs.id, k = k)
+    train = caret::createMultiFolds(obs.id, k = k, times = times)
   test = lapply(train, function(x) {
     setdiff(obs.id, x)
   })
@@ -1538,6 +1906,165 @@ make_xfold = function(dat, k = 10, nested = FALSE, times = 5, transpose = TRUE, 
     return(out)
 }
 
+
+#' @name set_rngseed
+#' @title set random number generator AND seed
+#'
+#' @author Kevin Hadi
+#' @param rngkind string specifying number generator
+#' @param seed integer specifying seed
+#' @param use.old.sample.kind logical specifying discrete uniform generation method from prior to R361
+#' @return a list of row ids corresponding to each fold and training and test split
+#' @export
+set_rngseed = function(seed = 10, rngkind = "L'Ecuyer-CMRG", normal.kind = "Inversion",
+                       sample.kind = "Rejection", use.old.sample.kind = FALSE,
+                       verbose = TRUE)
+{
+    if ("sample.kind" %in% names(formals(RNGkind))) {
+        if (use.old.sample.kind) {
+            sample.kind = "Rounding"
+            if (verbose) message("Using default sample.kind from <R-3.6.0 (Rounding)")
+        }
+        RNGkind(rngkind, normal.kind, sample.kind)
+        vb = RNGkind()
+        if (verbose)  {
+            message("RNG: ", vb[1])
+            message("normal.kind: ", vb[2])
+            message("sample.kind: ", vb[3])
+        }
+    } else {
+        RNGkind(rngkind, normal.kind)
+        vb = RNGkind()
+        if (verbose)  {
+            message("RNG: ", vb[1])
+            message("normal.kind: ", vb[2])
+        }
+    }
+    set.seed(seed)
+    if (verbose)
+        message("seed: ", seed)
+    return(invisible(NULL))
+}
+
+#' @name make_ttsplit
+#' @title make training/test splits
+#' 
+#' @author Kevin Hadi
+#' @param dat data.table or data.frame of one row per observation. assumes each observation is a row
+#' @param k number of groups
+#' @return a list of row ids corresponding to each fold and training and test split
+#' @export
+make_ttsplit = function(dat,
+                        field = NULL, use.index = TRUE, k = 10,
+                        nested = FALSE, times = 1, transpose = TRUE,
+                        seed = 10, partition_prob = 0.632,
+                        split_type = c("crossfold", "resample", "partition"),
+                        as.data.table = FALSE, rngkind = "L'Ecuyer-CMRG") {
+    
+    current.rng = .Random.seed
+    txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
+    set_rngseed(seed = seed, rngkind = rngkind)
+    on.exit(eval(txt, envir = parent.frame()))
+    
+    o_split_type = c("crossfold", "resample", "partition")
+    obs.id = seq_along2(dat)
+    
+    set.seed(seed)
+
+    wtf = setdiff(split_type, o_split_type)
+    if (length(wtf)) {
+        warning("split_type should be one of ", paste(o_split_type, collapse = " "))
+        split_type = split_type[split_type %in% o_split_type]
+    }
+
+    if (!nested & times != 1) times = 1
+
+    if (NROW(split_type) > 1) {
+        split_type = split_type[1]
+        message("more than one split type designated, using ", split_type)
+    }
+
+    if (split_type == "crossfold") {
+        if (!nested) {
+            train = caret::createFolds(obs.id, k = k, returnTrain = T)
+        } else
+            train = caret::createMultiFolds(obs.id, k = k, times = times)
+    } else if (split_type == "resample") {
+        train = caret::createResample(obs.id, times * k)
+    } else if (split_type == "partition") {
+        train = caret::createDataPartition(obs.id, times * k, p = partition_prob)
+    }
+    
+    test = lapply(train, function(x) {
+        setdiff(obs.id, x)
+    })
+
+    trainl = list()
+    testl = list()
+    if (use.index == FALSE) {
+        if (!is.null(ncol(dat))) {
+            if (!is.null(field)) {
+                trainl = lapply(train, function(x) dat[x,])
+                testl = lapply(test, function(x) dat[x,])
+            } else {
+                if (anyDuplicated(dat[[field]])) warning("some indices are duplicated")
+                trainl = lapply(train, function(x) setNames(dat[x,][[field]], x))
+                testl = lapply(test, function(x) setNames(dat[x,][[field]], x))
+            }
+        } else {
+            trainl = lapply(train, function(x) setNames(dat[x], x))
+            testl = lapply(test, function(x) setNames(dat[x], x))
+        }
+    }
+
+    if (as.data.table) {
+        dt.train = stack.dt(train)[, set := "train"]
+        dt.train$id = rep_len2(stack.dt(trainl)$values, dt.train)
+        dt.test = stack.dt(test)[, set := "test"]
+        dt.test$id = rep_len2(stack.dt(testl)$values, dt.test)
+        return(
+            setcols(
+                rbind(dt.train, dt.test),
+                c("ix", "partition", "set", "id"))
+        )
+    }
+
+    if (NROW(trainl) && NROW(testl))
+        out = list(train = trainl, test = testl)
+    else
+        out = list(train = train, test = test)
+    if (transpose)
+        return(purrr::transpose(out))
+    else
+        return(out)
+}
+
+#' @name aggregate_roc
+#' @title make aggregated roc curve
+#'
+#' @author Kevin Hadi
+#' @param dat data.table or data.frame of one row per observation. assumes each observation is a row
+#' @param k number of groups
+#' @return a list of row ids corresponding to each fold and training and test split
+#' @export
+aggregate_roc = function(dat, subgroup.field = "Method", score = "BRCA1", lab = "fmut_brca1", mc.cores = 1, only_unique = F, include_group = FALSE, return_raw = FALSE) {
+    nms = unique(dat[[subgroup.field]])
+    out = rbindlist(mclapply(nms, function(nm) {
+        x = copy(dat[Method == nm])
+        for (i in seq_len(NROW(score))) {
+            cut = santoku::chop_evenly(x[[score[i]]], intervals = 50)
+            rescore = normv(f2int(cut))
+            x[[score[i]]] = rescore
+        }
+        if (isTRUE(return_raw))
+            return(x)
+        outt = make_roc(x, lab = lab, score = score, include_group = include_group)[, Method := nm]
+        if (only_unique) {
+            outt = rbind(outt[!duped(prd)], outt[1][, c("Specificity", "Sensitivity") := list(Specificity = 0, Sensitivity = 1)])
+        }
+        return(outt)
+    }, mc.cores = mc.cores))
+}
 
 
 #' @name %=%
@@ -1564,7 +2091,7 @@ make_xfold = function(dat, k = 10, nested = FALSE, times = 5, transpose = TRUE, 
 #' @return vector
 #' @export
 seq_along2 = function(x)  {
-  seq_len(len(x))
+  seq_len(NROW(x))
 }
 
 
@@ -1609,7 +2136,7 @@ rep_len = function(x, length.out) {
 #' @export
 rep_len2 = function(x, objalong, uselen = TRUE) {
     if (uselen)
-        rep(x, length.out = len(objalong))
+        rep(x, length.out = NROW(objalong))
     else
         rep(x, length.out = objalong)
 }
@@ -2879,8 +3406,8 @@ normv_sep = function(x) {
 #'
 #' @return vector
 #' @export
-zscore = function(x) {
-    (x - mean(x)) / sd(x)
+zscore = function(x, na.rm = F) {
+    (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
 }
 
 
@@ -3300,6 +3827,15 @@ errr = function(x = 2) {
 #'
 #' @export
 g2 = getdat2
+
+#' @name g
+#' @title alias for getdat2
+#'
+#' @description
+#' alias for getdat2 function
+#'
+#' @export
+g = getdat2
 
 #' @name gx
 #' @title alias for getdat2(nm = "x")
@@ -3908,7 +4444,8 @@ stack.dt = function(lst, ind = "ind", values = "values", ind.as.character = TRUE
 #'
 #' @return A list
 #' @export
-make_chunks = function(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_chunk) {
+make_chunks = function(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_chunk, seed = 10) {
+    set.seed(seed)
     lst.call = as.list(match.call())
     if (!is.null(lst.call$num_chunk) && is.null(lst.call$max_per_chunk)) {
         max_per_chunk = !eval(lst.call$num_chunk)
@@ -4115,13 +4652,15 @@ mrocdat = function(lbl, prd) {
 #' @param prd output from mrocpred
 #' @return A data.frame that can be fed into ggplot
 #' @export
-ggmroc = function(gdat, palette = "Moonrise2") {
+ggmroc = function(gdat, palette = "Moonrise2", color.field = "Group", linetype.field = "Method") {
+    gdat$linetype.field = gdat[[linetype.field]]
+    gdat$color.field = gdat[[color.field]]
     g = with(gdat, {
         ggplot(g2(), aes(x = 1-Specificity, y=Sensitivity)) +
-            geom_path(aes(color = Group, linetype=Method), size=1.5) +
+            geom_path(aes(color = color.field, linetype=linetype.field), size=1.5) +
             geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
                          colour='grey', linetype = 'dotdash') +
-            scale_colour_manual(values = skitools::brewer.master(length(unique(Group)), wes = T, palette = palette)) +
+            scale_colour_manual(values = skitools::brewer.master(length(unique(color.field)), wes = T, palette = palette)) +
             theme_bw() +
             theme(plot.title = element_text(hjust = 0.5),
                   legend.justification=c(1, 0), legend.position=c(.95, .05),
@@ -4235,47 +4774,47 @@ idj = function(x, these.ids) {
     x[match(these.ids, ids(x))]
 }
 
-#' @name reset.job
-#' @title reset.job
-#'
-#' Reset a job with different params
-#'
-#' @return A Flow job object
-#' @export reset.job
-reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
-    if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
-    if (is.null(task))
-        usetask = x@task
-    else if (is.character(task) || inherits(task, "Task"))
-        usetask = task
-    args = list(...)
-    new.ent = copy(entities(x))
-    if (!is.null(i)) {
-        jb.mem = replace(x@runinfo$mem, i, jb.mem)
-        jb.cores = replace(x@runinfo$cores, i, jb.cores)
-    }
-    tsk = viewtask(usetask)
-    ## if (!all(names(args) %in% colnames(new.ent)))
-    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(usetask)$V2)
-        stop("adding additional column to entities... this function is just for resetting with new arguments")
-    for (j in seq_along(args))
-    {
-        data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
-    }
-    these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
-    if ("time" %in% names(these.forms)) {
-        if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
-        else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
-    } else {
-        if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
-        else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
-    }
-    return(jb)
-}
+## #' @name reset.job
+## #' @title reset.job
+## #'
+## #' Reset a job with different params
+## #'
+## #' @return A Flow job object
+## #' @export reset.job
+## reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
+##     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
+##     if (is.null(task))
+##         usetask = x@task
+##     else if (is.character(task) || inherits(task, "Task"))
+##         usetask = task
+##     args = list(...)
+##     new.ent = copy(entities(x))
+##     if (!is.null(i)) {
+##         jb.mem = replace(x@runinfo$mem, i, jb.mem)
+##         jb.cores = replace(x@runinfo$cores, i, jb.cores)
+##     }
+##     tsk = viewtask(usetask)
+##     ## if (!all(names(args) %in% colnames(new.ent)))
+##     if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(usetask)$V2)
+##         stop("adding additional column to entities... this function is just for resetting with new arguments")
+##     for (j in seq_along(args))
+##     {
+##         data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
+##     }
+##     these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
+##     if ("time" %in% names(these.forms)) {
+##         if ("update_cores" %in% names(these.forms))
+##             jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+##         else
+##             jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
+##     } else {
+##         if ("update_cores" %in% names(these.forms))
+##             jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+##         else
+##             jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+##     }
+##     return(jb)
+## }
 
 #' @name getcache
 #' @title getcache
@@ -4382,6 +4921,23 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
+#' @name lbl.gg
+#' @title convenience function to label the nodes and edges of gGraph
+#'
+#' @description
+#' for gTrack visualization
+#'
+#' @export lbl.gg
+lbl.gg = function(gg, do = T) {
+    if (do) {
+        gg2 = copy3(gg)
+        gg2$nodes$mark(labels = gg2$nodes$dt$snode.id)
+        gg2$edges[type == "ALT"]$mark(labels = gg2$edges[type == "ALT"]$dt$edge.id)
+        return(gg2)
+    } else {
+        return(gg)
+    }
+}
 
 
 #' @name gt.each
@@ -4553,6 +5109,116 @@ gt.fix = function(gt, lwd.scale = 1, lwd.border.scale = 1, ywid.scale = 1) {
 ##############################
 ############################## ggplot2 stuff
 ##############################
+
+#' @name extract_ggplot
+#' @title helper function to grab relevant ggplot_build outputs
+#'
+#' @description
+#' takes an input function and grabs the processed data frame
+#' that ggplot employs to draw its plots
+#'
+#' Note: reordering plot data to fit the ggplot wrangled data is
+#' (if there is a 1 to 1 mapping)
+#' plot_data[order(<facet.x>, <facet.y>, <grouping_variable>)]
+#'
+#' OR
+#'
+#' plot_data[order(PANEL, <grouping_variable>)]
+#'
+#' useful for custom construction of layers
+#'
+#' @param ggplot_obj A ggplot object
+#' @export
+extract_ggplot = function(ggplot_obj) {
+    gb = copy3(ggplot_build(ggplot_obj))
+    gg.x = all.vars(gb$plot$mapping$x)
+    if (NROW(gg.x)) gg.x = rlang::quo_name(gb$plot$mapping$x)
+    gg.y = all.vars(gb$plot$mapping$y)
+    if (NROW(gg.y)) gg.y = rlang::quo_name(gb$plot$mapping$y)
+    gb.layout = as.data.table(gb$layout$layout)
+    lst.d = lapply(gb$data, function(layer) {
+        if (!inherits(layer$PANEL, "factor")) layer$PANEL = factor(layer$PANEL)
+        return(merge.data.table(as.data.table(layer), gb.layout, by = c("PANEL")))
+    })
+    facet_nm = lapply(gb$plot$facet$params$facets, quo_name)
+    facet.x = facet_nm[1][[1]]
+    facet.y = facet_nm[2][[1]]
+    plot_layers = gb$plot$layers
+    lst.players = lapply(plot_layers, function(plot_layer) {
+        x.field = all.vars(plot_layer$mapping$x)
+        if (NROW(x.field)) x.field = rlang::quo_name(plot_layer$mapping$x)
+        y.field = all.vars(plot_layer$mapping$y)
+        if (NROW(y.field)) y.field = rlang::quo_name(plot_layer$mapping$y)
+        list(x.field = x.field, y.field = y.field)
+    })
+
+    lst.gplayers = lapply(plot_layers, function(plot_layer) {
+
+        x.field = all.vars(plot_layer$mapping$x)
+        if (NROW(x.field)) x.field = rlang::quo_name(plot_layer$mapping$x)
+        y.field = all.vars(plot_layer$mapping$y)
+        if (NROW(y.field)) y.field = rlang::quo_name(plot_layer$mapping$y)
+        list(x.field = x.field, y.field = y.field)
+    })
+    gb.plot.data = gb$plot$data
+    gb.layers = gb$plot$layers
+    if (class(gb.plot.data)[1] == "waiver") gb.plot.data = structure(gb.plot.data, class = NULL)
+    gb.plot.data = as.data.table(gb.plot.data)
+    lst.plotdata = mapply(function(data_, exprlst)
+    {
+        if (NROW(data_)) {
+            if (NROW(exprlst$x.field))
+                data_[["x"]] = eval(parse(text = exprlst$x.field), data_)
+            if (NROW(exprlst$y.field))
+                data_[["y"]] = eval(parse(text = exprlst$y.field), data_)
+            data_ = tryCatch(merge.repl(data_, gb.layout), error = function(e) data_)
+            ## data_ = merge.repl(data_, gb.layout)
+            ## data_[["facet.x"]] = if (NROW(facet.x)) eval(parse(text = facet.x), data_) else ""
+            ## data_[["facet.y"]] = if (NROW(facet.y)) eval(parse(text = facet.y), data_) else ""
+            ## if (all(colexists(c("facet.x", "facet.y"), data_)))
+            ##     data_[order(facet.x, facet.y), PANEL := .GRP, by = .(facet.x, facet.y)]
+        }
+        return(data_)
+    }, list(gb.plot.data), lst.players, SIMPLIFY = FALSE)
+    lst.layerdata = mapply(function(data_, exprlst)
+    {
+        data_ = data_$data
+        if (class(data_)[1] == "waiver") data_ = structure(data_, class = NULL)
+        if (NROW(data_)) {
+            data_ = as.data.table(data_)
+            if (NROW(exprlst$x.field))
+                data_[["x"]] = eval(parse(text = exprlst$x.field), data_)
+            if (NROW(exprlst$y.field))
+                data_[["y"]] = eval(parse(text = exprlst$y.field), data_)
+            data_ = tryCatch(merge.repl(data_, gb.layout), error = function(e) data_)
+            ## data_ = merge.repl(data_, gb.layout)
+            ## data_[["facet.x"]] = if (NROW(facet.x)) eval(parse(text = facet.x), data_) else ""
+            ## data_[["facet.y"]] = if (NROW(facet.y)) eval(parse(text = facet.y), data_) else ""
+            ## if (all(colexists(c("facet.x", "facet.y"), data_)))
+            ##     data_[order(facet.x, facet.y), PANEL := .GRP, by = .(facet.x, facet.y)]
+        }
+        return(data_)
+    }, gb.layers, lst.players, SIMPLIFY = FALSE)
+    list(lst.d = lst.d, lst.plotdata = lst.plotdata, lst.players = lst.players, lst.layerdata = lst.layerdata, facet.x = facet.x, facet.y = facet.y, gg.x = gg.x, gg.y = gg.y, layout = gb.layout)
+}
+
+
+#' @name integer_breaks
+#' @title make integer breaks on axes
+#'
+#' a la scales::breaks_pretty
+#'
+#' @export
+integer_breaks <- function(n = 5, ...) {
+    fxn <- function(x) {
+        breaks <- floor(pretty(x, n, ...))
+        names(breaks) <- attr(breaks, "labels")
+        breaks
+    }
+    return(fxn)
+}
+
+
 #' @name gg_mytheme
 #' @title custom theme for ggplot
 #'
@@ -4567,7 +5233,7 @@ gg_mytheme = function(gg,
                       x_axis_cex = 1,
                       y_axis_cex = 1,
                       ylab_cex = 1,
-                      xlab_cex = 0,
+                      xlab_cex = 1,
                       title_cex = 1,
                       x_angle = 90,
                       x_axis_hjust = 1,
@@ -4680,7 +5346,7 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
 #'
 #' @return A ggplot object
 #' @export gbar.error
-gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", facet1 = NULL, facet2 = NULL, position = position_dodge(width = 0.9), transpose = FALSE, facet.scales = "fixed") {
+gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palette = NULL, print = TRUE, fill = NULL, stat = "identity", facet1 = NULL, facet2 = NULL, bar.width = 0.9, position = position_dodge(width = 0.9), transpose = FALSE, facet.scales = "fixed") {
     dat = data.table(y = y, conf.low = conf.low, conf.high = conf.high, group = group)
     if (is.null(facet1)) {
         facet1 = facet2
@@ -4700,9 +5366,9 @@ gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palet
         gg = ggplot(dat, aes(fill = fill.arg, x = y))
     else
         gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y))
-    gg = gg + geom_bar(stat = stat, position = position)
+    gg = gg + geom_bar(stat = stat, position = position, width = bar.width)
     if (any(!is.na(conf.low)) & any(!is.na(conf.high)))
-        gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position_dodge(width = rel(0.9)))
+        gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position)
     if (!is.null(wes))
         gg = gg + scale_fill_manual(values = skitools::brewer.master(n = length(unique(fill.arg)), wes = TRUE, palette = wes))
         ## gg = gg + scale_fill_manual(values = wesanderson::wes_palette(wes))
@@ -4851,6 +5517,31 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ##############################
 ##############################
 
+#' @name trans.df
+#' @title transpose data.table or data.frame
+#'
+#' @description
+#' transpose a data frame
+#' by default, the first column is stripped
+#' and used as colnames of the output table
+#'
+#' @export trans.df
+trans.df = function(df, rn = 1) {
+    if (inherits(df, "data.table")) {
+        df = asdf(df)
+    }
+    if (!(is.null(rn) || is.na(rn))) {
+        rn.cols = dodo.call2(paste, .gc(df, rn))
+        df = .gc(df, rn, invert = T)
+    }
+    out = data.table::transpose(df)
+    if (!(is.null(rn) || is.na(rn))) {
+        (data.table::setnames(out, rn.cols))
+    }
+    return(out)
+}
+
+
 #' @name dunlist2
 #' @title unlist into a data.table
 #'
@@ -4889,7 +5580,15 @@ dunlist2 = function (x, simple = FALSE)
 #'
 #' @export debug.s4
 debug.s4 = function(what, signature, where) {
-  trace(what = what, tracer = browser, at = 1, signature = signature, where = where)
+    if (is.character(where)) {
+        where = asNamespace(sub("package:", "", where))
+    }
+    if (is.character(what)) {
+        what = get0(what, mode = "function", envir = where)
+    }
+    trace(what = what, tracer = browser,
+          at = 1,
+          signature = signature, where = where)
 }
 
 #' @name undebug.s4
@@ -4900,7 +5599,13 @@ debug.s4 = function(what, signature, where) {
 #'
 #' @export undebug.s4
 undebug.s4 = function(what, signature, where) {
-  untrace(what = what, signature = signature, where = where)
+    if (is.character(where)) {
+        where = asNamespace(sub("package:", "", where))
+    }
+    if (is.character(what)) {
+        what = get0(what, mode = "function", envir = where)
+    }
+    untrace(what = what, signature = signature, where = where)
 }
 
 #' @name mstrsplit
@@ -5432,6 +6137,25 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+#' @name bp2grl
+#' @title convert table of paired string coordinates to GRangesList 
+#' 
+#' @description
+#'
+#'
+#' @author Kevin Hadi
+#' @export
+bp2grl = function(df, bp1.field = "bp1", bp2.field = "bp2", sort = TRUE) {
+    grl = grl.pivot(with(df, GRangesList(parse.gr(bp1), parse.gr(bp2))))
+    mcols(grl) = df
+    if (sort) {
+        seqlevels(grl) = GenomeInfoDb::sortSeqlevels(seqlevels(grl))
+        grl = sort.GRangesList(grl, ignore.strand = T)
+    }
+    return(grl)
+}
+
+
 
 #' @name findov
 #' @title GenomicRanges::findOverlaps wrapper
@@ -5450,7 +6174,7 @@ findov = function(query, subject, by = NULL, ...) {
         subject = gUtils::gr.fix(subject, query)
         return(GenomicRanges::findOverlaps(query, subject, ...))
     })
-    tmp = setcols(asdt(h), c("query.id", "subject.ids"))
+    tmp = setcols(asdt(h), c("query.id", "subject.id"))
     return(tmp)
 }
 
@@ -5830,12 +6554,16 @@ gr2df = function(gr, var = "rowname") {
         rn2 = make.unique(rn)
     else
         rn2 = as.character(seq_along(gr))
-    df = GenomicRanges::as.data.frame(gr, row.names = rn2)
+    if (inherits(gr, "GRanges")) {
+        df = GenomicRanges::as.data.frame(gr, row.names = rn2)
+        cmd = sprintf("cbind(%s = rn2, df)", var)
+        df = et(cmd)
+    } else if (inherits(gr, "GRangesList"))
+        df = GenomicRanges::as.data.frame(gr)
     setDT(df)
-    cmd = sprintf("cbind(%s = rn2, df)", var)
-    df = et(cmd)
     return(dt_f2char(df,c("seqnames", "strand")))
 }
+
 
 #' @name grl.undf
 #' @title grangeslist to data table via dataframe
@@ -6390,6 +7118,50 @@ gr.spreduce = function(gr,  ..., ignore.strand = FALSE, pad = 0, return.grl = FA
   }
 }
 
+#' @name gr.sprange
+#' @title get range based on a field(s) to split by in elementMetadata of GRanges, or given vector
+#' @description
+#'
+#' split and get range of GRanges by field(s)
+#' if providing a variable not already within the GRanges,
+#' may need to use dynget(variable_name)
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.sprange
+gr.sprange = function (gr, ..., ignore.strand = FALSE, pad = 0, return.grl = FALSE, 
+    sep = paste0(" ", rand.string(length = 8), " ")) 
+{
+    lst = as.list(match.call())[-1]
+    ix = which(!names(lst) %in% c("gr", "sep", "pad", "ignore.strand", 
+        "return.grl"))
+    vars = unlist(sapply(lst[ix], function(x) unlist(sapply(x, 
+        toString))))
+    if (length(vars) == 1) {
+        if (!vars %in% colnames(mcols(gr))) 
+            vars = tryCatch(unlist(list(...)), error = function(e) vars)
+    }
+    if (!all(vars %in% colnames(mcols(gr)))) 
+        stop("Must specify valid metadata columns in gr")
+    tmpix = do.call(function(...) paste(..., sep = sep), as.list(mcols(gr)[, 
+        vars, drop = F]))
+    unix = which(!duplicated(tmpix))
+    tmpix = factor(tmpix, levels = tmpix[unix])
+    grl = unname(gr.noval(gr) %>% GenomicRanges::split(tmpix))
+    grl = range(grl + pad, ignore.strand = ignore.strand)
+    if (return.grl) {
+        mcols(grl) = mcols(gr)[unix, vars, drop = F]
+        return(grl)
+    }
+    else {
+        out = unlist(grl)
+        mcols(out) = mcols(gr)[rep(unix, times = IRanges::width(grl@partitioning)), 
+            vars, drop = F]
+        return(out)
+    }
+}
+
+
 ## gr.spreduce = function(gr,  ..., pad = 0, sep = paste0(" ", rand.string(length = 8), " ")) {
 ##   lst = as.list(match.call())[-1]
 ##   ix = which(!names(lst) %in% c("gr", "sep", "pad"))
@@ -6476,13 +7248,72 @@ gr.within = function(data, expr) {
     rm(list = "X", envir = e)
     ## e$X = NULL
     e$data <- granges(data)
+    e$seqnames = seqnames(e$data)
+    e$start = start(e$data)
+    e$end = end(e$data)
+    e$strand = as.character(strand(e$data))
+    e$width = as.integer(width(e$data))
+    S4Vectors:::safeEval(substitute(expr), e, top_prenv1(expr))
+    ch.fields = all.vars(substitute(expr))
+    reserved <- c("seqnames", "start", "end", "width", "strand", "data")
+    if ("seqnames" %in% ch.fields) seqnames(e$data) = Rle(factor(e$seqnames, levels = levels(seqnames(e$data))))
+    if ("width" %in% ch.fields) width(e$data) = e$width
+    if ("strand" %in% ch.fields) strand(e$data) = e$strand
+    if (any(c("start", "end") %in% ch.fields)) e@ranges = IRanges(e$start, e$end)
+    data = e$data
+    l <- mget(setdiff(ls(e), reserved), e)
+    l <- l[!sapply(l, is.null)]
+    nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
+    tmp = as(l, "DataFrame")
+    newn = unlist(lapply(as.list(substitute(expr))[-1], function(x) {
+        x = as.character(x)
+        if (x[1] == "=")
+            return(x[2])
+        else
+            return(NULL)
+    }))
+    neword = union(union(orig.names, newn), colnames(tmp))
+    mcols(data) = tmp[,na.omit(match3(neword, colnames(tmp))), drop = FALSE]
+    if (nD) {
+        for (nm in del)
+            mcols(data)[[nm]] = NULL
+    }
+    ## if (!identical(granges(data), e$data)) {
+    ##     granges(data) <- e$data
+    ## }
+    return(data)
+}
+
+gr.within2 = function(data, expr) {
+    top_prenv1 = function (x, where = parent.frame())
+    {
+        sym <- substitute(x, where)
+        if (!is.name(sym)) {
+            stop("'x' did not substitute to a symbol")
+        }
+        if (!is.environment(where)) {
+            stop("'where' must be an environment")
+        }
+        .Call2("top_prenv", sym, where, PACKAGE = "S4Vectors")
+    }
+    e <- list2env(as.list(as(data, "DataFrame")))
+    orig.names = setdiff(rev(names(e)), "X")
+    rm(list = "X", envir = e)
+    ## e$X = NULL
+    e$data <- granges(data)
     e$seqnames = as.integer(seqnames(e$data))
     e$start = start(e$data)
     e$end = end(e$data)
     e$strand = as.character(strand(e$data))
     e$width = as.integer(width(e$data))
     S4Vectors:::safeEval(substitute(expr, parent.frame()), e, top_prenv1(expr))
+    ch.fields = all.vars(substitute(expr, parent.frame()))
     reserved <- c("seqnames", "start", "end", "width", "strand", "data")
+    if ("seqnames" %in% ch.fields) seqnames(e$data) = Rle(factor(e$seqnames, levels = levels(seqnames(e$data))))
+    if ("width" %in% ch.fields) width(e$data) = e$width
+    if ("strand" %in% ch.fields) strand(e$data) = e$strand
+    if (any(c("start", "end") %in% ch.fields)) e@ranges = IRanges(e$start, e$end)
+    data = e$data
     l <- mget(setdiff(ls(e), reserved), e)
     l <- l[!sapply(l, is.null)]
     nD <- length(del <- setdiff(colnames(mcols(data)), (nl <- names(l))))
@@ -6500,10 +7331,10 @@ gr.within = function(data, expr) {
         for (nm in del)
             mcols(data)[[nm]] = NULL
     }
-    if (!identical(granges(data), e$data)) {
-        granges(data) <- e$data
-    }
-    data
+    ## if (!identical(granges(data), e$data)) {
+    ##     granges(data) <- e$data
+    ## }
+    return(data)
 }
 
 
@@ -6521,7 +7352,7 @@ setGeneric('within')
 #' @author Kevin Hadi
 #' @export
 setMethod("within", signature(data = "GRanges"), NULL)
-setMethod("within", signature(data = "GRanges"), gr.within)
+setMethod("within", signature(data = "GRanges"), gr.within2)
 
 
 tmpgrlwithin = function(data, expr) {
@@ -6916,22 +7747,109 @@ inherits.edf = function(DF) {
 }
 
 
+#' @name row.sort
+#' @title fast row sort 
+#'
+#' @description
+#' 
+#' matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE)
+#' ^^ came from stackoverflow
+#' https://stackoverflow.com/questions/9506442/fastest-way-to-sort-each-row-of-a-large-matrix-in-r
+#'
+#' Rfast::rowsort is faster than the base function but it is still very fast
+#'
+#' @export
+row.sort <- function(a, use_rfast = TRUE) {
+    out = tryCatch(Rfast::rowSort(a),
+                   error = function(e) matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE))
+}
+
 #' @name ra.overlaps6
 #'
 #' One of the many rewrites of ra.overlaps
 #'
 #' @export
-ra.overlaps6 = function(ra1, ra2, pad = 0) {
+ra.overlaps6 <- function(ra1, ra2, pad = 0, ignore.strand = ignore.strand) {
     ra1 = gr.noval(ra1)
     ra2 = gr.noval(ra2)
     bp1 = grl.unlist(ra1) + pad
     bp2 = grl.unlist(ra2) + pad
-    ix2 = unname(plyranges::find_overlaps_directed(bp1, bp2))
-    ix2 = gr2dt(ix2)
-    ix2[, ra.match := all(c(1,2) %in% grl.iix.x & all(c(1,2) %in% grl.iix.y)), by = .(grl.ix.x, grl.ix.y)]
-    ix2 = ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))]
-    ix2[, cbind(grl.ix.x, grl.ix.y)]
+    ## data.table::foverlaps
+    ix2 = findOverlaps(bp1, bp2, ignore.strand = FALSE)
+    ix2 = as.data.table(ix2)
+    ix2$grl.ix.x = bp1$grl.ix[ix2$queryHits]
+    ix2$grl.iix.x = bp1$grl.iix[ix2$queryHits]
+    ix2$grl.ix.y = bp2$grl.ix[ix2$subjectHits]
+    ix2$grl.iix.y = bp2$grl.iix[ix2$subjectHits]
+    ## ix2 = unname(plyranges::find_overlaps_directed(bp1, bp2))
+    ## ix2 = gr2dt(ix2)
+    mat = ix2[, cbind(grl.ix.x, grl.ix.y)]
+    ## letsee = apply(mat, 1, function(x) c(min(x), max(x)))
+    ## ix2[, uix := paste(letsee[1,], letsee[2,])]
+    ix2[, uix := paste(matrixStats::rowMins(mat), matrixStats::rowMaxs(mat))]
+    ## ix2[, ra.match := all(c(1,2) %in% grl.iix.x) & all(c(1,2) %in% grl.iix.y), by = .(grl.ix.x, grl.ix.y)]
+    ok1 = unique(ix2[, .(uix, grl.iix.x)])
+    ok1[, has1 := any(grl.iix.x == 1), by = uix]
+    ok1[, has2 := any(grl.iix.x == 2), by = uix]
+    ok2 = unique(ix2[, .(uix, grl.iix.y)])
+    ok2[, has1 := any(grl.iix.y == 1), by = uix]
+    ok2[, has2 := any(grl.iix.y == 2), by = uix]
+    ## ix2[, ra.match := all(c(1,2) %in% grl.iix.x) & all(c(1,2) %in% grl.iix.y), keyby = uix]
+    meth1 = intersect(ok1[(has1 & has2)][!duplicated(uix)]$uix, ok2[(has1 & has2)][!duplicated(uix)]$uix)
+    ## setdiff(meth1, ix2[ra.match == TRUE]$uix)
+    ## setkey(ix2, grl.ix.x, grl.ix.y)
+    ## ix2 = ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))]
+    return(setkey(ix2[!duplicated(uix)], uix)[meth1][, cbind(grl.ix.x, grl.ix.y)])
+    ## return(ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))][, cbind(grl.ix.x, grl.ix.y)])
 }
+
+#' @name ra.dedup6
+#'
+#' One of the many rewrites of ra.overlaps
+#'
+#' @export
+ra.dedup6 <- function (grl, pad = 500, ignore.strand = FALSE) 
+{
+    if (!is(grl, "GRangesList")) {
+        stop("Error: Input must be GRangesList!")
+    }
+    if (any(elementNROWS(grl) != 2)) {
+        stop("Error: Each element must be length 2!")
+    }
+    if (length(grl) == 0 | length(grl) == 1) {
+        return(grl)
+    }
+    if (length(grl) > 1) {
+        ix.pair = as.data.table(ra.overlaps6(grl, grl, pad = pad, 
+            ignore.strand = ignore.strand))[grl.ix.x != grl.ix.y]
+        if (nrow(ix.pair) == 0) {
+            return(grl)
+        }
+        else {
+            dup.ix = unique(rowMax(as.matrix(ix.pair)))
+            return(grl[-dup.ix])
+        }
+    }
+}
+
+
+## ra.overlaps6 <- function(ra1, ra2, pad = 0, ignore.strand = ignore.strand) {
+##     ra1 = gr.noval(ra1)
+##     ra2 = gr.noval(ra2)
+##     bp1 = grl.unlist(ra1) + pad
+##     bp2 = grl.unlist(ra2) + pad
+##     browser()
+##     ## data.table::foverlaps
+##     findOverlaps(bp1, bp2, ignore.strand = FALSE)
+##     ix2 = unname(plyranges::find_overlaps_directed(bp1, bp2))
+##     ix2 = gr2dt(ix2)
+##     ix2[, ra.match := all(c(1,2) %in% grl.iix.x & all(c(1,2) %in% grl.iix.y)), by = .(grl.ix.x, grl.ix.y)]
+##     ix2 = ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))]
+##     ix2[, cbind(grl.ix.x, grl.ix.y)]
+## }
+
+
+
 
 #' @name gr2bed
 #'
@@ -6950,19 +7868,56 @@ gr2bed = function(gr) {
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-grl2bedpe = function(grl) {
-    df = as.data.frame(S4Vectors::zipdown(grl))
-    df = select(df, -matches("(first|second)\\.width"), -one_of("names"))
-    ## df = rename_at(df, vars(matches("(\\.X)")), ~gsub("(\\.X)?", "", .))
-    colnames(df) = withv(colnames(df), gsub("(\\.X)?", "", x))
-    df = df[,!duplicated(colnames(df))]
-    df = df %>% rename_at(vars(matches("(first|second)\\.seqnames")), ~gsub("seqnames", "chr", .)) %>%
-        rename_at(vars(matches("^first\\.(chr$|start$|end$|strand$)")), ~gsub("(first\\.)(.*)", "\\21", .)) %>%
-        rename_at(vars(matches("^second\\.(chr$|start$|end$|strand$)")), ~gsub("(second\\.)(.*)", "\\22", .))
-    df = mutate_at(df, vars(matches("start(1|2)")), ~(. - 1))
-    df = mutate(df, name = "dummy", score = 0)
-    select(df, chr1, start1, end1, chr2, start2, end2, name, score, strand1, strand2, everything())
+grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
+    grpiv = grl.pivot(grl)
+
+    mcgrl = as.data.frame(mcols(grl))
+
+    df1 = as.data.frame(grpiv[[1]])[, c(1:3, 5), drop=F]
+    df2 = as.data.frame(grpiv[[2]])[, c(1:3, 5), drop=F]
+    colnames(df1) = c("chr1", "start1", "end1", "strand1")
+    colnames(df2) = c("chr2", "start2", "end2", "strand2")
+
+    mc1 = data.frame()[seq_len(NROW(df1)),,drop=F]
+    mc2 = data.frame()[seq_len(NROW(df2)),,drop=F]
+
+    if (isTRUE(add_breakend_mcol)) {
+        mc1 = as.data.frame(grpiv[[1]])[,-c(1:5),drop=F]
+        mc2 = as.data.frame(grpiv[[2]])[,-c(1:5),drop=F]
+
+        colnames(mc1) = paste0("first.", colnames(mc1))
+        colnames(mc2) = paste0("second.", colnames(mc2))
+    }
+
+    out = cbind(df1, df2, name = as.character(seq_len(NROW(df1))), score = rep_len(0, NROW(df1)), mcgrl, mc1, mc2)
+
+    canon_col = c(1, 2, 3, 5, 6, 7, 9, 10, 4, 8)
+    ## out[, canon_col, drop = F]
+    nix = seq_len(ncol(out))
+
+    ## reorder
+    out = out[, c(canon_col, nix[!nix %in% canon_col]), drop = F]
+
+    if (as.data.table)
+        return(as.data.table(out))
+    else
+        return(out)
+    
 }
+
+## grl2bedpe = function(grl) {
+    ## df = as.data.frame(S4Vectors::zipdown(grl))
+    ## df = select(df, -matches("(first|second)\\.width"), -one_of("names"))
+    ## ## df = rename_at(df, vars(matches("(\\.X)")), ~gsub("(\\.X)?", "", .))
+    ## colnames(df) = withv(colnames(df), gsub("(\\.X)?", "", x))
+    ## df = df[,!duplicated(colnames(df))]
+    ## df = df %>% rename_at(vars(matches("(first|second)\\.seqnames")), ~gsub("seqnames", "chr", .)) %>%
+    ##     rename_at(vars(matches("^first\\.(chr$|start$|end$|strand$)")), ~gsub("(first\\.)(.*)", "\\21", .)) %>%
+    ##     rename_at(vars(matches("^second\\.(chr$|start$|end$|strand$)")), ~gsub("(second\\.)(.*)", "\\22", .))
+    ## df = mutate_at(df, vars(matches("start(1|2)")), ~(. - 1))
+    ## df = mutate(df, name = "dummy", score = 0)
+    ## select(df, chr1, start1, end1, chr2, start2, end2, name, score, strand1, strand2, everything())
+## }
 
 #' @name bedpe2grl
 #'
@@ -7613,8 +8568,179 @@ behomology = function (gg, hg, PAD = 2) {
 
 }
 
+
+
 ##############################
 ##############################
+
+
+############################## gGnome helpers
+
+
+#' @name grl.flip
+#' @title flip each GRangesList element
+#'
+#' @description
+#' 
+#' 
+#' @export grl.flip
+grl.flip = function(x, flipstrand = TRUE) {
+    if (!inherits(x, "GRangesList")) stop("x is not a GRangesList")
+    ir = IRanges(start = 1, end = lengths(x))
+    ## seems to be much faster than applying revElements directly to GRangesList
+    irl = S4Vectors::revElements(as(ir, "IntegerList"))
+    out = x[irl]
+    if (flipstrand)
+        out = gr.flipstrand(out)
+    return(out)
+}
+
+#' @name alt_in_cis
+#' @title grab edges from walk
+#'
+#' @description
+#' get breakpoints
+#' 
+#' @export
+alt_in_cis = function(gw, full = FALSE) {
+    edt = copy(gw$edgesdt)
+    gwe = gw$edges[as.character(edt$sedge.id)]
+    gw.edge.meta = gwe$dt
+    edt$type = gw.edge.meta$type
+    edt$class = gw.edge.meta$class
+    edt = cbind(edt, asdt(with(edt, rleseq(walk.id, type == "ALT", clump = F, use.data.table = F))))
+    gr.bp = grl.unlist(sort(gr.noval(gwe$grl), ignore.strand = T))
+    grs = gr.string(gr.bp)
+    edt$bp1 = grs[gr.bp$grl.iix == 1]
+    edt$bp2 = grs[gr.bp$grl.iix == 2]
+    ## parasn(edt, asdt(with(edt, rleseq(walk.id, type == "ALT", clump = F, use.data.table = F))), use.data.table = T)
+    edt[, alt_adjacent := any(type == "ALT" & lns > 1), by = walk.id]
+    if (full)
+        return(withAutoprint(edt, echo = FALSE)$value)
+    else
+        return(unique(edt[, .(walk.id = walk.id, alt_adjacent = alt_adjacent)]))
+}
+
+
+#' @name gw_edges
+#' @title pull edge metadata from gwalk
+#'
+#' @description
+#' 
+#' @export
+gw_edges = alt_in_cis
+
+#' @name getbp
+#' @title grab breakpoints from gGraph alt edges and mark with ecluster filters
+#'
+#' @description
+#' get breakpoints
+#' 
+#' @export
+getbp = function(gg, ignore.small = T, ignore.isolated = T, max.small = 1e4, min.isolated = max.small, sort = FALSE) {
+    self = gg
+    self$edges$mark(ecluster = as.integer(NA))
+    altedges = self$edges[type == "ALT", ]
+    o.altedges = copy3(altedges)
+    if (length(altedges) == 0) {
+        return(NULL)
+    }
+    if (ignore.small) {
+        altedges = altedges[!((class == "DUP-like" | class == "DEL-like") & altedges$span <= max.small)]
+    }
+    deldup = if (length(altedges) == 0) {
+        copy3(altedges)[class %in% c("DUP-like", "DEL-like")]
+    }
+    if (NROW(deldup) > 0 && ignore.isolated) {
+        altes = deldup$shadow
+        ## altes$sedge.id = altedges[class %in% c("DUP-like", "DEL-like")]$dt[altes$id]$sedge.id
+        bp = gr.noval(grl.unlist(altedges$grl), keep.col = c("grl.ix", "grl.iix", "class", "sedge.id"))
+        bp$sedge.id.y = bp$sedge.id; bp$sedge.id = NULL
+        addon = deldup$dt[altes$id][, .(sedge.id, class)]
+        altes$sedge.id = addon$sedge.id
+        altes$class = addon$class
+        altes$nbp = altes %N% bp # number of breakpoints of any SV that fall within segment
+        numsum = altedges$shadow %>% gr.sum # using the shadows of all of the SVs not just dels and dups
+        altes = altes %$% numsum
+        iso = ((altes) %Q% (score == 1.0))$id
+        ## rm.edges = unique(altes[iso] %Q% (width < thresh))$sedge.id ## old
+        rm.edges = unique(altes[iso] %Q% (width < min.isolated))$sedge.id
+        rm.dups = S4Vectors::with(altes, sedge.id[class == "DUP-like" & nbp <= 2])
+        rm.dups = c(rm.dups, dedup.cols(gr2dt(altes %*% bp))[sedge.id != sedge.id.y][class == "DUP-like"][, .(all(1:2 %in% grl.iix), class.1 = class.1[1]), by = .(sedge.id, sedge.id.y)][, all(V1 == TRUE) & all(class.1 == "DUP-like"), by = sedge.id][V1 == TRUE]$sedge.id) # removing dups that have only other nested dups 
+        rm.edges = union(rm.edges, rm.dups)
+        keepeid = setdiff(altedges$dt$sedge.id, rm.edges)
+        altedges = altedges[as.character(keepeid)]
+    } # ignoring isolated dup and del edges that are smaller than threshold
+    ## if (length(altedges) == 0) {
+    ##         message("No junction in this graph")
+    ##     }
+    ##     return(NULL)
+    ## }
+    if (NROW(altedges) > 0)
+        o.altedges[as.character(altedges$dt$sedge.id)]$mark(ecluster_filter = "pass")
+    else
+        return(NULL)
+    bp = grl.unlist(o.altedges$grl)[, c("grl.ix", "grl.iix", "edge.id", "ecluster_filter")]
+    if (isTRUE(sort)) {
+        bp = gr.sort(bp, ignore.strand = T)
+    }
+    bp$m.ix = seq_along(bp)
+    bp.dt = gr2dt(bp)
+    return(bp.dt)
+}
+
+#' @name interbp_dist
+#' @title interbp_dist
+#'
+#' @description
+#' interbp_dist
+#' 
+#' @export
+interbp_dist = function(gg) {
+    
+    bp.dt = getbp(gg, ignore.small = T, ignore.isolated = T)
+    if (nodim(bp.dt))
+        return(list(bp.dt = NULL, dists = NULL))
+    bp.dt = bp.dt[(GenomicRanges::order(gr.stripstrand(dt2gr(bp.dt))))]
+    bp.dt[, genome_order := seq_len(.N)]
+
+    distmat = gr.dist(dt2gr(bp.dt), ignore.strand = T)
+
+    dists = asdt(melt(distmat, value.name = "distance"))[Var1 != Var2][!is.na(distance)][order(distance)]
+    dists[, c("minidx", "maxidx") := {mat = cbind(Var1, Var2); list(rowMins(mat), rowMaxs(mat))}]
+
+    dists[, grl.ix1 := bp.dt[dists$Var1]$grl.ix]
+    dists[, grl.ix2 := bp.dt[dists$Var2]$grl.ix]
+
+
+    dists[, edge.id1 := bp.dt[dists$Var1]$edge.id]
+    dists[, edge.id2 := bp.dt[dists$Var2]$edge.id]
+
+
+    dists[, grl.iix1 := bp.dt[dists$Var1]$grl.iix]
+    dists[, grl.iix2 := bp.dt[dists$Var2]$grl.iix]
+
+    dists[, strand1 := bp.dt[dists$Var1]$strand]
+    dists[, strand2 := bp.dt[dists$Var2]$strand]
+
+    dists[, filt1 := bp.dt[dists$Var1]$ecluster_filter]
+    dists[, filt2 := bp.dt[dists$Var2]$ecluster_filter]
+
+
+    dists[, filt1 := bp.dt[dists$Var1]$ecluster_filter]
+    dists[, filt2 := bp.dt[dists$Var2]$ecluster_filter]
+
+    dists2 = dists[order(distance)][!duplicated(Var1)][!duplicated(Var2)] ## get every breakend to its nearest neighbor, 2nd dedup means that there is no extramarital partner 
+    dists2[, numocc := .N, by = .(minidx, maxidx)]
+
+    dists2[numocc == 2][!duped(minidx, maxidx)][grl.ix1 != grl.ix2]
+
+    goods = dists2[numocc == 2][!duped(minidx, maxidx)][filt1 == "pass" & filt2 == "pass"][grl.ix1 != grl.ix2]
+
+    dists = merge.repl(dists, goods[, .(minidx, maxidx, goodpair = "pass")], by = c("minidx", "maxidx"))[order(distance)] # goodpair = closest pairing
+
+    return(list(bp.dt = bp.dt, dists = dists))
+}
 
 #' @export pairs.filter.sv
 pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_vcf", mc.cores = 1, pon.path = '~/lab/projects/CCLE/db/tcga_and_1kg_sv_pon.rds') {
@@ -7687,18 +8813,41 @@ pairs.plot.jabba = function(pairs, dirpath = "~/public_html/jabba_output", jabba
 
 #' @export pairs.process.events
 pairs.process.events = function(pairs, events.field = "complex", id.field = "pair", mc.cores = 1) {
-    paths = subset2(pairs[[events.field]], file.exists(x))
+    paths = unique(subset2(pairs[[events.field]], file.exists(x)))
     iter.fun = function(x, tbl) {
-        ent = pairs[get(events.field) == x]
-        gg = readRDS(ent[[events.field]])
-        out = copy(gg$meta$events)
-        set(out, j = id.field, value = ent[[id.field]])
-        out
+        tryCatch({
+            ent = pairs[get(events.field) == x]
+            gg = readRDS(unique(ent[[events.field]]))
+            out = copy(gg$meta$events)
+            set(out, j = id.field, value = unique(ent[[id.field]]))
+            out
+        }, error = function(e) printerr(x))
     }
-    evs = rbindlist(mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores), fill = TRUE)
-    fid = evs[, factor(get(id.field), levels = pairs[get(events.field) %in% paths][[id.field]])]
+    lst = mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores)
+    evs = rbindlist(lst, fill = TRUE)
+    fid = evs[, factor(get(id.field), levels = unique(pairs[get(events.field) %in% paths][[id.field]]))]
     set(evs, j = paste0("f", id.field), value = fid)
 }
+
+#' @export pairs.process.rbp
+pairs.process.rbp = function(pairs, rbp.field = "complex", id.field = "pair", mc.cores = 1) {
+    tryCatch({
+        path = pairs[[rbp.field]]
+        if (!file.exists(path)) return(NULL)
+        gg = readRDS(path)
+        out = gg$meta$recip_bp
+        dt.tic = gg$meta$tic
+        if (!NROW(out)) out = data.table()
+        if (NROW(dt.tic)) {
+            dt.tic = dt.tic %>% rename_at(vars(-1), ~paste0("tic", "_", .))
+            out = merge.repl(out,
+                       dt.tic, by = "tic", all = T)
+        }
+        out$pair = pairs$pair
+        return(out)
+    }, error = function(e) printerr(pairs$pair))
+}
+
 
 #' @export pairs.process.homeology
 pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
@@ -7739,7 +8888,7 @@ pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
 }
 
 #' @export pairs.collect.junctions
-pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz') {
+pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz', ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm", "tib")) {
     paths = subset2(pairs[[jn.field]], file.exists(x))
     mask = rtracklayer::import(mask)
     iter.fun = function(x, tbl) {
@@ -7796,9 +8945,12 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
                                plyranges::select(cx$nodes$gr, bp_scn = cn), "bp_scn"))
             out = df2gr(out) %>% mutate(bp.in.mask = (.) %^% mask) %>% gr2df
         }
+        badcols = which(sapply(out, function(x) inherits(x, c("AsIs", "List", "list"))))
+        if (NROW(badcols)) out = out[, -badcols,with=F]
         return(out)
     }
-    cx.edt = rbindlist(mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores), fill = TRUE)
+    lst = mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores)
+    cx.edt = rbindlist(lst, fill = TRUE)
     set(cx.edt, j = "fpair", value = cx.edt[, factor(get(id.field), levels = pairs[get(jn.field) %in% paths][[id.field]])])
     cx.edt = cx.edt[, !colnames(cx.edt) == "rowname", with = FALSE]
     cx.edt = merge.repl(cx.edt, unique(cx.edt[, .(pair, edge.id, simple_type = gsub("([A-Z]+)([0-9]+)", "\\1", simple), simple_num = gsub("([A-Z]+)([0-9]+)", "\\2", simple))]), by = c("pair", "edge.id"))
@@ -7807,7 +8959,6 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     mod.dt = mltools::one_hot(cx.edt[, .(simple_type)])
     cx.edt = cbind(dplyr::select(cx.edt, -dplyr::matches("^simple_.*$")),
                    dplyr::rename_all(mod.dt, ~paste0("simple", gsub("simple_type", "", tolower(.)))))
-    ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm")
     ## cx.mat = as.matrix(mutate_all(replace_na(cx.edt[, ev.types,with = FALSE], 0), as.numeric))
     cx.mat = as.matrix(dplyr::mutate_all(replace_na(dplyr::select(cx.edt, dplyr::one_of(ev.types)), 0), as.numeric))
     cx.mat = cx.mat > 0

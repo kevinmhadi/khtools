@@ -4,7 +4,7 @@
 \alias{make_xfold}
 \title{make training/test splits}
 \usage{
-make_xfold(dat, k = 10, nested = FALSE, times = 5, transpose = TRUE, seed = 10)
+make_xfold(dat, k = 10, nested = FALSE, times = 1, transpose = TRUE, seed = 10)
 }
 \arguments{
 \item{dat}{data.table or data.frame of one row per observation}

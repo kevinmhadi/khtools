@@ -4,7 +4,7 @@
 \alias{zscore}
 \title{zscore a numeric vector}
 \usage{
-zscore(x)
+zscore(x, na.rm = F)
 }
 \value{
 vector

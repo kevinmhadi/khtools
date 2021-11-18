@@ -4,7 +4,7 @@
 \alias{undup}
 \title{an alternative to base::unique() that preserves names}
 \usage{
-undup(obj, fromLast = FALSE, nmax = NA)
+undup(obj, fromLast = FALSE, nmax = NA, na.rm = FALSE)
 }
 \arguments{
 \item{obj}{an R vector}

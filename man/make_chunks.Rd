@@ -4,7 +4,13 @@
 \alias{make_chunks}
 \title{make_chunks}
 \usage{
-make_chunks(vec, n = 100, max_per_chunk = TRUE, num_chunk = !max_per_chunk)
+make_chunks(
+  vec,
+  n = 100,
+  max_per_chunk = TRUE,
+  num_chunk = !max_per_chunk,
+  seed = 10
+)
 }
 \value{
 A list

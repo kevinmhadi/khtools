@@ -14,7 +14,7 @@ gg_mytheme(
   x_axis_cex = 1,
   y_axis_cex = 1,
   ylab_cex = 1,
-  xlab_cex = 0,
+  xlab_cex = 1,
   title_cex = 1,
   x_angle = 90,
   x_axis_hjust = 1,

@@ -6,7 +6,12 @@
 
 helper function for outputting ggplot}
 \usage{
-ggmroc(gdat, palette = "Moonrise2")
+ggmroc(
+  gdat,
+  palette = "Moonrise2",
+  color.field = "Group",
+  linetype.field = "Method"
+)
 }
 \arguments{
 \item{lbl}{output from mroclab}

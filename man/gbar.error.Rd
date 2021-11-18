@@ -28,6 +28,7 @@ gbar.error(
   stat = "identity",
   facet1 = NULL,
   facet2 = NULL,
+  bar.width = 0.9,
   position = position_dodge(width = 0.9),
   transpose = FALSE,
   facet.scales = "fixed"
