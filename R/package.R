@@ -659,6 +659,45 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name row.sort
+#' @title sort rows of integer matrix
+#'
+#' @description
+#'
+#' @export row.sort
+row.sort <- function(a, use_rfast = TRUE) {
+    out = tryCatch(Rfast::rowSort(a),
+                   error = function(e) matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE))
+}
+
+#' @name rows.all
+#' @title test whether all row entries are TRUE
+#'
+#' @description
+#'
+#' @export rows.all
+rows.all <- function(mat) {
+    vec = logical(NROW(mat))
+    for (i in seq_len(NROW(mat))) {
+        vec[i] = all(mat[i,])
+    }
+    return(vec)
+}
+
+#' @name rows.any
+#' @title test whether any row entries are TRUE
+#'
+#' @description
+#'
+#' @export row.sort
+rows.any <- function(mat) {
+    vec = logical(NROW(mat))
+    for (i in seq_len(NROW(mat))) {
+        vec[i] = any(mat[i,])
+    }
+    return(vec)
+}
+
 #' @name make_dummy
 #' @title make table of dummy encodings
 #'
@@ -7539,7 +7578,7 @@ setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 #' @rdname gr.splgaps
 #' @author Kevin Hadi
 #' @export gr.splgaps
-gr.splgaps = function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE, expand.levels = TRUE) {
+gr.splgaps <- function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE, expand.levels = TRUE) {
   lst = as.list(match.call())[-1]
   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end", "expand.levels"))
   cl = sapply(lst[ix], class)
@@ -7875,8 +7914,8 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
 
     df1 = as.data.frame(grpiv[[1]])[, c(1:3, 5), drop=F]
     df2 = as.data.frame(grpiv[[2]])[, c(1:3, 5), drop=F]
-    colnames(df1) = c("chr1", "start1", "end1", "strand1")
-    colnames(df2) = c("chr2", "start2", "end2", "strand2")
+    colnames(df1) = c("chrom1", "start1", "end1", "strand1")
+    colnames(df2) = c("chrom2", "start2", "end2", "strand2")
 
     mc1 = data.frame()[seq_len(NROW(df1)),,drop=F]
     mc2 = data.frame()[seq_len(NROW(df2)),,drop=F]
