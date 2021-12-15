@@ -668,6 +668,7 @@ lst.emptyreplace = function(x, replace = NA) {
 row.sort <- function(a, use_rfast = TRUE) {
     out = tryCatch(Rfast::rowSort(a),
                    error = function(e) matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE))
+    return(out)
 }
 
 #' @name rows.all
@@ -5460,6 +5461,61 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 ############################## htslib / skidb stuff
 ##############################
 
+
+#' @name write_bed
+#' @title write bed or bedpe into canonical formatted table
+#'
+#' Write a table into  a bed oe bedpe formatted file
+#' Ensures the header is commented out
+#'
+#' @return A data.table
+#' @export write_bed
+write_bed <- function(bed, outpath) {
+    cn = colnames(bed)
+    cn[1] = paste0("#", cn[1])
+    bedhead = paste0(cn, collapse = "\t")
+    writeLines(bedhead, outpath)
+    tryCatch(fwrite(bed, outpath, sep = "\t", col.names = FALSE, row.names = FALSE, append = TRUE),
+             error = function(e) {
+                 write.table(bed, outpath, sep = "\t", col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE)
+             })
+}
+
+#' @name read_bed
+#' @title read bed or bedpe as a table
+#'
+#' Read in a bed oe bedpe formatted file into tabular format
+#'
+#' @return A data.table
+#' @export read_bed
+read_bed <- function(bedpath) {
+    f = file(bedpath, open = "r")
+    thisline = readLines(f, 1)
+    headers = character(0)
+    while (grepl("^((#)|(chrom)|(chr))", thisline, ignore.case = T)) {
+        headers = c(headers, thisline)
+        thisline = readLines(f, 1)
+    }
+    lastheader = tail(headers, 1)
+    ## ln = sum(length(headers), length(thisline))
+    ## while (length(thisline) > 0) {
+    ##     ## thisline = readBin(f, "raw", n = 50000)
+    ##     ## sum(thisline == as.raw(10L))
+    ##     thisline = readLines(f, n = 50000)
+    ##     ln = length(thisline) + ln
+    ## }
+    ## fread(bedpath, skip = length(headers))
+    bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F),
+                   error = function(e) {
+                       read.table(bedpath, comment.char = "", skip = NROW(headers), header = F)
+                   })
+    bedhead = gsub("^#", "", unlist(strsplit(lastheader, "\t")))
+    if (identical(NROW(bedhead), ncol(bed))) {
+        colnames(bed) = bedhead
+    }
+    return(bed)
+}
+
 #' @name read.bam.header
 #' @title read.bam.header
 #'
@@ -7896,9 +7952,20 @@ ra.dedup6 <- function (grl, pad = 500, ignore.strand = FALSE)
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-gr2bed = function(gr) {
-    df = gr2dt(gr) %>% select(-one_of("chr")) %>% rename_at(1:3, ~c("chr", "start", "end")) %>% mutate(chr = as.character(chr), start = start - 1) %>% select(-one_of("width"))
+gr2bed <- function(gr) {
+    df = as.data.frame(gr)
+    colnames(df)[1:3] = c("chrom", "chromStart", "chromEnd")
+    df$width = NULL
+    out = cbind(df[,1:3,drop=F], name = as.character(seq_len(NROW(df))),
+                score = rep_len(0, NROW(df)), df[,-c(1:3),drop=F])
+    out$chromStart = out$chromStart - 1
+    return(out)
 }
+
+
+## gr2bed = function(gr) {
+##     df = gr2dt(gr) %>% select(-one_of("chr")) %>% rename_at(1:3, ~c("chr", "start", "end")) %>% mutate(chr = as.character(chr), start = start - 1) %>% select(-one_of("width"))
+## }
 
 
 #' @name grl2bedpe
@@ -7963,22 +8030,46 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
 #' converting bedpe to grl
 #'
 #' @export
-bedpe2grl = function(bdpe, genome = NULL) {
-    bdpe$chrom1 = as.character(bdpe$chrom1)
-    bdpe$chrom2 = as.character(bdpe$chrom2)
-    dat = tidyr::pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "name"), names_pattern = "([A-Za-z]+)([12]$)")
-    dat = dplyr::mutate_at(dat, vars(matches("^start$")), ~(. + 1))
-    dat = dt2gr(dat)
-    return(grl.pivot(gr.fix(split(dat, dat$name), hg_seqlengths(genome = genome))))
+bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
+    bedpe$chrom1 = as.character(bedpe$chrom1)
+    bedpe$chrom2 = as.character(bedpe$chrom2)
+    st1 = bedpe$strand1
+    st2 = bedpe$strand2
+    if (isTRUE(flip)) {
+        st1 = c("+" = "-", "-" = "+")[st1]
+        st2 = c("+" = "-", "-" = "+")[st2]
+    }
+    gr1 = data.frame(seqnames = bedpe$chrom1, start = bedpe$start1 + 1,
+                     end = bedpe$end1, strand = st1)
+    gr1 = makeGRangesFromDataFrame(gr1)
+    gr1 = gr.resize(gr1, 1, pad = FALSE, fix = "start")
+    gr2 = data.frame(seqnames = bedpe$chrom2, start = bedpe$start2 + 1,
+                end = bedpe$end2, strand = st2)
+    gr2 = makeGRangesFromDataFrame(gr2)
+    gr2 = gr.resize(gr2, 1, pad = FALSE, fix = "start")
+    d1 = bedpe[, c("name", "score"), drop=F]
+    d2 = bedpe[, -c(1:10), drop=F]
+    grl = grl.pivot(GRangesList(gr1, gr2))
+    mcols(grl) = cbind(d1, d2)
+    return(grl)
 }
 
-gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
-    if (!ignore.strand) {
-        return(GenomicRanges::shift(gr, c("+" = 1, "-" = -1)[as.character(strand(gr))] * shift))
-    } else {
-        return(GenomicRanges::shift(gr, shift))
-    }
-}
+## bedpe2grl = function(bdpe, genome = NULL) {
+##     bdpe$chrom1 = as.character(bdpe$chrom1)
+##     bdpe$chrom2 = as.character(bdpe$chrom2)
+##     dat = tidyr::pivot_longer(bdpe, cols = c("chrom1", "start1", "end1", "strand1", "chrom2", "start2", "end2", "strand2"), names_to = c(".value", "name"), names_pattern = "([A-Za-z]+)([12]$)")
+##     dat = dplyr::mutate_at(dat, vars(matches("^start$")), ~(. + 1))
+##     dat = dt2gr(dat)
+##     return(grl.pivot(gr.fix(split(dat, dat$name), hg_seqlengths(genome = genome))))
+## }
+
+## gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
+##     if (!ignore.strand) {
+##         return(GenomicRanges::shift(gr, c("+" = 1, "-" = -1)[as.character(strand(gr))] * shift))
+##     } else {
+##         return(GenomicRanges::shift(gr, shift))
+##     }
+## }
 
 ra.overlaps2 = function(ra1, ra2, pad = 0, ignore.strand = FALSE) {
     if (length(ra1) == 0 | length(ra2) == 0) {
