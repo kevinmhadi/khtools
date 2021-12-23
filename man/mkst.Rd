@@ -6,7 +6,7 @@
 
 making string out of vector for eval(parse(text = ...))}
 \usage{
-mkst(v, f = "c", po = "(", pc = ")", collapse = ",")
+mkst(v, f = "c", po = "(", pc = ")", collapse = ",", asnull = FALSE)
 }
 \description{
 MaKe STring

@@ -663,6 +663,11 @@ lst.emptyreplace = function(x, replace = NA) {
 #' @title sort rows of integer matrix
 #'
 #' @description
+#' matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE)
+#' ^^ came from stackoverflow
+#' https://stackoverflow.com/questions/9506442/fastest-way-to-sort-each-row-of-a-large-matrix-in-r
+#'
+#' Rfast::rowsort is faster than the base function but it is still very fast
 #'
 #' @export row.sort
 row.sort <- function(a, use_rfast = TRUE) {
@@ -670,6 +675,7 @@ row.sort <- function(a, use_rfast = TRUE) {
                    error = function(e) matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE))
     return(out)
 }
+
 
 #' @name rows.all
 #' @title test whether all row entries are TRUE
@@ -690,7 +696,7 @@ rows.all <- function(mat) {
 #'
 #' @description
 #'
-#' @export row.sort
+#' @export rows.any
 rows.any <- function(mat) {
     vec = logical(NROW(mat))
     for (i in seq_len(NROW(mat))) {
@@ -1147,8 +1153,12 @@ flag2int = function(flags) {
 #'
 #'
 #' @export
-mkst = function(v, f = "c", po = "(", pc = ")", collapse = ",") {
-    return(paste0(f, po, paste0(v, collapse = collapse), pc))
+mkst <- function(v, f = "c", po = "(", pc = ")", collapse = ",", asnull = FALSE) {
+    if (identical(NROW(v), 0L)) {
+        if (isTRUE(asnull)) return(NULL) else return("")
+    }
+    out = paste0(f, po, paste0(v, collapse = collapse), pc)
+    return(out)
 }
 
 
@@ -2474,16 +2484,24 @@ write.ctab = function (x, ..., sep = ",", quote = T, row.names = F)
 qmat = function(mat, rid = NULL, cid = NULL) {
     rown_provided = FALSE
     coln_provided = FALSE
-    if (is.null(rid)) {
-        rid = seq_len(nrow(mat))
-    } else if (is.character(rid)) {
+    ## if (is.null(rid)) {
+    ##     rid = seq_len(nrow(mat))
+    ## } else if (is.character(rid)) {
+    ##     rid = setNames(match3(rid, rownames(mat)), rid)
+    ##     rown_provided = TRUE
+    ## }
+    if (is.character(rid)) {
         rid = setNames(match3(rid, rownames(mat)), rid)
         rown_provided = TRUE
     }
     ## rst = mkst(rid)
-    if (is.null(cid))
-        cid = seq_len(ncol(mat))
-    else if (is.character(cid)) {
+    ## if (is.null(cid))
+    ##     cid = seq_len(ncol(mat))
+    ## else if (is.character(cid)) {
+    ##     coln_provided = TRUE
+    ##     cid = setNames(match3(cid, colnames(mat)), cid)
+    ## }
+    if (is.character(cid)) {
         coln_provided = TRUE
         cid = setNames(match3(cid, colnames(mat)), cid)
     }
@@ -3885,6 +3903,19 @@ g = getdat2
 #'
 #' @export
 gx = function(nm = "x") eval.parent(getdat2(nm = nm))
+
+#' @name withx
+#' @title withx
+#'
+#' to be used for quick interactive programming
+#' withx(toolongtotypemeagain, x * sum(x))
+#'
+#' @export
+withx <- function(x, expr) {
+    env = environment()
+    senv = parent.frame()
+    suppressWarnings(eval(substitute(expr), env, enclos = senv))
+}
 
 #' @name withv
 #' @title withv
@@ -6232,6 +6263,201 @@ dt_f2char = function(dt, cols = NULL) {
 ############################## gUtils stuff
 ##############################
 
+
+make_granges <- function(x, seqnames.field = "seqnames", start.field = "start", end.field = "end", strand.field = "strand") {
+    seqnames.ix = na.omit(match3(seqnames.field, colnames(x)))
+    start.ix = na.omit(match3(start.field, colnames(x)))
+    end.ix = na.omit(match3(end.field, colnames(x)))
+    strand.ix = na.omit(match3(strand.field, colnames(x)))
+    qseqnames.ix = na.omit(seqnames.ix[1])
+    qstart.ix = na.omit(start.ix[1])
+    qend.ix = na.omit(end.ix[1])
+    qstrand.ix = na.omit(strand.ix[1])
+    tmp = qmat(x,,c(qseqnames.ix, qstart.ix, qend.ix, qstrand.ix)) ## taking first match
+    metas = qmat(x,,c(-seqnames.ix, -start.ix, -end.ix, -strand.ix))
+    if (ncol(tmp) == 4)
+        colnames(tmp) = c("seqnames", "start", "end", "strand")
+    else
+        colnames(tmp) = c("seqnames", "start", "end")
+    gr = GRanges(tmp[["seqnames"]], IRanges(tmp[["start"]], tmp[["end"]]), strand = tmp[["strand"]])
+    mcols(gr) = metas
+    return(gr)
+}
+
+#' @name sim.bx
+#' @title simulate 10x Barcoded reads off of collection of walks
+#' 
+#' @description
+#' Take a collection of walks and simulate barcoded reads at the break sites
+#' 
+#'
+#' @author Kevin Hadi
+#' @export sim.bx
+sim.bx <- function(wk, only_simulate_breaks = TRUE, numr = 24, bxwid = 30e3, physcov = 150, readlength = 150, fraglength = 1200) {
+    ## NUMBX = numbx
+    NUMR = numr
+    
+    if (inherits(wk, "gWalk")) {
+        gw = wk
+    } else if (inherits(wk, "GRangesList")) {
+        gw = gW(grl = wk)
+    }
+
+    wk_seqnames = paste0(rep_len("W_", NROW(gw)), as.character(seq_along(gw)))
+
+    ## spc = gChain::spChain(setNames2(gw$grl, wk_seqnames))
+    
+    grlby = gr_construct_by(grl.unlist(gw$grl), "grl.ix")
+    grlby = split(grlby, mcols(grlby)$grl.ix)
+    spc = gChain::spChain(setNames2(grlby, wk_seqnames))
+    
+    gw$set(alt.edge = gw$eval(edge = paste(which(type == "ALT"), collapse = ", ")))
+    
+    alt_ids = which(nzchar(gw$dt$alt.edge))
+    any_alts = length(alt_ids) > 0
+
+    get_ends = lapply(gGnome::lengths(gw), function(x) 1:(x - 1))
+
+    ## alt_segs = grlby[IntegerList(strsplit(gw$dt$alt.edge, ", "))]
+    ## breakends = gr.resize(alt_segs, width = 1, pad = FALSE, fix = "end")
+
+    wkgr = spc@.galy
+    wkgrl = split(wkgr, seqnames(wkgr))
+
+    alt_segs = split(wkgr, seqnames(wkgr))[IntegerList(strsplit(gw$dt$alt.edge, ", "))]
+    breakends = gr.resize(alt_segs, width = 1, pad = FALSE, fix = "end")
+    breakpoints_somatic = unlist(gr.resize(breakends, width = 2, pad = FALSE, fix = "start"))
+
+
+    ## if (any_alts) {
+    ##     alt_ends = as.integer(unlist(strsplit(gw$dt$alt.edge, ", ")))
+    ##     breakpoints_somatic = GRanges(wk_seqnames, IRanges(end(wkgr[alt_ends]), start(wkgr[alt_ends + 1])))
+    ## }
+    
+    ## wkgr = dt2gr(gr2dt(wk[[1]])[, `:=`(end = cumsum(width))][, start := end - width + 1][, seqnames := "A"])
+
+    ## totwid = sum(width(wk))
+    totwids = width(wk)
+
+    ## NUMBX = round(totwid * physcov / bxwid)
+    NUMBX = round(totwids * physcov / bxwid)
+
+    set_rngseed(10)
+
+    ## bc.start = sample(max(end(wkgr)), NUMBX)
+
+    bc.starts = mapply(function(wkend, numbx) {
+        return(sample(wkend, numbx))
+    }, max(end(wkgrl)), NUMBX, SIMPLIFY = F)
+
+    gr.w = data.table(seqnames = rep(wk_seqnames, elementNROWS(bc.starts)),
+                      start = unlist(bc.starts))
+    gr.w[, end := (start + as.integer(jitter(rep(bxwid, length(start)), factor = 10))) - 1]
+    gr.w[, BX := 1:.N]
+    gr.w[, grl.ix := .GRP, by = seqnames]
+
+    if (inherits(only_simulate_breaks, "logical")) {
+        if (only_simulate_breaks) {
+            ## interstitial_breaks = gr.end(wkgr[get_ends[[1]]])
+            interstitial_breaks = gr.end(wkgrl[get_ends])
+            query_footprint = GenomicRanges::reduce(interstitial_breaks + 1e5)
+            query_footprint = unlist(query_footprint)
+            
+            ## gr.w = data.table(seqnames = "A", start = bc.start)
+            ## gr.w[, end := (bc.start + as.integer(jitter(rep(bxwid, length(bc.start)), factor = 10))) - 1]
+            ## gr.w[, BX := 1:.N]
+
+
+            ## only simulate from those BX that are within query footprint
+            ## let's not simulate the entire derivative chromosome
+            bx.to.sim = (make_granges(gr.w) %&% query_footprint)$BX
+            gr.w = gr.w[BX %in% bx.to.sim]
+
+            bxwids = split(gr.w[, end + 1 - start], rleseq(gr.w$seqnames)$idx)
+
+            ## NUMBX = length(bx.to.sim)
+            NUMBX = gr.w[, length(unique(BX)), by = seqnames][, setNames2(V1, seqnames)]
+        } else {
+            bx.to.sim = 1:NROW(gr.w)
+        }
+    } else if (inherits(only_simulate_breaks, "GRanges")) {
+        bx.to.sim = (make_granges(gr.w) %&% only_simulate_breaks)$BX
+    }
+
+    ## gr.w = GRanges("A", IRanges(bc.start, width = as.integer(jitter(rep(bxwid, length(bc.start)), factor = 10))))
+    ## gr.w$BX = 1:NROW(gr.w)
+
+    FRAGLENGTH=fraglength
+
+    f.starts = mapply(function(bxwid, numbx) {
+        sample(bxwid - FRAGLENGTH, numbx * NUMR, replace = T)
+    }, bxwids, NUMBX, SIMPLIFY = F)
+    
+    ## f.starts = sample(bxwid - FRAGLENGTH, NUMBX * NUMR, replace = T)
+    ## flst = split(f.starts, rep(1:NUMBX, each = NUMR))
+
+    
+    ## tmp = gr.sum(gr.w)
+    ## sum(tmp$score * width(tmp)) / sum(width(tmp))
+
+
+
+    ## bx.frag = GRanges("A", IRanges(rep(start(gr.w), each = NUMR) + f.starts, width = FRAGLENGTH))
+    ## bx.frag$BX = rep(1:NUMBX, each = NUMR)
+    ## bx.frag$qname = 1:NROW(bx.frag)
+
+    READLENGTH=readlength
+
+    ## bx.frag = data.table(seqnames = wk_seqnames, start = rep(gr.w$start, each = NUMR) + f.starts)
+    ## bx.frag[, end := start + (FRAGLENGTH - 1)]
+    ## bx.frag[, plus.end := start + (READLENGTH - 1)]
+    ## bx.frag[, minus.start := end - (READLENGTH - 1)]
+    ## bx.frag[, qname := 1:.N]
+    ## bx.frag[, BX := rep(bx.to.sim, each= NUMR)]
+
+    bx.frag = data.table(seqnames = rep(wk_seqnames, NUMBX * NUMR),
+                         start = rep(gr.w$start, each = NUMR) + unlist(f.starts))
+    bx.frag[, end := start + (FRAGLENGTH - 1)]
+    bx.frag[, plus.end := start + (READLENGTH - 1)]
+    bx.frag[, minus.start := end - (READLENGTH - 1)]
+    bx.frag[, qname := 1:.N]
+    bx.frag[, BX := rep(bx.to.sim, each= NUMR)]
+    bx.frag[, grl.ix := .GRP, by = seqnames]
+    
+
+    plusreads = bx.frag[, .(seqnames, start, end = plus.end, strand= "+", BX, qname, grl.ix, readid = 1)]
+    minusreads = bx.frag[, .(seqnames, start = minus.start, end = end, strand= "-", BX, qname, grl.ix, readid = 2)]
+
+    ## r1 = gr.resize(bx.frag, 150, pad = FALSE, fix = "start")
+    ## r2 = gr.resize(bx.frag, 150, pad = FALSE, fix = "end")
+
+    ## grr = gr.spreduce(grbind(r1, r2), BX)
+    grr = rbind(plusreads, minusreads)
+    ## grr.range = gr_deconstruct_by(range(gr_construct_by(grr, "BX")), "BX")
+    ## grr.frag = gr.sprange(grr, "BX")
+
+    gr.grr = make_granges(grr)
+
+    if (any_alts) {
+        grr$split_read_support = gr.grr %^% (breakpoints_somatic)
+        ## grr$split_read_support = gr2dt(grr)[, .(.I, split_supporting = any(split_read_support)), by = BX]$split_supporting
+        bx.frag$discordant_read_support = make_granges(bx.frag) %^% breakpoints_somatic
+        grr$discordant_read_support = grr$qname %in% bx.frag$qname[bx.frag$discordant_read_support]
+        gr.w$bx_support = make_granges(gr.w) %^% breakpoints_somatic
+        grr$bx_support = grr$BX %in% gr.w[gr.w$bx_support == TRUE]$BX
+    } else {
+        grr$split_read_support = FALSE
+        grr$discordant_read_support = FALSE
+        grr$bx_support = FALSE
+    }
+
+    mcols(gr.grr) = cbind(mcols(gr.grr), grr[,-c(1:8)])
+    grr2 = gChain::lift(t(spc), gr.grr)
+
+    grr2 = gr_deconstruct_by(grr2, "grl.ix")
+    return(grr2)
+}
+
 #' @name bp2grl
 #' @title convert table of paired string coordinates to GRangesList 
 #' 
@@ -7842,22 +8068,7 @@ inherits.edf = function(DF) {
 }
 
 
-#' @name row.sort
-#' @title fast row sort 
-#'
-#' @description
-#' 
-#' matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE)
-#' ^^ came from stackoverflow
-#' https://stackoverflow.com/questions/9506442/fastest-way-to-sort-each-row-of-a-large-matrix-in-r
-#'
-#' Rfast::rowsort is faster than the base function but it is still very fast
-#'
-#' @export
-row.sort <- function(a, use_rfast = TRUE) {
-    out = tryCatch(Rfast::rowSort(a),
-                   error = function(e) matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE))
-}
+
 
 #' @name ra.overlaps6
 #'
@@ -8063,13 +8274,13 @@ bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
 ##     return(grl.pivot(gr.fix(split(dat, dat$name), hg_seqlengths(genome = genome))))
 ## }
 
-## gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
-##     if (!ignore.strand) {
-##         return(GenomicRanges::shift(gr, c("+" = 1, "-" = -1)[as.character(strand(gr))] * shift))
-##     } else {
-##         return(GenomicRanges::shift(gr, shift))
-##     }
-## }
+gr.shift = function(gr, shift = 1, ignore.strand = FALSE) {
+    if (!ignore.strand) {
+        return(GenomicRanges::shift(gr, c("+" = 1, "-" = -1)[as.character(strand(gr))] * shift))
+    } else {
+        return(GenomicRanges::shift(gr, shift))
+    }
+}
 
 ra.overlaps2 = function(ra1, ra2, pad = 0, ignore.strand = FALSE) {
     if (length(ra1) == 0 | length(ra2) == 0) {
@@ -9017,13 +9228,20 @@ pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
     return(out)
 }
 
+#' @name pairs.collect.junctions
+#' @title collect junctions from pairs as breakpoints
+#'
+#' @description
+#' 
 #' @export pairs.collect.junctions
-pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz', ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm", "tib")) {
-    paths = subset2(pairs[[jn.field]], file.exists(x))
+pairs.collect.junctions <- function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz', ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm", "tib")) {
+    paths = unique(subset2(pairs[[jn.field]], file.exists(x)))
+    prs = unique(pairs[[id.field]][pairs[[jn.field]] %in% paths])
     mask = rtracklayer::import(mask)
-    iter.fun = function(x, tbl) {
+    iter.fun <- function(x, tbl) {
         ent = tbl[get(jn.field) == x]
-        .fun = function(gg) {
+        ent = ent[!duplicated(ent[[id.field]]),,drop=F]
+        .fun <- function(gg) {
             ## dd.ov = gr.sum(gg$edges[type == "ALT"][class %in% c("DEL-like", "DUP-like")]$shadow) %Q% (score > 1)
             gg.alt.edge = gg$edges[type == "ALT"]
             if (length(gg.alt.edge) > 0) {
@@ -9036,8 +9254,10 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
             }
             gg
         }
-        message("processing ", ent[[id.field]])
-        cx = readRDS(ent[[jn.field]])
+        pr = unique(ent[[id.field]])
+        ## pth = unique(ent[[jn.field]])
+        message("processing ", pr)
+        cx = readRDS(x)
         if (!length(cx)) return(NULL)
         cx = .fun(cx)
         cx$edges$mark(jspan = cx$edges$span)
@@ -9047,7 +9267,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
         ## these_id = cx$nodes[!is.na(cluster)]$edges$dt$edge.id
         out = copy(gr2df(grl.unlist(cx$edges[type == "ALT"]$grl)))
         if (!is.null(dim(out)) && !dim(out)[1] == 0) {
-            set(out, j = "pair", value = ent[[id.field]])
+            set(out, j = "pair", value = pr)
             tmp = cx$.__enclos_env__$private$pedges
             ## tmp = tmp[order(edge.id)][order(abs(sedge.id))]
             ## snode = copy(cx$.__enclos_env__$private$pnodes)
@@ -9081,7 +9301,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     }
     lst = mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores)
     cx.edt = rbindlist(lst, fill = TRUE)
-    set(cx.edt, j = "fpair", value = cx.edt[, factor(get(id.field), levels = pairs[get(jn.field) %in% paths][[id.field]])])
+    set(cx.edt, j = "fpair", value = factor(cx.edt[[id.field]], levels = prs))
     cx.edt = cx.edt[, !colnames(cx.edt) == "rowname", with = FALSE]
     cx.edt = merge.repl(cx.edt, unique(cx.edt[, .(pair, edge.id, simple_type = gsub("([A-Z]+)([0-9]+)", "\\1", simple), simple_num = gsub("([A-Z]+)([0-9]+)", "\\2", simple))]), by = c("pair", "edge.id"))
     cx.edt$simple_type = factor(cx.edt$simple_type, levels = c("INV", "INVDUP", "TRA"))
@@ -9096,6 +9316,7 @@ pairs.collect.junctions = function(pairs, jn.field = "complex", id.field = "pair
     cx.edt[, unclassified := rowSums(cx.mat) == 0]
     return(withAutoprint(cx.edt, echo = F)$value)
 }
+## overwritefun("pairs.collect.junctions", "pairs.collect.junctions", "khtools")
 
 
 #' @export pairs.jabba.opt.report
