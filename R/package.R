@@ -9234,7 +9234,7 @@ pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
 #' @description
 #' 
 #' @export pairs.collect.junctions
-pairs.collect.junctions <- function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz', ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm", "tib")) {
+pairs.collect.junctions <- function(pairs, jn.field = "complex", id.field = "pair", mc.cores = 1, mask = '/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz', ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi", "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup", "simple_tra", "tic", "tyfonas", "cpxdm", "tib", "qrppos", "qrpmix", "qrpmin")) {
     paths = unique(subset2(pairs[[jn.field]], file.exists(x)))
     prs = unique(pairs[[id.field]][pairs[[jn.field]] %in% paths])
     mask = rtracklayer::import(mask)

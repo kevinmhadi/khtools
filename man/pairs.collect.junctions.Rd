@@ -12,7 +12,7 @@
   mask = "/gpfs/commons/groups/imielinski_lab/DB/Broad/um75-hs37d5.bed.gz",
   ev.types = c("bfb", "chromoplexy", "chromothripsis", "del", "dm", "dup", "fbi",
     "pyrgo", "qrdup", "qrdel", "qrp", "rigma", "simple_inv", "simple_invdup",
-    "simple_tra", "tic", "tyfonas", "cpxdm", "tib")
+    "simple_tra", "tic", "tyfonas", "cpxdm", "tib", "qrppos", "qrpmix", "qrpmin")
 )
 }
 \description{
