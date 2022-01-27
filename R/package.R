@@ -659,6 +659,28 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name eNROW
+#' @title does vapply NROW
+#'
+#' @description
+#'
+#' @export eNROW
+eNROW <- function(x) {
+    return(vapply(x, NROW, integer(1)))
+}
+
+
+#' @name frac
+#' @title fraction from a vector of numeric values
+#'
+#' @description
+#'
+#' @export frac
+frac = function(x) {
+    x / sum(x)
+}
+
+
 #' @name row.sort
 #' @title sort rows of integer matrix
 #'
@@ -4793,6 +4815,58 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 #################################################
 
 
+#' @name dirfind
+#' @title Dig into outdir of flow job
+#'
+#'
+#' @description
+#' look at output directory of flow job
+#'
+#' @return character
+#' @export
+dirfind <- function(job, pattern, full.names = TRUE, recursive = TRUE) {
+  dir2(outdir(job), pattern, full.names = full.names, recursive = recursive)
+}
+
+
+#' @name dig_job
+#' @title Dig into Flow Job that generated an output
+#'
+#'
+#' @description
+#' takes a path of an output of a flow job and looks for
+#' Job.rds and reads in Job object
+#'
+#' @return Job
+#' @export
+dig_job <- function(x, readin = TRUE, get_inputs = FALSE) {
+  d = dig_dir(x, "Job.rds")
+  if (readin) {
+    d = readRDS(d)
+    if (get_inputs)
+      d = inputs(d)
+    return(d)
+  } else {
+    return(d)
+  }
+}
+
+
+#' @name diginjob
+#' @title Dig into inputs Flow Job that generated an output
+#'
+#'
+#' @description
+#' takes a path of an output of a flow job and looks for
+#' Job.rds and reads in input
+#'
+#' @return data.table 
+#' @export
+diginjob <- function(x) {
+  dig_job(x, readin = TRUE, get_inputs = TRUE)
+}
+
+
 #' @name output_cols
 #' @title output the union columns from a Flow output
 #'
@@ -8494,7 +8568,7 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
 #' @return GRanges
 #' @author Marcin Imielinski
 #' @export
-grok_vcf = function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner = FALSE, verbose = FALSE, geno = NULL, tmp.dir = tempdir(), gr = NULL)
+grok_vcf <- function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner = FALSE, verbose = FALSE, geno = NULL, tmp.dir = tempdir(), gr = NULL)
 {
   fn = c('allele', 'annotation', 'impact', 'gene', 'gene_id', 'feature_type', 'feature_id', 'transcript_type', 'rank', 'variant.c', 'variant.p', 'cdna_pos', 'cds_pos', 'protein_pos', 'distance')
 
@@ -8546,7 +8620,7 @@ grok_vcf = function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner 
         out$vartype = ifelse(nchar(out$REF) == nchar(out$ALT), 'SNV',
                       ifelse(nchar(out$REF) < nchar(out$ALT), 'INS', 'DEL'))
         tmp = lapply(out$ANN, function(y) do.call(rbind, lapply(strsplit(y, '\\|'), '[', 1:15)))
-        tmpix = rep(1:length(out), sapply(tmp, nrow))
+        tmpix = rep(1:length(out), sapply(tmp, NROW))
         meta = as.data.frame(do.call(rbind, tmp))
         colnames(meta) = fn
         meta$varid = tmpix
