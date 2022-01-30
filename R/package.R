@@ -9271,6 +9271,41 @@ pairs.process.rbp = function(pairs, rbp.field = "complex", id.field = "pair", mc
     }, error = function(e) printerr(pairs$pair))
 }
 
+#' @export process_for_rbp
+process_for_rbp <- function(ent, field = "complex", id.field = "pair") {
+    tryCatch({
+        gg = readRDS(ent[[field]])
+        out = gg$meta$recip_bp
+        dt.tic = gg$meta$tic
+        if (!NROW(out)) out = data.table()
+        if (NROW(dt.tic)) {
+            dt.tic = dt.tic %>% rename_at(vars(-1), ~paste0("tic", "_", .))
+            out = merge.repl(out,
+                       dt.tic, by = "tic", all = T)
+        }
+        out[[id.field]] = rep_len2(ent[[id.field]], out)
+        return(out)
+    }, error = function(e) printerr(ent[[id.field]]))
+}
+
+#' @export pairs.process.rbp
+pairs.process.rbp <- function(pairs, field = "complex",
+                              id.field = "pair", mc.cores = 1) {
+  envr = environment()
+  lg = which(file.exists(pairs[[field]]))
+  ents = pairs[envr$lg,]
+  lg.d = which(!duplicated(ents[[id.field]]))
+  ents = ents[envr$lg.d,]
+  lst = split(ents, ents[[id.field]])
+  res = mclapply(lst, process_for_rbp,
+           mc.cores = mc.cores,
+           field = field, id.field = id.field)
+  rbp = rbindlist(res, fill = T)
+  fid.field = paste0("f", id.field)
+  rbp[[fid.field]] = factor(rbp[[id.field]], levels = ents[[id.field]])
+  return(rbp)
+}
+
 
 #' @export pairs.process.homeology
 pairs.process.homeology = function(pairs, id.field = "pair", mc.cores = 1) {
