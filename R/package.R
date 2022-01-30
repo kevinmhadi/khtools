@@ -3486,8 +3486,16 @@ normv_sep = function(x) {
 #'
 #' @return vector
 #' @export
-zscore = function(x, na.rm = F) {
-    (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
+zscore <- function(x, na.rm = F) {
+    ## (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
+    mn = mean(x, na.rm = na.rm)
+    stddev = sd(x, na.rm = na.rm)
+    out = (x - mn) / stddev
+    structure(
+        out,
+        mean = mn,
+        stddev = stddev
+    )
 }
 
 
