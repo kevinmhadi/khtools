@@ -4753,21 +4753,21 @@ mrocdat = function(lbl, prd) {
 #' @param prd output from mrocpred
 #' @return A data.frame that can be fed into ggplot
 #' @export
-ggmroc = function(gdat, palette = "Moonrise2", color.field = "Group", linetype.field = "Method") {
+ggmroc <- function (gdat, palette = "Moonrise2", color.field = "Group", 
+    linetype.field = "Method", roc.size = 1) 
+{
     gdat$linetype.field = gdat[[linetype.field]]
     gdat$color.field = gdat[[color.field]]
     g = with(gdat, {
-        ggplot(g2(), aes(x = 1-Specificity, y=Sensitivity)) +
-            geom_path(aes(color = color.field, linetype=linetype.field), size=1.5) +
-            geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
-                         colour='grey', linetype = 'dotdash') +
-            scale_colour_manual(values = skitools::brewer.master(length(unique(color.field)), wes = T, palette = palette)) +
-            theme_bw() +
-            theme(plot.title = element_text(hjust = 0.5),
-                  legend.justification=c(1, 0), legend.position=c(.95, .05),
-                  legend.title=element_blank(),
-                  legend.background = element_rect(fill=NULL, size=0.5,
-                                                   linetype="solid", colour ="black"))
+        ggplot(g2(), aes(x = 1 - Specificity, y = Sensitivity)) + 
+            geom_path(aes(color = color.field, linetype = linetype.field), 
+                size = roc.size) + geom_segment(aes(x = 0, y = 0, 
+            xend = 1, yend = 1), colour = "grey", linetype = "dotdash") + 
+            scale_colour_manual(values = skitools::brewer.master(length(unique(color.field)), 
+                wes = T, palette = palette)) + theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+            legend.justification = c(1, 0), legend.position = c(0.95, 
+                0.05), legend.title = element_blank(), legend.background = element_rect(fill = NULL, 
+                size = 0.5, linetype = "solid", colour = "black"))
     })
     return(g)
 }
