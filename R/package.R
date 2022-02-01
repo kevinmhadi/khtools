@@ -915,6 +915,28 @@ nodim = function(x) {
     any(DIM(x) == 0)
 }
 
+#' @name NCOL2
+#' @title extending NCOL
+#'
+#' @description
+#' NCOL = 1 for NULL, or any vector with length == 0
+#' seems counterintuitive so this is the fix
+#' 
+#'
+#' @export
+NCOL2 <- function(x) {
+  d = dim(x)
+  ln = length(d)
+  lx = length(x)
+  if (ln > 1) {
+    d[2L]
+  } else if (lx == 0) {
+    0L
+  } else {
+    1L
+  }
+}
+
 #' @name DIM
 #' @title extending NROW and NCOL
 #'
@@ -924,6 +946,17 @@ nodim = function(x) {
 #' @export
 DIM = function(x) {
     return(c(NROW(x), NCOL(x)))
+}
+
+#' @name DIM2
+#' @title extending NROW and NCOL2
+#'
+#' @description
+#' 
+#'
+#' @export
+DIM2 <- function(x) {
+    return(c(NROW(x), NCOL2(x)))
 }
 
 
