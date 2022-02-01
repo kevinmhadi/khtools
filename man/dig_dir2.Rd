@@ -13,6 +13,7 @@ dig_dir2(
   full.names = TRUE,
   mc.cores = 1,
   unlist = TRUE,
+  do_dirname = TRUE,
   ...
 )
 }

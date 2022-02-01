@@ -7,7 +7,15 @@
 Convenience wrapper around dir() to pull out files from the same
 directory of a given file.}
 \usage{
-dig_dir(x, pattern = NULL, full.names = TRUE, mc.cores = 1, unlist = TRUE, ...)
+dig_dir(
+  x,
+  pattern = NULL,
+  full.names = TRUE,
+  mc.cores = 1,
+  unlist = TRUE,
+  do_dirname = TRUE,
+  ...
+)
 }
 \description{
 dig into a file path's directory

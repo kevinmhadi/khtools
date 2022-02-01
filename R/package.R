@@ -4484,11 +4484,15 @@ dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALS
 #' @author Kevin Hadi
 #' @export
 dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
-    unlist = TRUE, ...)
+    unlist = TRUE, do_dirname = TRUE, ...)
 {
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
+    if (isTRUE(do_dirname))
+        input = dirname(x)
+    else
+        input = x
     lst = lst.empty2na(
         mcMap(
             function(m.x, m.pattern, ...) {
@@ -4499,7 +4503,7 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
                     ...
                 )
             },
-            dirname(x),
+            input,
             pattern,
             mc.cores = mc.cores,
             MoreArgs = list(...)
@@ -4545,11 +4549,15 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
 #' @author Kevin Hadi
 #' @export
 dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
-    unlist = TRUE, ...)
+    unlist = TRUE,  do_dirname = TRUE, ...)
 {
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
+    if (isTRUE(do_dirname))
+        input = dirname(x)
+    else
+        input = x
     lst = lst.empty2na(
         mcMap(
             function(m.x, m.pattern, ...) {
@@ -4560,7 +4568,7 @@ dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
                     ...
                 )
             },
-            dirname(x),
+            input,
             pattern,
             mc.cores = mc.cores,
             MoreArgs = list(...)
