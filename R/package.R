@@ -659,6 +659,18 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name un
+#' @title shortcut to check unique entries
+#'
+#' @description
+#'
+#' @export un
+un <- function(x, ix = 1) {
+    unique_ix = which(!duplicated(x))
+    which(x %in% x[unique_ix][ix])
+}
+
+
 #' @name eNROW
 #' @title does vapply NROW
 #'
@@ -4477,17 +4489,51 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
+    lst = lst.empty2na(
+        mcMap(
+            function(m.x, m.pattern, ...) {
+                dir(
+                    path = m.x,
+                    pattern = m.pattern,
+                    full.names = full.names,
+                    ...
+                )
+            },
+            dirname(x),
+            pattern,
+            mc.cores = mc.cores,
+            MoreArgs = list(...)
+        )
+    )
     if (unlist == TRUE) {
-        unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
-        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+        if (!is.null(names(lst))) {
+            en = eNROW(lst)
+            nm = rep(names(lst), en)
+        }
+        ul = unlist(lst)
+        names(ul) = nm
+        return(ul)
     }
-    else {
-        lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
-        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
-    }
+    return(lst)
 }
+
+## dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
+##     unlist = TRUE, ...)
+## {
+##     if (is.null(pattern)) {
+##         pattern = list(NULL)
+##     }
+##     if (unlist == TRUE) {
+##         unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+##             dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+##         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+##     }
+##     else {
+##         lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+##             dir(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+##         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
+##     }
+## }
 
 
 #' @name dig_dir2
@@ -4504,17 +4550,51 @@ dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
+    lst = lst.empty2na(
+        mcMap(
+            function(m.x, m.pattern, ...) {
+                dir2(
+                    path = m.x,
+                    pattern = m.pattern,
+                    full.names = full.names,
+                    ...
+                )
+            },
+            dirname(x),
+            pattern,
+            mc.cores = mc.cores,
+            MoreArgs = list(...)
+        )
+    )
     if (unlist == TRUE) {
-        unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
-        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+        if (!is.null(names(lst))) {
+            en = eNROW(lst)
+            nm = rep(names(lst), en)
+        }
+        ul = unlist(lst)
+        names(ul) = nm
+        return(ul)
     }
-    else {
-        lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
-            dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
-        }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
-    }
+    return(lst)
 }
+
+## dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
+##     unlist = TRUE, ...)
+## {
+##     if (is.null(pattern)) {
+##         pattern = list(NULL)
+##     }
+##     if (unlist == TRUE) {
+##         unlist(lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+##             dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+##         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...))))
+##     }
+##     else {
+##         lst.empty2na(mcMap(function(m.x, m.pattern, ...) {
+##             dir2(path = m.x, pattern = m.pattern, full.names = full.names, ...)
+##         }, dirname(x), pattern, mc.cores = mc.cores, MoreArgs = list(...)))
+##     }
+## }
 
 
 

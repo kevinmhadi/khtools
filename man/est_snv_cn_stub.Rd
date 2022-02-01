@@ -8,7 +8,7 @@ est_snv_cn_stub(
   vcf,
   jab,
   tumbam = NULL,
-  germ_subsample = 2e+05,
+  germ_subsample = 200000,
   somatic = FALSE,
   saveme = FALSE
 )

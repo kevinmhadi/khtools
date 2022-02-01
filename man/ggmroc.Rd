@@ -10,7 +10,8 @@ ggmroc(
   gdat,
   palette = "Moonrise2",
   color.field = "Group",
-  linetype.field = "Method"
+  linetype.field = "Method",
+  roc.size = 1
 )
 }
 \arguments{
