@@ -4,7 +4,7 @@
 \alias{do.assign}
 \title{assign columns or list elements}
 \usage{
-do.assign(x, ...)
+do.assign(x, ..., pf = parent.frame())
 }
 \description{
 assign columns or list elements

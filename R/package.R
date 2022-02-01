@@ -659,6 +659,23 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name softmax
+#' @title calculate softmax
+#'
+#' @description
+#'
+#' @export
+softmax <- function(x, neg = FALSE) {
+    if (neg) {
+        numer = exp(-x)
+    } else {
+        numer = exp(x)
+    }
+    denom = sum(numer)
+    return(numer / denom)
+}
+
+
 #' @name un
 #' @title shortcut to check unique entries
 #'
@@ -1376,7 +1393,7 @@ parasn = function(x, y, cols, sans_key = TRUE, use.data.table = T) {
 #'
 #' @author Kevin Hadi
 #' @export do.assign
-do.assign = function(x, ...) {
+do.assign = function(x, ..., pf = parent.frame()) {
   mc = match.call(expand.dots = FALSE)
   ddd = as.list(mc)$`...`
   if (is.null(names(ddd))) names(ddd) = paste0(rep_len("V", length(ddd)), seq_along(ddd))
@@ -1384,7 +1401,7 @@ do.assign = function(x, ...) {
     d = ddd[[i]]
     nml = names(ddd[i])
     if (is.call(d)) {
-      ev = BiocGenerics::eval(d)
+      ev = BiocGenerics::eval(d, envir = parent.frame())
       nm = names(ev)
       .DIM = DIM2(ev)
       .dim = dim(ev)
