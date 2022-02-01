@@ -928,9 +928,9 @@ NCOL2 <- function(x) {
   d = dim(x)
   ln = length(d)
   lx = length(x)
-  if (ln > 1) {
+  if (ln > 1L) {
     d[2L]
-  } else if (lx == 0) {
+  } else if (lx == 0L) {
     0L
   } else {
     1L
@@ -1367,6 +1367,47 @@ parasn = function(x, y, cols, sans_key = TRUE, use.data.table = T) {
     }
     return(x)
 }
+
+
+#' @name do.assign
+#' @title assign columns or list elements
+#'
+#'
+#'
+#' @author Kevin Hadi
+#' @export do.assign
+do.assign = function(x, ...) {
+  mc = match.call(expand.dots = FALSE)
+  ddd = as.list(mc)$`...`
+  if (is.null(names(ddd))) names(ddd) = paste0(rep_len("V", length(ddd)), seq_along(ddd))
+  for (i in seq_along(ddd)) {
+    d = ddd[[i]]
+    nml = names(ddd[i])
+    if (is.call(d)) {
+      ev = BiocGenerics::eval(d)
+      nm = names(ev)
+      .DIM = DIM2(ev)
+      .dim = dim(ev)
+      nr = .DIM[1L]
+      nc = .DIM[2L]
+      if (inherits(ev, c("list")) && nc == 1L) {
+        if (is.null(nm)) nm = rep_len(nml, nr)
+        for (ii in seq_len(nr)) {
+          x[[nm[ii]]] = ev[[ii]]
+        }
+      } else if (length(.dim) > 0L) {
+        if (is.null(nm)) nm = rep_len(nml, nc)
+        for (ii in seq_len(nc)) {
+          x[[nm[ii]]] = ev[[ii]]
+        }
+      } else {
+        x[[nml]] = ev
+      }
+    }
+  }
+  return(x)
+}
+
 
 #' @name duped
 #' @title duped
