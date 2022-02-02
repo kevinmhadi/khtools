@@ -4,7 +4,7 @@
 \alias{un}
 \title{shortcut to check unique entries}
 \usage{
-un(x, ix = 1)
+un(..., i = 1, sep = " ")
 }
 \description{
 

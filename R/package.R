@@ -682,10 +682,20 @@ softmax <- function(x, neg = FALSE) {
 #' @description
 #'
 #' @export un
-un <- function(x, ix = 1) {
-    unique_ix = which(!duplicated(x))
-    which(x %in% x[unique_ix][ix])
+un <- function(..., i = 1, sep = " ") {
+  lst = as.list(match.call())[-1]
+  ix = setdiff(seq_along(lst), which(names(lst) %in% c("ix")))
+  if (length(ix) > 1) 
+    vec = do.call(function(...) paste(..., sep = sep), list(...))
+  else vec = unlist(list(...))
+  unique_ix = which(!duplicated(vec))
+  which(vec %in% vec[unique_ix][i])
 }
+
+## un <- function(x, ix = 1) {
+##     unique_ix = which(!duplicated(x))
+##     which(x %in% x[unique_ix][ix])
+## }
 
 
 #' @name eNROW
