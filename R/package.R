@@ -659,6 +659,16 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name fitzscore
+#' @title calculate zscores based on prior mean and stddev
+#'
+#' @description
+#'
+#' @export
+fitzscore <- function(x, mean, stddev) {
+    structure((x - mean) / stddev, mean = mean, stddev = stddev)
+}
+
 #' @name softmax
 #' @title calculate softmax
 #'
