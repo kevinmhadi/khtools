@@ -659,6 +659,16 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name trans
+#' @title transpose a list
+#'
+#' @description
+#'
+#' @export
+trans <- function(lst) {
+    do.call(Map, c(f = list, lst))
+}
+
 #' @name fitzscore
 #' @title calculate zscores based on prior mean and stddev
 #'
@@ -5022,6 +5032,56 @@ refactor = function(fac, keep, ref_level = "OTHER") {
 #################################################
 
 
+#' @name sstat
+#' @title kevin's implementation of sstat
+#'
+#'
+#' @description
+#' slow, but has complete names 
+#'
+#' @return character
+#' @export
+sstat <- function (full = FALSE, numslots = TRUE, resources = T) 
+{
+    asp = "username,groupname,state,name,jobid,associd"
+    if (resources) {
+        asp = paste0(asp, ",", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,nice,reason,reboot")
+    }
+    cmd = paste(
+        "squeue -O",
+        paste(
+            paste0(unlist(strsplit(asp, ",")),
+                   ":2000"),
+            collapse = ","),
+        "|",
+        "sed 's/[[:space:]]\\{2,\\}/\\t/g'"
+    )
+    p = pipe(cmd)
+    res = readLines(p)
+    close(p)
+    header = res[1]
+    res = res[-1]
+    nms = strsplit(header, "\t")[[1]] %>% tolower
+    out = setnames(
+        do.call(data.table, data.table::tstrsplit(res, "\t")),
+        nms
+    )
+    out$state = factor(out$state, unique(c(out$state, "RUNNING"))) %>% 
+        relevel("RUNNING")
+    if (!full) {
+        if (numslots) 
+            out = dcast.data.table(out[, sum(as.numeric(cpus)), 
+                by = .(user, state)], user ~ state, fill = 0, 
+                value.var = "V1")[rev(order(RUNNING)), ]
+        else out = dcast.data.table(out[, .N, by = .(user, state)], 
+            user ~ state, fill = 0, value.var = "N")[rev(order(RUNNING)), 
+            ]
+    }
+    return(out)
+}
+
+
+
 #' @name dirfind
 #' @title Dig into outdir of flow job
 #'
@@ -5186,6 +5246,32 @@ getcache = function(object) {
 ##############################
 ##############################
 ##############################
+
+#' @name get_accuracy
+#' @title calculate accuracy based on contingency table
+#'
+#' 
+#'
+#' @return numeric
+#' @export
+get_accuracy <- function(confus_mat) {
+    correct = diag(confus_mat)
+    sum(correct) / sum(off_diag(confus_mat), correct)
+}
+
+#' @name off_diag
+#' @title get off diagonal values
+#'
+#' @description
+#' used for get_accuracy()
+#'
+#' @return
+#' @export
+off_diag <- function(x) {
+    diag(x) = NA
+    as.vector(x) %>% na.omit
+}
+
 #' @name glm.nb2
 #' @title glm.nb2
 #'
@@ -5772,6 +5858,72 @@ gg.hist = function(dat.x, as.frac = FALSE, bins = 50, center = NULL, boundary = 
 ##############################
 ############################## htslib / skidb stuff
 ##############################
+
+#' @name vcf_remove_sample
+#' @title take vcf read in chunks and write clean vcf
+#'
+#' take vcf read in chunks and write clean vcf without sample info
+#' i.e. fixing up svaba indel crap
+#'
+#' @return character
+#' @export vcf_remove_sample
+vcf_remove_sample = function(x = '/gpfs/commons/groups/imielinski_lab/data/PCAWG/mutations/f393baf9-2710-9203-e040-11ac0d484504,vcf',
+                             out.vcf = "~/outtest.vcf",
+                             ref = "~/DB/GATK/hg19_gatk_decoy.fasta", chunk = 10000,
+                             verbose = TRUE) {
+    ## fa = readinfasta(ref)
+    f = file(x, "r")
+    r = readLines(f, n = 1)
+    ro = grep("^#", r, invert = F, value = T)
+    header = c()
+    while (NROW(ro)) {
+        header = c(header, ro)
+        r = readLines(f, n = 1)
+        ro = grep("^#", r, invert = F, value = T)
+    }
+    contents = c()
+    system2('rm', out.vcf)
+    system2('touch', out.vcf)
+    header.l = paste0(strsplit(header[length(header)], "\t")[[1]][-c(10:10000)], collapse = "\t")
+    c(header[-length(header)], header.l)
+    writeLines(c(header[-length(header)], header.l), out.vcf)
+    while (NROW(r)) {
+        tb = read.table(text = r, fill = T, sep = "\t", colClasses = "character")
+        ## tb = fread(text = r, fill = T, sep = "\t", colClasses = "character")
+        tb = tb[,-c(10:NCOL2(tb)),]
+        ## tb$V9 = "."
+        ## ins = which(tb$V4 == ".") ## Insertion, grab REF base at coordinate, add REF nucleotides to left of ALT, REF should be 1 base
+        ## del = which(tb$V5 == ".") ## Deletion, subtract coordinate by 1, grab REF base at coordinate, add REF nucleotide to left of REF, ALT should be 1 base which is the REF
+        ## if (NROW(del) > 0) {
+        ##     tb[del,]$V2 = tb[del,]$V2 - 1
+        ##     gr = with(tb[del,], GRanges(V1, IRanges(V2, V2)))
+        ##     REF = as.character(fa[gr])
+        ##     tb[del,]$V5 = REF
+        ##     tb[del,]$V4 = paste0(REF, tb[del,]$V4)
+        ## }
+        ## if (NROW(ins) > 0) {
+        ##     gr = with(tb[ins,], GRanges(V1, IRanges(V2, V2)))
+        ##     REF = as.character(fa[gr])
+        ##     tb[ins,]$V5 = paste0(REF, tb[ins,]$V5)
+        ##     tb[ins,]$V4 = REF
+        ## }
+        tb$V9 = "."
+        ## tb$V10 = "."
+        fwrite(tb, out.vcf, append = T, sep = "\t")
+        if (length(r) > 0 && verbose) message('processed: ', length(r), " variants")
+        r = readLines(f, n = chunk)
+    }
+    out.vcf
+
+    ## out.vcf = paste0(tools::file_path_sans_ext(path), "_fixed.vcf")
+    ## sl = enframe(hg_seqlengths())
+    ## cl = paste0("##contig=<ID=", sl[[1]], ",length=",sl[[2]], ">")
+    ## system2("rm", c("-f", out.vcf)); system2("touch", out.vcf)
+    ## writeLines(c("##fileformat=VCFv4.2", cl, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample"), out.vcf)
+    ## fwrite(out, out.vcf, append = T, sep = "\t", col.names = FALSE)
+    ## data.table(pair = p, mut_consensus_vcf = out.vcf)
+
+}
 
 
 #' @name write_bed
@@ -6989,7 +7141,7 @@ readinfasta = function(fa, allow_vertbar = FALSE) {
     else
         ptrn = " [ 0-9A-Za-z.\\/\\-\\(\\):,_+\\[\\]]+$"
     fa = Biostrings::readDNAStringSet(fa)
-    names(fa) = gsub(ptrn, "", khtools::names2(fa), perl = T)
+    names(fa) = sub(ptrn, "", khtools::names2(fa), perl = T)
     return(fa)
 }
 
