@@ -659,6 +659,60 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+
+#' @name readin
+#' @title flexible file opening
+#'
+#' @description
+#'
+#' @export
+readin <- function(x, txt.fun = data.table::fread, vcf.fun = skidb::read_vcf) {
+    is.txt = grepl("((.txt)|(.csv)|(.tsv))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
+    is.rds = grepl(".rds$", x, T)
+    is.vcf = grepl("((.vcf))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
+    if (isTRUE(is.txt))
+        return(txt.fun(x))
+    else if (isTRUE(is.rds))
+        return(readRDS(x))
+    else if (isTRUE(is.vcf))
+        return(vcf.fun(x))
+    else if (!file.exists(x) && !identical(x, "/dev/null")) {
+        warning("File does not exist")
+        return(structure(list(), msg = "File does not exist"))
+    } else
+        stop("file extension not recognized")
+}
+
+
+#' @name save.r
+#' @title save R data session
+#'
+#' @description
+#'
+#' @export save.r
+save.r <- function(file, note = NULL, verbose = FALSE, compress = FALSE, ...) {
+    stamped.file = gsub(".RData$", paste(".", timestamp(), ".RData", 
+                                         sep = ""), file, ignore.case = TRUE)
+    if ( compress ) {
+        message("Compression of the .RData object set to TRUE... Saving will take a while...")
+    } else {
+        message("Compression of the .RData object set to FALSE... Saving will be faster than with compression.")
+        message("Keep an eye on disk space usage!")
+    }
+    save.image(stamped.file, compress = compress, ...)
+    if (file.exists(file)) {
+        if (verbose) 
+            message("Removing existing ", file)
+        system(paste("rm", file))
+    }
+    if (verbose) 
+        message("Symlinking ", file, " to ", stamped.file)
+    system(paste("ln -sfn", normalizePath(stamped.file), file))
+    if (!is.null(note)) {
+        writeLines(note, paste0(stamped.file, ".readme"))
+    }
+}
+
 #' @name trans
 #' @title transpose a list
 #'
