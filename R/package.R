@@ -719,8 +719,9 @@ save.r <- function(file, note = NULL, verbose = FALSE, compress = FALSE, ...) {
 #' @description
 #'
 #' @export
-trans <- function(lst) {
-    do.call(Map, c(f = list, lst))
+trans <- function (lst, ffun = list) 
+{
+    do.call(Map, c(f = ffun, lst))
 }
 
 #' @name fitzscore
@@ -1478,13 +1479,13 @@ parasn = function(x, y, cols, sans_key = TRUE, use.data.table = T) {
 #' @author Kevin Hadi
 #' @export do.assign
 do.assign = function(x, ..., pf = parent.frame()) {
-  mc = match.call(expand.dots = FALSE)
-  ddd = as.list(mc)$`...`
+  mc_2340873450987 = match.call(expand.dots = FALSE)
+  ddd = as.list(mc_2340873450987)$`...`
   if (is.null(names(ddd))) names(ddd) = paste0(rep_len("V", length(ddd)), seq_along(ddd))
   for (i in seq_along(ddd)) {
     d = ddd[[i]]
     nml = names(ddd[i])
-    if (is.call(d)) {
+    if (is.call(d) || is.name(d)) {
       ev = BiocGenerics::eval(d, envir = parent.frame())
       nm = names(ev)
       .DIM = DIM2(ev)
@@ -7021,30 +7022,44 @@ gr.flipstrand = function(gr) {
 #' @return A GRanges with the by metadata field attached to the seqnames
 #' @author Kevin Hadi
 #' @export gr_deconstruct_by
-gr_deconstruct_by = function (x, by = NULL) {
-  if (is.null(by) || length(x) == 0) return(x)
-  ## this.sep1 = {set.seed(10); rand.string()}
-  this.sep1 = " G89LbS7RCine "
-  ## this.sep2 = {set.seed(11); rand.string()}
-  this.sep2 = " VxTofMAXRbkl "
-  ## ans = copy2(x)
-  ans = x
-  f1 = as.character(seqnames(x))
-  f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
-  f2 = trimws(gsub(paste0(".*", this.sep1), "", f2))
-  ui = which(!duplicated(f1))
-  x_seqinfo <- seqinfo(x)
-  seql = rleseq(f2[ui], clump = T)
-  lst = lapply(split(seqlengths(x_seqinfo)[f1[ui]], seql$idx), function(x) max(x))
-  uii = which(!duplicated(f2[ui]))
-  ans_seqlevels = f2[ui][uii]
-  ans_seqlengths = setNames(unlist(lst), ans_seqlevels)
-  ans_isCircular <- unname(isCircular(x_seqinfo))[ans_seqlevels]
-  ans_seqinfo <- Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
-  ans@seqnames <- Rle(factor(f2, ans_seqlevels))
-  ans@seqinfo <- ans_seqinfo
-  return(ans)
+gr_deconstruct_by <- function (x, by = NULL, meta = FALSE) 
+{
+    if (is.null(by) || length(x) == 0) 
+        return(x)
+    this.sep1 = " G89LbS7RCine "
+    this.sep2 = " VxTofMAXRbkl "
+    ans = x
+    f1 = as.character(seqnames(x))
+    f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
+    f2 = trimws(gsub(paste0(".*", this.sep1), "", f2))
+    ui = which(!duplicated(f1))
+    x_seqinfo <- seqinfo(x)
+    seql = rleseq(f2[ui], clump = T)
+    lst = lapply(split(seqlengths(x_seqinfo)[f1[ui]], seql$idx), 
+        function(x) max(x))
+    uii = which(!duplicated(f2[ui]))
+    ans_seqlevels = f2[ui][uii]
+    ans_seqlengths = setNames(unlist(lst), ans_seqlevels)
+    ans_isCircular <- unname(isCircular(x_seqinfo))[ans_seqlevels]
+    ans_seqinfo <- Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
+    ans@seqnames <- Rle(factor(f2, ans_seqlevels))
+    ans@seqinfo <- ans_seqinfo
+    if (isTRUE(meta)) {
+        f0 = trimws(sub(paste0(this.sep2, ".*"), "", f1))
+        f0 = data.table::tstrsplit(f0, this.sep1)
+        ## f0 = strsplit(f0, this.sep1)
+        ## f0 = trans(f0, c)
+        mc = as.data.table(unname(f0))
+        if (!(identical(by, "") | identical(by, NA) | identical(by, "NA")) &&
+            length(by) == NCOL(mc)) {
+            colnames(mc) = by
+        }
+        ## debugonce(do.assign)
+        mcols(ans) = do.assign(mcols(ans), mc)
+    }
+    return(ans)
 }
+
 
 
 #' @name gr_construct_by
@@ -7656,6 +7671,24 @@ gr.round = function(gr, nearest = 1e4, all = TRUE, reduce = FALSE) {
 gr.sort = function(gr, ignore.strand = TRUE) {
     return(sort(sortSeqlevels(gr), ignore.strand = ignore.strand))
 }
+
+#' @name gr.order
+#' @title order granges, grangeslist
+#' @description
+#'
+#' order granges or grangeslist by seqlevels
+#' also reorders seqlevels into 1:22, X, Y format
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export gr.order
+gr.order <- function(gr, ignore.strand = T) {
+    sgr = GenomeInfoDb::sortSeqlevels(gr)
+    if (isTRUE(ignore.strand))
+        sgr = gr.stripstrand(sgr)
+    return(GenomicRanges::order(sgr))
+}
+
 
 #' @name gr.resize
 #' @title Resize granges without running into negative width error

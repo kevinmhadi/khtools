@@ -4,7 +4,7 @@
 \alias{trans}
 \title{transpose a list}
 \usage{
-trans(lst)
+trans(lst, ffun = list)
 }
 \description{
 

@@ -4,7 +4,7 @@
 \alias{gr_deconstruct_by}
 \title{removing by field and random string barcode to seqnames for more efficient by queries}
 \usage{
-gr_deconstruct_by(x, by = NULL)
+gr_deconstruct_by(x, by = NULL, meta = FALSE)
 }
 \value{
 A GRanges with the by metadata field attached to the seqnames
