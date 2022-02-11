@@ -666,10 +666,36 @@ lst.emptyreplace = function(x, replace = NA) {
 #' @description
 #'
 #' @export
-readin <- function(x, txt.fun = data.table::fread, vcf.fun = skidb::read_vcf) {
-    is.txt = grepl("((.txt)|(.csv)|(.tsv))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
-    is.rds = grepl(".rds$", x, T)
-    is.vcf = grepl("((.vcf))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
+readin <- function(x, txt.fun = data.table::fread,
+                   vcf.fun = skidb::read_vcf, other.txt = NULL,
+                   alt.fun = NULL, alt.ext = NULL,
+                   other.compress = NULL) {
+    compression_ext = c("gz", "bz2", "xz")
+    if (!is.null(other.compress) && is.character(other.compress)) {
+        compression_ext = c(compression_ext, na.omit(other.compress))
+    }
+    compression.ptrn = paste0(paste0("(.", sub("^\\.", "", compression_ext), ")"), collapse = "|")
+    txt_ext = c("tsv", "csv", "tsv")
+    if (!is.null(other.txt) && is.character(other.txt)) {
+        txt_ext = c(txt_ext, na.omit(other.txt))
+    }
+    if (!is.null(alt.fun) && is.function(alt.fun) &&
+        !is.null(alt.ext) && is.character(alt.ext)) {
+        .NotYetImplemented()
+    }
+    vcf_ext = c("vcf")
+    rds_ext = c("rds")
+    txt.ptrn = paste0(paste0("(.", sub("^\\.", "", c(txt_ext, other.txt)), ")"), collapse = "|")
+    txt.ptrn = paste0('(', txt.ptrn, ")(", compression.ptrn, "){0,}$")
+    rds.ptrn = paste0(paste0("(.", sub("^\\.", "", rds_ext), ")"), collapse = "")
+    rds.ptrn = paste0('(', rds.ptrn, ")(", compression.ptrn, "){0,}$")
+    vcf.ptrn = paste0(paste0("(.", sub("^\\.", "", vcf_ext), ")"), collapse = "")
+    vcf.ptrn = paste0('(', txt.ptrn, ")(", compression.ptrn, "){0,}$")
+    ## is.txt = grepl("((.txt)|(.csv)|(.tsv))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
+    is.txt = grepl(txt.ptrn, x, T)
+    is.rds = grepl(rds.ptrn, x, T)
+    ## is.vcf = grepl("((.vcf))((.gz)|(.bz2)|(.xz)){0,}$", x, T)
+    is.vcf = grepl(vcf.ptrn, x, T)
     if (isTRUE(is.txt))
         return(txt.fun(x))
     else if (isTRUE(is.rds))

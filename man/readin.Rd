@@ -4,7 +4,15 @@
 \alias{readin}
 \title{flexible file opening}
 \usage{
-readin(x, txt.fun = data.table::fread, vcf.fun = skidb::read_vcf)
+readin(
+  x,
+  txt.fun = data.table::fread,
+  vcf.fun = skidb::read_vcf,
+  other.txt = NULL,
+  alt.fun = NULL,
+  alt.ext = NULL,
+  other.compress = NULL
+)
 }
 \description{
 
