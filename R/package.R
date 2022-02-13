@@ -675,7 +675,7 @@ readin <- function(x, txt.fun = data.table::fread,
         compression_ext = c(compression_ext, na.omit(other.compress))
     }
     compression.ptrn = paste0(paste0("(.", sub("^\\.", "", compression_ext), ")"), collapse = "|")
-    txt_ext = c("tsv", "csv", "tsv")
+    txt_ext = c("txt", "csv", "tsv")
     if (!is.null(other.txt) && is.character(other.txt)) {
         txt_ext = c(txt_ext, na.omit(other.txt))
     }
