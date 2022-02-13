@@ -7087,6 +7087,31 @@ gr_deconstruct_by <- function (x, by = NULL, meta = FALSE)
 }
 
 
+#' @name na.seql
+#' @title na seqlevels
+#' 
+#' @description
+#'
+#' 
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export na.seql
+na.seql <- function(x) {
+  x_seqinfo = seqinfo(x)
+  ans = x
+  ans_seqlengths = seqlengths(x_seqinfo)
+  ans_seqlevels = seqlevels(x_seqinfo)
+  ans_isCircular = isCircular(x_seqinfo)
+  ans_seqlengths[] = NA_integer_
+  ans_seqinfo = Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
+  ans@seqinfo = ans_seqinfo
+  return(ans)
+}
+
+
+
+
 
 #' @name gr_construct_by
 #' @title adding on by field to seqnames for more efficient by queries
