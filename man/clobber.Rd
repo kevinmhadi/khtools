@@ -15,7 +15,8 @@ clobber(
   r2l = FALSE,
   fromLast = FALSE,
   opposite = TRUE,
-  comparefun = NULL
+  comparefun = NULL,
+  remove.empty = TRUE
 )
 }
 \arguments{

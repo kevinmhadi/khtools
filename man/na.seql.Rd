@@ -2,12 +2,12 @@
 % Please edit documentation in R/package.R
 \name{na.seql}
 \alias{na.seql}
-\title{na seqlevels}
+\title{NA out seqlevels}
 \usage{
 na.seql(x)
 }
 \value{
-GRanges
+A GRanges with NA in all seqlevels
 }
 \description{
 

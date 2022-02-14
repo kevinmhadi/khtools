@@ -1649,12 +1649,14 @@ et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)
 #' @param fromLast if TRUE, merge from last vector to first
 #' @param comparefun A 2 argument function (i.e. function(x,y) x < y), if r2l = FALSE, then the greater value will be chosen as y is on the right, for function(x,y) x < y. if r2l = TRUE, then the lesser value will be chosen
 #' @export
-clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE, comparefun = NULL) {
+clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fromLast = FALSE, opposite = TRUE, comparefun = NULL, remove.empty = TRUE) {
     lst = list(...)
-    lens = lengths(lst)
+    lens = eNROW(lst)
     maxlen = max(lens)
     if (length(unique(lens)) > 1)
         lst = lapply(lst, function(x) rep(x, length.out = maxlen))
+    if (remove.empty)
+        lst = lst[eNROW(lst) > 0]
     if ( !length(bads) && !length(bads.x) && !length(bads.y))
         stop("You gotta set one of bads, bads.x, or bads.y")
     if ({ length(bads.x) && length(bads.y) }) {
@@ -7083,6 +7085,28 @@ gr_deconstruct_by <- function (x, by = NULL, meta = FALSE)
         ## debugonce(do.assign)
         mcols(ans) = do.assign(mcols(ans), mc)
     }
+    return(ans)
+}
+
+
+#' @name na.seql
+#' @title NA out seqlevels
+#' 
+#' @description
+#'
+#' @return A GRanges with NA in all seqlevels
+#' @author Kevin Hadi
+#' @export na.seql
+na.seql <- function (x) 
+{
+    x_seqinfo = seqinfo(x)
+    ans = x
+    ans_seqlengths = seqlengths(x_seqinfo)
+    ans_seqlevels = seqlevels(x_seqinfo)
+    ans_isCircular = isCircular(x_seqinfo)
+    ans_seqlengths[] = NA_integer_
+    ans_seqinfo = Seqinfo(ans_seqlevels, ans_seqlengths, ans_isCircular)
+    ans@seqinfo = ans_seqinfo
     return(ans)
 }
 
