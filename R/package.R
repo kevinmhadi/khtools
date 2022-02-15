@@ -7058,7 +7058,8 @@ gr_deconstruct_by <- function (x, by = NULL, meta = FALSE)
     this.sep2 = " VxTofMAXRbkl "
     ans = x
     f1 = as.character(seqnames(x))
-    f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
+    f2 = sub(paste0(".*", this.sep2), "", f1)
+    ## f2 = trimws(gsub(paste0(".*", this.sep2), "", f1))
     ## f2 = trimws(gsub(paste0(".*", this.sep1), "", f2))
     ui = which(!duplicated(f1))
     x_seqinfo <- seqinfo(x)
