@@ -17,6 +17,7 @@ gg.sline(
   facet2 = NULL,
   transpose = FALSE,
   facet_scales = "fixed",
+  line = TRUE,
   formula = y ~ x,
   print = FALSE,
   hex_par = list(bins = 50),

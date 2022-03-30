@@ -750,6 +750,14 @@ trans <- function (lst, ffun = list)
     do.call(Map, c(f = ffun, lst))
 }
 
+#' @name transp
+#' @title transpose a list
+#'
+#' @description
+#'
+#' @export
+transp <- trans
+
 #' @name fitzscore
 #' @title calculate zscores based on prior mean and stddev
 #'
@@ -3306,7 +3314,7 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
     paste = function(..., sep) base::paste(..., sep = sep)
   else paste = function(..., sep) base::paste(stringr::str_c(..., 
     sep = sep))
-  lns = lengths(list(...))
+  lns = base::lengths(list(...))
   if (!all(lns == lns[1])) 
     warning("not all vectors provided have same length")
   fulllens = max(lns, na.rm = T)
@@ -3330,7 +3338,8 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
   if (!isTRUE(clump)) {
     rlev = rle(vec)
     if (isTRUE(recurs)) {
-      return(unlist(unname(lapply(rlev$lengths, seq_len))))
+        ## return(unlist(unname(lapply(rlev$lengths, seq_len))))
+        return(sequence(rlev$lengths))
     }
     else {
       out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
@@ -3347,10 +3356,11 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
     vec = setNames(vec, seq_along(vec))
     lst = split(vec, factor(vec, levels = unique(vec)))
     ord = as.integer(names(unlist(unname(lst))))
-    idx = rep(seq_along(lst), times = lengths(lst))
+    idx = rep(seq_along(lst), times = base::lengths(lst))
     out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
       recurs = TRUE, use.data.table = FALSE)[order(ord)])
-    out$lns = ave(out[[1]], out[[1]], FUN = length)
+    ## out$lns = ave(out[[1]], out[[1]], FUN = length)
+    out$lns = unname(rep(base::lengths(lst), times = base::lengths(lst)))
     return(out)
   }
 }
@@ -5201,6 +5211,17 @@ dig_job <- function(x, readin = TRUE, get_inputs = FALSE) {
   }
 }
 
+#' @name digjob
+#' @title Dig into Flow Job that generated an output
+#'
+#'
+#' @description
+#' takes a path of an output of a flow job and looks for
+#' Job.rds and reads in Job object
+#'
+#' @return Job
+#' @export
+digjob <- dig_job
 
 #' @name diginjob
 #' @title Dig into inputs Flow Job that generated an output
@@ -5799,7 +5820,7 @@ pg_mytheme = function(..., print = TRUE) gg_mytheme(..., print = TRUE)
 #' @param colour vector that specifies colouring of points
 #' @return A ggplot object
 #' @export gg.sline
-gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", formula = y ~ x, print = FALSE, hex_par = list(bins = 50), wes = NULL, cex.scatter = 0.1) {
+gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type = c("point", "hex"), facet1 = NULL, facet2 = NULL, transpose = FALSE, facet_scales = "fixed", line = TRUE, formula = y ~ x, print = FALSE, hex_par = list(bins = 50), wes = NULL, cex.scatter = 0.1) {
     if (is.null(facet1)) {
         facet1 = facet2
         facet2 = NULL
@@ -5816,8 +5837,10 @@ gg.sline = function(x, y, group = "x", colour = NULL, smethod = "lm", dens_type 
         message("selecting geom_point() as default")
         dens_type = "point"
     }
-    gg = gg +
-        geom_smooth(method = smethod, size = 1, formula = formula)
+    if (isTRUE(line)) {
+        gg = gg +
+            geom_smooth(method = smethod, size = 1, formula = formula)
+    }
     if (identical(dens_type, "hex"))
         gg = gg + geom_hex(bins = hex_par$bin)
     else if (identical(dens_type, "point"))
@@ -7390,6 +7413,35 @@ gr.fixseq = function(...) {
     }, lapply(list(...), seqlengths))
     with(output, setNames2(seqlength, seqname))
 }
+
+
+#' @name conform_si
+#' @title force a ranges to conform to a new seqinfo
+#' 
+#' @description
+#'
+#'
+#' @return GRanges
+#' @author Kevin Hadi
+#' @export conform_si
+conform_si = function(x, si) {
+    ans = copy3(x)
+    osi = seqinfo(x)
+    osn = as.character(seqnames(x))
+    newslev = union(seqlevels(si), seqlevels(osi))
+    ## newsle = seqlengths(osi)
+    new = rn2col(as.data.frame(si[newslev]), "seqnames")
+    old = rn2col(as.data.frame(osi[newslev]), "seqnames")
+    newsi = merge.repl(
+        new, old, force_y = FALSE, overwrite_x = FALSE,
+        by = "seqnames", keep_order = T, all = T
+    )
+    newsi = as(col2rn(asdf(newsi), "seqnames"), "Seqinfo")
+    ans@seqnames = Rle(factor(osn, seqlevels(newsi)))
+    ans@seqinfo = newsi
+    return(ans)
+}
+
 
 #' @name gr.patch
 #' @title same as gr.fix basically
@@ -9656,6 +9708,52 @@ interbp_dist = function(gg) {
     return(list(bp.dt = bp.dt, dists = dists))
 }
 
+#' @name grab.hrdetect.features
+#' @title grab hrdetect features from hrdetect results
+#' 
+#' @description
+#' read in HRDetect results
+#' 
+#' @export grab.hrdetect.features
+grab.hrdetect.features <- function(hrdetect_results, goodpairs, field, id.field = id.field) {
+    path = hrdetect_results
+    res = readRDS(path)
+    id = which(goodpairs[[field]] %in% path)
+    x = goodpairs[id]
+    pr = unique(x[[id.field]])
+    df = as.data.table(res$data_matrix)
+    df$pair = pr
+    cid = which(colnames(df) %in% "pair")
+    indels.class = as.data.table(res$indels_classification)
+    indels.class$sample = NULL
+    hrd_out = as.data.table(res$hrdetect_output)
+    cnames = colnames(hrd_out)
+    cnames = paste0("w_", cnames)
+    cnames[8] = "HRDetect"
+    colnames(hrd_out) = cnames
+    df = cbind(qmat(df,,cid), qmat(df,,-cid), indels.class, hrd_out)
+    return(df)
+}
+
+#' @name pairs.grab.hrdetect.features
+#' @title grab hrdetect features from pairs table
+#' 
+#' @description
+#' wrapper around grab.hrdetect.features
+#' 
+#' @export pairs.grab.hrdetect.features
+pairs.grab.hrdetect.features <- function(pairs, field = "hrd_results", id.field = "pair", mc.cores = 1) {
+    paths = pairs[[field]]
+    paths = unique(paths[file.exists(paths)])
+    goodpairs = pairs[pairs[[field]] %in% paths]
+    allpr = unique(goodpairs[[id.field]])
+    lst = mclapply(paths, grab.hrdetect.features, mc.cores = mc.cores, goodpairs = goodpairs, field = field, id.field = id.field)
+    out = rbindlist(lst)
+    out$fpair = factor(out[[id.field]], allpr)
+    return(out)
+}
+
+
 #' @export pairs.filter.sv
 pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_vcf", mc.cores = 1, pon.path = '~/lab/projects/CCLE/db/tcga_and_1kg_sv_pon.rds') {
   if (missing(id.field))
@@ -9692,7 +9790,8 @@ plot.jabba = function(pairs, win, filename, use.jab.cov = TRUE, field.name = "ja
     if (missing(gt)) {
         gg = gG(jabba = pairs[[field.name]])
         if (isTRUE(use.jab.cov))
-            cov = readRDS(inputs(readRDS(pairs[[field.name]] %>% dig_dir("Job.rds$")))$CovFile)
+            cov = readRDS(diginjob(pairs[[field.name]])$CovFile)
+            ## cov = readRDS(inputs(readRDS(pairs[[field.name]] %>% dig_dir("Job.rds$")))$CovFile)
         else
             cov = readRDS(pairs[[cov.field.name]])
         if (rebin)
