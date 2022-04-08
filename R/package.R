@@ -9754,6 +9754,42 @@ pairs.grab.hrdetect.features <- function(pairs, field = "hrd_results", id.field 
 }
 
 
+grab.ot.features <- function(ent, id.field = "pair") {
+    path = ent[["fpaths"]]
+    if (file.exists(path)) {
+        ot = readRDS(path)$expl_variables
+        ot[[id.field]] = ent[["ids"]]
+        return(ot)
+    }
+}
+
+
+#' @name pairs.grab.ot.features
+#' @title grab oneness twoness features from pairs table
+#' 
+#' @description
+#' wrapper around grab.ot.features
+#' 
+#' @export pairs.grab.ot.features
+pairs.grab.ot.features <- function(pairs, field = "oneness_twoness", id.field = "pair", mc.cores = 1) {
+    fpaths = pairs[[field]]
+    dt = data.table(
+        fpaths,
+        ids = pairs[[id.field]],
+        fe = file.exists(fpaths)
+    )
+    dt = unique(dt[dt$fe == TRUE,])
+    lst = dt %>% split_by("ids")
+    lst.res = mclapply(lst, grab.ot.features, id.field = id.field, mc.cores = mc.cores)
+    out = rbindlist(lst.res, fill = T)
+    out$`NA` = NULL
+    out$`"sample"` = NULL
+    out$`.` = NULL
+    return(out)
+}
+
+
+
 #' @export pairs.filter.sv
 pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_vcf", mc.cores = 1, pon.path = '~/lab/projects/CCLE/db/tcga_and_1kg_sv_pon.rds') {
   if (missing(id.field))
