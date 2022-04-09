@@ -13,7 +13,8 @@ parsesnpeff(
   gr = NULL,
   keepfile = FALSE,
   altpipe = FALSE,
-  debug = FALSE
+  debug = FALSE,
+  snpeffpath = "~/modules/SnpEff"
 )
 }
 \arguments{

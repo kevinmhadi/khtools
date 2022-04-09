@@ -9020,7 +9020,7 @@ sv_filter = function(sv, filt_sv, pad = 500)
 #' @export
 parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, 
     geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, 
-    debug = FALSE) 
+    debug = FALSE, snpeffpath = "~/modules/SnpEff") 
 {
     if (debug) 
         browser()
@@ -9030,9 +9030,11 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
         on.exit(unlink(tmp.path))
     try2({
         catcmd = if (grepl("(.gz)$", vcf)) "zcat" else "cat"
-        onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
+        ## onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
+        onepline = paste0(snpeffpath, "/source/snpEff/scripts/vcfEffOnePerLine.pl")
         if (coding_alt_only) {
-            filt = "java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar /gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/SnpSift.jar filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\""
+            filt = sprintf("java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar %s filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\"",
+                           paste0(snpeffpath, "/source/snpEff/SnpSift.jar"))
             if (filterpass)
                 cmd = sprintf(paste(catcmd, "%s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s"), 
                   vcf, onepline, filt, tmp.path)
