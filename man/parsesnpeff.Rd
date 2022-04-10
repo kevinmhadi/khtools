@@ -14,7 +14,8 @@ parsesnpeff(
   keepfile = FALSE,
   altpipe = FALSE,
   debug = FALSE,
-  snpeffpath = "~/modules/SnpEff"
+  snpeffpath = "~/modules/SnpEff",
+  filters = "PASS,."
 )
 }
 \arguments{

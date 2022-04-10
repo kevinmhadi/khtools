@@ -9010,6 +9010,87 @@ sv_filter = function(sv, filt_sv, pad = 500)
 ##############################
 ##############################
 
+#' @name process_alterations
+#' @title process alterations matrix
+#'
+#' 
+#' @export
+process_alterations <- function(alterations) {
+    monos = with(alterations,
+                 sign(hetdel > 0) + sign((som.mis + som.trunc) == 1)
+                 )
+    monos[monos == 0] = NA_real_
+    monos[monos > 1] = NA_real_
+    bla = as.data.table(melt(monos, na.rm = T))
+    bla[, biallelic := FALSE]
+    bla = setcols(bla, c("Var1", "Var2"), c("pair", "gene"))
+
+    bis = with(
+        alterations,
+        sign(sign(loh > 0) + som.mis + som.trunc > 1)
+    )
+    bis[!bis > 0] = NA_real_
+    bla2 = as.data.table(melt(bis, na.rm = T))
+    bla2[, biallelic := TRUE]
+    bla2 = setcols(bla2, c("Var1", "Var2"), c("pair", "gene"))
+
+    amp.ccne1 = with(
+        alterations,
+        sign(amp > 0)
+    )[, "CCNE1",drop=F]
+
+    amps = melt(amp.ccne1 %>% replace2(x == 0, NA_real_), na.rm = T) %>% asdt %>%
+        setcols(c("Var1", "Var2"), c("pair", "gene")) %>% mutate(value = NULL)
+
+    mutlist = rbind(bla, bla2)[, type := "MUTATION"] %>% mutate(value = NULL)
+    mutlist = rbind(mutlist, amps[, type := "AMP"], fill = T)
+    
+    return(mutlist)
+}
+
+
+#' @name process_alt_for_hrd
+#' @title process mutlist from process_alterations
+#'
+#' 
+#' @export
+process_alt_for_hrd <- function(mutlist, gpath = "~/lab/projects/Starr/BRCA/files/hrd_gene_list_jsetton.csv") {
+    hrdg = dt_empty2na(fread(gpath))
+    allg = lapply(hrdg, function(x) gsub("\\(HROB\\)", "", na.omit(x)) %>% trimws) %>% do.call(what = c) %>% unname %>% unique
+    allg = union(c("BRCA1", "BRCA2"), allg)
+
+    hrd.genes = mutlist[(gene %in% c(allg, "CDK12") & type %nin% "AMP")]
+    ## g.cdk12 = mutlist[gene %in% "CDK12"][type %nin% "AMP"]
+    g.ccne1 = mutlist[gene %in% "CCNE1"][type %in% "AMP"]
+
+
+
+    brca_bi = hrd.genes[(gene %in% c("BRCA1", "BRCA2") & biallelic == TRUE)] %>% distinct(pair, gene, biallelic)
+    brca_mono = hrd.genes[(gene %in% c("BRCA1", "BRCA2") & biallelic == FALSE)] %>% distinct(pair, gene, biallelic)
+    others_bi = hrd.genes[(!gene %in% c("BRCA1", "BRCA2")) & biallelic == TRUE] %>% distinct(pair, gene, biallelic)
+    others_mono = hrd.genes[(!gene %in% c("BRCA1", "BRCA2")) & biallelic == FALSE] %>% distinct(pair, gene, biallelic)
+
+    bi_length = function(x) sign(length(x))
+
+    bi_brca = brca_bi %>% mutate(gene = fct_drop(gene)) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("bi_", .))
+    mono_brca = brca_mono %>% mutate(gene = fct_drop(gene)) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("mono_", .))
+
+    other_bi = (others_bi %>% mutate(gene = fct_drop(gene)))[, .(other_bi = paste0(gene, collapse = " ")), by = pair] %>% complete(pair) %>% asdt
+    other_mono = (others_mono %>% mutate(gene = fct_drop(gene)))[, .(other_mono = paste0(gene, collapse = " ")), by = pair] %>% complete(pair) %>% asdt
+
+    amp_ccne1 = (g.ccne1 %>% mutate(gene = fct_drop(gene)))[, .(amp_ccne1 = 1), by = pair] %>% complete(pair) %>% asdt
+
+
+
+    mutstat = rbind(hrd.genes, g.ccne1, fill = T)[, .(mutstat = paste0(gene, collapse = " ")), by = pair] %>% complete(pair) %>%
+        asdt %>% mutate(mutstat = replace_na(mutstat, "WT"))
+
+    fintbl = Reduce(function(x,y) merge(x,y,by = "pair"), list(bi_brca, mono_brca, other_bi, other_mono, amp_ccne1, mutstat))
+
+    return(fintbl)
+}
+
+
 #' @name parsesnpeff
 #' @title parse snpeff output into granges
 #'
@@ -9020,7 +9101,7 @@ sv_filter = function(sv, filt_sv, pad = 500)
 #' @export
 parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, 
     geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, 
-    debug = FALSE, snpeffpath = "~/modules/SnpEff") 
+    debug = FALSE, snpeffpath = "~/modules/SnpEff", filters = "PASS,.") 
 {
     if (debug) 
         browser()
@@ -9036,8 +9117,8 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
             filt = sprintf("java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar %s filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\"",
                            paste0(snpeffpath, "/source/snpEff/SnpSift.jar"))
             if (filterpass)
-                cmd = sprintf(paste(catcmd, "%s | %s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s"), 
-                  vcf, onepline, filt, tmp.path)
+                cmd = sprintf(paste("bcftools view -f %s %s | %s | %s | bgzip -c > %s"), 
+                  filters, vcf, onepline, filt, tmp.path)
             else cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", 
                 vcf, onepline, filt, tmp.path)
         }
@@ -9112,6 +9193,103 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
     this.env = environment()
     return(this.env$out)
 }
+
+
+
+## parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRUE, 
+##     geno = NULL, gr = NULL, keepfile = FALSE, altpipe = FALSE, 
+##     debug = FALSE, snpeffpath = "~/modules/SnpEff") 
+## {
+##     if (debug) 
+##         browser()
+##     out.name = paste0("tmp_", rand.string(), ".vcf.gz")
+##     tmp.path = paste0(tempdir(), "/", out.name)
+##     if (!keepfile) 
+##         on.exit(unlink(tmp.path))
+##     try2({
+##         catcmd = if (grepl("(.gz)$", vcf)) "zcat" else "cat"
+##         ## onepline = "/gpfs/commons/groups/imielinski_lab/git/mskilab/flows/modules/SnpEff/source/snpEff/scripts/vcfEffOnePerLine.pl"
+##         onepline = paste0(snpeffpath, "/source/snpEff/scripts/vcfEffOnePerLine.pl")
+##         if (coding_alt_only) {
+##             filt = sprintf("java -Xmx20m -Xms20m -XX:ParallelGCThreads=1 -jar %s filter \"( ANN =~ 'chromosome_number_variation|exon_loss_variant|rare_amino_acid|stop_lost|transcript_ablation|coding_sequence|regulatory_region_ablation|TFBS|exon_loss|truncation|start_lost|missense|splice|stop_gained|frame' )\"",
+##                            paste0(snpeffpath, "/source/snpEff/SnpSift.jar"))
+##             if (filterpass)
+##                 cmd = sprintf(paste("bcftools view -i 'FILTER==\"PASS\"' %s | %s | %s | bgzip -c > %s"), 
+##                   vcf, onepline, filt, tmp.path)
+##             else cmd = sprintf("cat %s | %s | %s | bcftools norm -Ov -m-any | bgzip -c > %s", 
+##                 vcf, onepline, filt, tmp.path)
+##         }
+##         else {
+##             filt = ""
+##             if (filterpass) 
+##                 cmd = sprintf(paste(catcmd, "%s | %s | bcftools view -i 'FILTER==\"PASS\"' | bgzip -c > %s"), 
+##                   vcf, onepline, tmp.path)
+##             else cmd = sprintf(paste(catcmd, "%s | %s | bcftools norm -Ov -m-any | bgzip -c > %s"), 
+##                 vcf, onepline, tmp.path)
+##         }
+##         system(cmd)
+##     })
+##     if (!altpipe) 
+##         out = grok_vcf(tmp.path, long = TRUE, geno = geno, gr = gr)
+##     else {
+##         vcf = readVcf(tmp.path)
+##         vcf = S4Vectors::expand(vcf)
+##         rr = within(rowRanges(vcf), {
+##             REF = as.character(REF)
+##             ALT = as.character(ALT)
+##         })
+##         ann = as.data.table(tstrsplit(unlist(info(vcf)$ANN), 
+##             "\\|"))[, 1:15, with = FALSE, drop = FALSE]
+##         fn = c("allele", "annotation", "impact", "gene", "gene_id", 
+##             "feature_type", "feature_id", "transcript_type", 
+##             "rank", "variant.c", "variant.p", "cdna_pos", "cds_pos", 
+##             "protein_pos", "distance")
+##         data.table::setnames(ann, fn)
+##         if ("AD" %in% names(geno(vcf))) {
+##             adep = setnames(as.data.table(geno(vcf)$AD[, , 1:2]), 
+##                 c("ref", "alt"))
+##             gt = geno(vcf)$GT
+##         }
+##         else if (all(c("AU", "GU", "CU", "TU", "TAR", "TIR") %in% 
+##             c(names(geno(vcf))))) {
+##             this.col = dim(geno(vcf)[["AU"]])[2]
+##             d.a = geno(vcf)[["AU"]][, , 1, drop = F][, this.col, 
+##                 1]
+##             d.g = geno(vcf)[["GU"]][, , 1, drop = F][, this.col, 
+##                 1]
+##             d.t = geno(vcf)[["TU"]][, , 1, drop = F][, this.col, 
+##                 1]
+##             d.c = geno(vcf)[["CU"]][, , 1, drop = F][, this.col, 
+##                 1]
+##             mat = cbind(A = d.a, G = d.g, T = d.t, C = d.c)
+##             rm("d.a", "d.g", "d.t", "d.c")
+##             refid = match(as.character(VariantAnnotation::fixed(vcf)$REF), colnames(mat))
+##             refid = ifelse(!isSNV(vcf), NA_integer_, refid)
+##             altid = match(as.character(VariantAnnotation::fixed(vcf)$ALT), colnames(mat))
+##             altid = ifelse(!isSNV(vcf), NA_integer_, altid)
+##             refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
+##             altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
+##             this.icol = dim(geno(vcf)[["TAR"]])[2]
+##             refindel = d.tar = geno(vcf)[["TAR"]][, , 1, drop = F][, 
+##                 this.icol, 1]
+##             altindel = d.tir = geno(vcf)[["TIR"]][, , 1, drop = F][, 
+##                 this.icol, 1]
+##             adep = data.table(ref = coalesce(refsnv, refindel), 
+##                 alt = coalesce(altsnv, altindel))
+##             gt = NULL
+##         }
+##         else {
+##             message("ref and alt count columns not recognized")
+##             adep = NULL
+##             gt = NULL
+##         }
+##         mcols(rr) = BiocGenerics::cbind(mcols(rr), ann, adep, 
+##             gt = gt[, 1])
+##         out = rr
+##     }
+##     this.env = environment()
+##     return(this.env$out)
+## }
 
 #' @name grok_vcf
 #' @title modded grok_vcf
