@@ -360,19 +360,19 @@ make_roc <- function(dat, lab = "lab", score = "HRD", include_group = FALSE) {
   mrpred = asdf(et(sprintf("mrpred[, %s,drop=F]", mkst(colspred %in% goodcols))))
 
   mrocdat = function (lbl, prd) {
-    prd00 = rbind(0, asm(prd))
-    mg = setcols(with((melt(prd00)), g2()[order(Var2, value), 
-      ]), c("Var2", "value"), c("Group", "prd"))[, c("Group", 
-        "prd"), drop = F]
+    ## prd00 = rbind(0, asm(prd))
+    ## mg = setcols(with((melt(prd00)), g2()[order(Var2, value), 
+    ##   ]), c("Var2", "value"), c("Group", "prd"))[, c("Group", 
+    ##     "prd"), drop = F]
     cb = cbind(lbl, prd)
     roc_res = multiROC::multi_roc(cb, force_diag = T)
     plot_roc_df <- multiROC::plot_roc_data(roc_res)
     if (!include_group) {
-      gdat = asdt(plot_roc_df)[Group %nin% c("Macro", "Micro")][, 
-        `:=`(prd, rev(mg$prd))]
+      gdat = asdt(plot_roc_df)[Group %nin% c("Macro", "Micro")]## [, 
+        ## `:=`(prd, rev(mg$prd))]
     } else {
-      gdat = asdt(plot_roc_df)[Group %nin% c("Macro", "Micro"), 
-        `:=`(prd, rev(mg$prd))]
+      gdat = asdt(plot_roc_df)## [Group %nin% c("Macro", "Micro"), 
+        ## `:=`(prd, rev(mg$prd))]
     }
     gdat[, `:=`(Group, trimws(Group))]
     return(gdat)
@@ -610,6 +610,165 @@ feature_importance <- function(ixfold, xfolds, dat, lambda = 0, vars, seed = 10,
     return(ret)
     }, error = function(e) printerr(ixfold))
 }
+
+## feature_importance <- function(ixfold, xfolds, dat, lambda = 0, vars, seed = 10, ycol, debug = FALSE,
+##                                rpart = FALSE, permute_varlist = NULL, added_testd = NULL,
+##                                caret_preprocess = do.pp(traind, vars = vars, method = "range", prefun = log1p),
+##                                only_positive = FALSE,
+##                                s = 0, alpha = 1
+##                                ) {
+##     tryCatch({
+##     if (debug) browser()
+##     nm = names(xfolds[ixfold])
+##     xfold = xfolds[[ixfold]]
+##     message("testing split: ", ixfold, " ", nm)
+##     traind = copy(dat[xfold$train,])
+##     testd = copy(dat[xfold$test,])
+
+##     if (!is.null(added_testd)) {
+##         added_testd = copy(added_testd[pair %in% setdiff(pair, c(traind$pair, testd$pair))])
+##         if (NROW(added_testd) > 0)
+##             testd = rbind(testd[, added := FALSE], added_testd[, added := TRUE], fill = T)
+##     } else {
+##         testd$added = FALSE
+##     }
+
+##     set.seed(seed);
+
+##     traind = copy3(traind)
+##     traind$fmut = traind[[ycol]]
+##     testd = copy3(testd)
+##     testd$fmut = testd[[ycol]]
+
+##     if (!is.null(caret_preprocess)) {
+##         if (is.character(caret_preprocess) && caret_preprocess[1] %in% c("range", "scale")) {
+##             pp = preProcess(select(traind, !!vars), method = caret_preprocess)
+##             traind = predict(pp, traind)
+##             testd = predict(pp, testd)
+##         } else if (is.function(caret_preprocess)) {
+##             traind = traind %>% mutate_at(vars(!!vars), caret_preprocess)
+##             testd = testd %>% mutate_at(vars(!!vars), caret_preprocess)
+##         } else if (inherits(caret_preprocess, "carprep")) {
+##             traind = caret_preprocess$dat
+##             prep.res = predict.pp(caret_preprocess, testd)
+##             testd = prep.res$newdat
+##         }
+##     }
+ 
+
+##     if (length(levels(traind$fmut)) > 2) {
+##         family = "multinomial"
+##     } else {
+##         family = "binomial"
+##     }
+
+##     trainglm = fitcvglmnet(vars, family = family, dat = traind, ycol = ycol, only_positive = only_positive, standardize = FALSE, lambda = mylambdas())
+
+##     testd = fit_classifier(trainglm, testd, s = s, alpha = alpha)
+
+
+##     testd$fold_id = nm
+##     testd$Method = "all"
+
+##     off_diag = function(x) {
+##         diag(x) = NA
+##         as.vector(x) %>% na.omit
+##     }
+
+##     get_accuracy = function(confus_mat) {
+##         correct = diag(confus_mat)
+##         sum(correct) / sum(off_diag(confus_mat), correct)
+##     }
+
+##     indiv.levels = levels(testd[[ycol]])[-1]
+##     full_mod_indiv_accuracy = c()
+##     if (length(indiv.levels) > 1) {
+##         for (i in indiv.levels) {
+##             indiv.mat = as.matrix(table(refactor(testd[[ycol]], i),
+##               refactor(factor(testd$classes, levels = levels(testd[[ycol]])), i)))
+##             full_mod_indiv_accuracy = c(full_mod_indiv_accuracy, setNames(get_accuracy(indiv.mat), i))
+##         }
+##     }
+
+##     confus_mat = as.matrix(table(testd[[ycol]], factor(testd$classes, levels = levels(testd[[ycol]]))))
+##     full_mod_accuracy = c(FULL = get_accuracy(confus_mat))
+
+##     lvars = as.list(vars)
+
+##     if (!is.null(permute_varlist)) {
+##         ## .NotYetImplemented()
+##         if (is.character(permute_varlist))
+##             pvar = list(permute_varlist)
+##         else if (is.list(permute_varlist)) {
+##             pvar = permute_varlist
+##         } else if (! is.list(permute_varlist)) {
+##             warning("ignoring permute_list")
+##             pvar = list()
+##         }
+##         lvars = c(lvars, pvar)
+##     }
+
+##     permute_lst = purrr::transpose(lapply(lvars, function(v, seed = 10) {
+##         testd_permute = copy(testd)
+##         testd_permute$fold_id = nm
+##         set.seed(seed)
+##         for (i in 1:NROW(v))
+##             testd_permute[[v[i]]] = sample(testd_permute[[v[i]]])
+##         testd_permute$Method = paste(v, collapse = ", ")
+##         permute_classes = get_pred(trainglm, testd_permute, vars, type = "class")
+##         permut_s = asdf(get_pred(trainglm, testd_permute, vars, type = "response"))
+##         if (NCOL(permut_s) == 1)
+##             colnames(permut_s) = levels(testd[[ycol]])[2]
+##         for (i in seq_len(NCOL(permut_s)))
+##             testd_permute[[names(permut_s)[i]]] = permut_s[[i]]
+##         permute_roc = make_roc(testd_permute, ycol, colnames(permut_s))[
+##            ,Method := testd_permute$Method[1]][
+##            ,fold_id := nm]
+
+##         indiv.levels = levels(testd[[ycol]])[-1]
+##         indiv.accuracy = c()
+##         if (length(indiv.levels) > 1) {
+##             for (i in indiv.levels) {
+##                 indiv.mat = as.matrix(table(refactor(testd[[ycol]], i),
+##               refactor(factor(permute_classes, levels = levels(testd[[ycol]])), i)))
+##                 indiv.accuracy = c(indiv.accuracy, setNames(get_accuracy(indiv.mat), i))
+##             }
+##         }
+##         indiv.dec.accuracy = full_mod_indiv_accuracy[names(indiv.accuracy)] - indiv.accuracy
+##         confus_mat_permute = as.matrix(table(testd[[ycol]], factor(permute_classes, levels = levels(testd[[ycol]]))))
+##         dec_accuracy = data.table(feature = paste(v, collapse = ", "), decrease_accuracy = full_mod_accuracy - get_accuracy(confus_mat_permute))[, which := "FULL"]
+##         dec_accuracy = dec_accuracy[rep_len(1:NROW(dec_accuracy), NROW(dec_accuracy) + NROW(indiv.accuracy))]
+##         dec_accuracy[-1, decrease_accuracy := indiv.dec.accuracy]
+##         dec_accuracy[-1, which := names(indiv.dec.accuracy)]
+##         list(dec_accuracy = dec_accuracy,
+##              roc = permute_roc,
+##              testd = testd_permute)
+##     }))
+
+##     dec_accuracy = rbindlist(permute_lst$dec_accuracy)
+##     dec_accuracy$fold_id = nm
+
+##     bigroc = rbind(rbindlist(permute_lst$roc),
+##                    make_roc(testd, ycol, colnames(scores))[, Method := "all"][, fold_id := nm])
+
+
+##     ## mlab = mroclab(testd[[ycol]])
+##     ## mpred = mrocpred(get_pred(trainglm, testd, vars))
+
+##     ## if (class(trainglm)[1] == "lognet")
+##     ##     mlab = mlab[,2,drop=F]
+
+##     outd = rbind(rbindlist(permute_lst$testd), testd)
+
+##     ret = list(dec_accuracy = dec_accuracy,
+##          ## lab = mlab, mpred = mpred,
+##          roc = bigroc,
+##          classes = classes,
+##          scores = scores,
+##          outd = outd)
+##     return(ret)
+##     }, error = function(e) printerr(ixfold))
+## }
 
 
 ## feature_importance <- function(ixfold, xfolds, dat, lambda = 0, vars, seed = 10, ycol, debug = FALSE, rpart = FALSE, permute_varlist = NULL, added_testd = NULL, caret_preprocess = NULL, only_positive = TRUE) {
