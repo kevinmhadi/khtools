@@ -469,7 +469,7 @@ feature_importance <- function(ixfold, xfolds, dat, lambda = 0, vars, seed = 10,
     if (!is.null(added_testd)) {
         added_testd = copy(added_testd[pair %in% setdiff(pair, c(traind$pair, testd$pair))])
         if (NROW(added_testd) > 0)
-            testd = rbind(testd[, added := FALSE], added_testd[, added := TRUE])
+            testd = rbind(testd[, added := FALSE], added_testd[, added := TRUE], fill = T)
     } else {
         testd$added = FALSE
     }
