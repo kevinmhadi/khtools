@@ -9072,8 +9072,8 @@ process_alt_for_hrd <- function(mutlist, gpath = "~/lab/projects/Starr/BRCA/file
 
     bi_length = function(x) sign(length(x))
 
-    bi_brca = brca_bi %>% mutate(gene = fct_drop(gene)) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("bi_", .))
-    mono_brca = brca_mono %>% mutate(gene = fct_drop(gene)) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("mono_", .))
+    bi_brca = brca_bi %>% mutate(gene = fct_drop(gene) %>% factor(levels = c("BRCA1", "BRCA2"))) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("bi_", .))
+    mono_brca = brca_mono %>% mutate(gene = fct_drop(gene) %>% factor(levels = c("BRCA1", "BRCA2"))) %>% dcast.data.table(pair ~ gene, fun.aggregate = bi_length, drop = F) %>% rename_all(tolower) %>% rename_at(vars(-1), ~paste0("mono_", .))
 
     other_bi = (others_bi %>% mutate(gene = fct_drop(gene)))[, .(other_bi = paste0(gene, collapse = " ")), by = pair] %>% complete(pair) %>% asdt
     other_mono = (others_mono %>% mutate(gene = fct_drop(gene)))[, .(other_mono = paste0(gene, collapse = " ")), by = pair] %>% complete(pair) %>% asdt
