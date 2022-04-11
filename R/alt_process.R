@@ -1,3 +1,4 @@
+#' @export
 process_alterations <- function(alterations, include_hetdel = FALSE) {
     ##
     if (include_hetdel) hetdel_val = 0 else hetdel_val = Inf
@@ -34,12 +35,12 @@ process_alterations <- function(alterations, include_hetdel = FALSE) {
 }
 
 
-
+#' @export
 process_alt_for_hrd <- function(mutlist, gpath = "~/lab/projects/Starr/BRCA/files/hrd_gene_list_jsetton.csv") 
 {
     hrdg = dt_empty2na(fread(gpath))
     if (!is.factor(mutlist$pair)) mutlist$pair = factor(mutlist$pair)
-    init = data.table(pair = sort(unique(mutlist$pair)))
+    init = data.table(pair = factor(levels(mutlist$pair), levels(mutlist$pair)))
     allg = lapply(hrdg, function(x) gsub("\\(HROB\\)", "", na.omit(x)) %>% 
         trimws) %>% do.call(what = c) %>% unname %>% unique
     allg = union(c("BRCA1", "BRCA2"), allg)
