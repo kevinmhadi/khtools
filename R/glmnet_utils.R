@@ -493,6 +493,11 @@ feature_importance <- function(ixfold, xfolds, dat, lambda = 0, vars, seed = 10,
             traind = caret_preprocess$dat
             prep.res = predict.pp(caret_preprocess, testd)
             testd = prep.res$newdat
+        } else if (inherits(caret_preprocess, c("expression", "call"))) {
+            caret_preprocess = eval(caret_preprocess)
+            traind = caret_preprocess$dat
+            prep.res = predict.pp(caret_preprocess, testd)
+            testd = prep.res$newdat
         }
     }
  
