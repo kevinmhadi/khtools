@@ -659,6 +659,160 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name kpdf
+#' @title open pdf device with ppdf defaults without closing
+#'
+#' @description
+#'
+#' @export
+kpdf = function(filename = "plot.pdf", height = 10, width = 10, 
+    h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+    dim = NULL, cex.title = 1, oma.scale = 0, oma.val = c(1, 1, 1, 1), useDingbats = FALSE, res = 0, pars = list(), 
+    ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    pdf(file = filename, height = height, width = width, useDingbats = useDingbats, ...)
+    if (!is.null(dim)) {
+            if (length(dim) == 1) 
+                dim = rep(dim, 2)
+            dim = dim[1:2]
+            graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+}
+
+#' @name ksvg
+#' @title open svg device with ppdf defaults without closing
+#'
+#' @description
+#'
+#' @export
+ksvg = function(filename = "plot.svg", height = 10, width = 10,
+                h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+                dim = NULL, cex.title = 1, oma.scale = 0, units = 'in', oma.val = c(1, 1, 1, 1),
+                useDingbats = FALSE, res = 300, pars = list(),
+                ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    svg(file = filename, height = height, width = width, ...)
+    if (!is.null(dim)) {
+        if (length(dim) == 1) 
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+}
+    
+    
+
+
+#' @name kpng
+#' @title open png device with ppng defaults without closing
+#'
+#' @description
+#'
+#' @export
+kpng = function(filename = "plot.png", height = 10, width = 10,
+                h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+                dim = NULL, cex.title = 1, oma.scale = 0, units = 'in', oma.val = c(1, 1, 1, 1),
+                useDingbats = FALSE, res = 300, pars = list(),
+                ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    png(file = filename, height = height, width = width, units = units, res = res, ...)
+    if (!is.null(dim)) {
+        if (length(dim) == 1) 
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+}
+
+#' @name kpng
+#' @title open png device with ppng defaults without closing
+#'
+#' @description
+#'
+#' @export
+kjpeg = function(filename = "plot.jpeg", height = 10, width = 10,
+                h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+                dim = NULL, cex.title = 1, oma.scale = 0, units = 'in', oma.val = c(1, 1, 1, 1),
+                useDingbats = FALSE, res = 300, quality = 75, pars = list(),
+                ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    jpeg(file = filename, height = height, width = width, units = units, res = res, quality = quality, ...)
+    if (!is.null(dim)) {
+        if (length(dim) == 1) 
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+}
+
 
 #' @name readin
 #' @title flexible file opening
@@ -893,6 +1047,16 @@ make_dummy = function(x, field = ".", sep = ".", levelsOnly = FALSE, fullRank = 
     return(out)
 }
 
+
+#' @name somejit
+#' @title add tiny jitter
+#'
+#' @description
+#'
+#' @export
+somejit <- function(x, factor = 1e-6) {
+    set.seed(10); jitter(x, factor = factor)
+}
 
 #' @name jitter2
 #' @title jitter with consistent seed
@@ -1952,6 +2116,11 @@ ppng = function (expr, filename = "plot.png", height = 10, width = 10,
             title(title, cex.main = cex.title * max(cex))
         silent({dev.off()})
     })
+}
+
+
+file.dir <- function (paths) {
+    return(gsub("(^|(.*\\/))?([^\\/]*)$", "\\2", paths))
 }
 
 #' @name ppdf
@@ -6117,12 +6286,11 @@ read.bam.header = function(bam, trim = FALSE) {
 #' @return vcf path
 #' @export
 bcfindex = function(vcf, force = TRUE) {
-    if (!force) {
-        if (!grepl(".[bv]cf(.gz)?$", vcf)) {
-            stop("check if you have a valid bcf/vcf file")
-        }
+    ## if (!force) {
+    if (!grepl(".[bv]cf(.gz)?$", vcf)) {
+        stop("check if you have a valid bcf/vcf file")
     }
-    if (!file.exists(paste0(vcf, ".tbi")) & !file.exists(paste0(vcf, ".csi"))) {
+    if (!file.exists(paste0(vcf, ".tbi")) & !file.exists(paste0(vcf, ".csi")) || isTRUE(force)) {
         system(sprintf("bcftools index --tbi %s", vcf))
     }
     vcf
@@ -9900,9 +10068,10 @@ pairs.filter.sv = function(tbl, id.field, sv.field = "svaba_unfiltered_somatic_v
       "loading ", pon.path)
     sv_pon = gr.noval(readRDS(pon.path))
   }
+  thisenv = environment()
   iter.fun = function(pr, tbl) {
     try2({
-      ent = tbl[get(id.field) == pr]
+      ent = tbl[get(id.field) == thisenv$pr]
       return(.filter_sv(ent))
     })
   }
