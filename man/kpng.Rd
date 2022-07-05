@@ -2,6 +2,7 @@
 % Please edit documentation in R/package.R
 \name{kpng}
 \alias{kpng}
+\alias{kjpeg}
 \title{open png device with ppng defaults without closing}
 \usage{
 kpng(
@@ -23,7 +24,30 @@ kpng(
   pars = list(),
   ...
 )
+
+kjpeg(
+  filename = "plot.jpeg",
+  height = 10,
+  width = 10,
+  h = height,
+  w = width,
+  cex = 1,
+  title = NULL,
+  byrow = TRUE,
+  dim = NULL,
+  cex.title = 1,
+  oma.scale = 0,
+  units = "in",
+  oma.val = c(1, 1, 1, 1),
+  useDingbats = FALSE,
+  res = 300,
+  quality = 75,
+  pars = list(),
+  ...
+)
 }
 \description{
+
+
 
 }
