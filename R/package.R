@@ -659,6 +659,27 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name read.header
+#' @title read header of file
+#'
+#' @description
+#'
+#' @export read.header
+read.header = function(path, header.char = "#") {
+    n = 0
+    f = file(path, open = "r")
+    on.exit(close(f))
+    out = character(0)
+    rl = readLines(f, n = 1)
+    while(grepl(paste0("^", header.char), rl)) {
+        n = n + 1
+        out = c(out, rl)
+        rl = readLines(f, n = 1)
+    }
+    return(list(output = out, nlines = n))
+}
+
+
 #' @name kpdf
 #' @title open pdf device with ppdf defaults without closing
 #'
@@ -2657,15 +2678,12 @@ file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", 
 #' @param ... an expression
 #' @return NULL
 #' @export
-silent = function(this_expr, this_env = parent.frame(), enclos = parent.frame(2)) {
-    eval(expr = {capture.output(
-            capture.output(... = this_expr,
-                           file = "/dev/null",
-                           type = c("output")),
-            file = "/dev/null",
-            type = "message")
-    }, envir = this_env, enclos = parent.frame(2))
-    invisible()
+silent <- function (this_expr, this_env = parent.frame(), enclos = parent.frame(2)) {
+        eval(expr = {
+            suppressWarnings(capture.output(capture.output(... = this_expr, file = "/dev/null", 
+                                          type = c("output")), file = "/dev/null", type = "message"))
+        }, envir = .GlobalEnv, enclos = .GlobalEnv)
+        invisible()
 }
 
 
@@ -5963,7 +5981,8 @@ gg_mytheme = function(gg,
               axis.text.y = element_text(size = rel(y_axis_cex), hjust = y_axis_hjust, colour = "black"),
               plot.title = element_text(size = rel(title_cex)),
               axis.title.x = element_text(size = rel(xlab_cex)),
-              axis.title.y = element_text(size = rel(ylab_cex)))
+              axis.title.y = element_text(size = rel(ylab_cex)),
+              axis)
     if (isTRUE(print)) return(print(gg)) else return(gg)
 }
 
@@ -9174,6 +9193,138 @@ sv_filter = function(sv, filt_sv, pad = 500)
         data.table(pair = ent$pair, svaba_unfiltered_somatic_vcf_sv_pon_filtered = NA_character_)
     }
 }
+
+#' @name fit.cnv.sig
+#' @title fit battenberg copy number to CN signatures (Nature 2022)
+#'
+#' 
+#' @export fit.cnv.sig
+fit.cnv.sig = function(gr.seg, sig.cnv = "~/Dropbox/Isabl/HRD/Steele-cnv-signature-definitions.txt",
+         id = NULL) {
+    
+    features = c('0:homdel:0-100kb', '0:homdel:100kb-1Mb', '0:homdel:>1Mb', '1:LOH:0-100kb', 
+                 '1:LOH:100kb-1Mb', '1:LOH:1Mb-10Mb', '1:LOH:10Mb-40Mb', '1:LOH:>40Mb', 
+                 '2:LOH:0-100kb', '2:LOH:100kb-1Mb', '2:LOH:1Mb-10Mb', '2:LOH:10Mb-40Mb', '2:LOH:>40Mb', 
+                 '3-4:LOH:0-100kb', '3-4:LOH:100kb-1Mb', '3-4:LOH:1Mb-10Mb', '3-4:LOH:10Mb-40Mb', '3-4:LOH:>40Mb', 
+                 '5-8:LOH:0-100kb', '5-8:LOH:100kb-1Mb', '5-8:LOH:1Mb-10Mb', '5-8:LOH:10Mb-40Mb', '5-8:LOH:>40Mb', 
+                 '9+:LOH:0-100kb', '9+:LOH:100kb-1Mb', '9+:LOH:1Mb-10Mb', '9+:LOH:10Mb-40Mb', '9+:LOH:>40Mb', 
+                 '2:het:0-100kb', '2:het:100kb-1Mb', '2:het:1Mb-10Mb', '2:het:10Mb-40Mb', '2:het:>40Mb', 
+                 '3-4:het:0-100kb', '3-4:het:100kb-1Mb', '3-4:het:1Mb-10Mb', '3-4:het:10Mb-40Mb', '3-4:het:>40Mb', 
+                 '5-8:het:0-100kb', '5-8:het:100kb-1Mb', '5-8:het:1Mb-10Mb', '5-8:het:10Mb-40Mb', '5-8:het:>40Mb', 
+                 '9+:het:0-100kb', '9+:het:100kb-1Mb', '9+:het:1Mb-10Mb', '9+:het:10Mb-40Mb', '9+:het:>40Mb')
+
+
+    if (is.character(gr.seg) && file.exists(gr.seg)) {
+        gr.seg = readin(gr.seg, other.txt = c("seg"))
+    }
+
+    if (inherits(gr.seg, "data.frame")) {
+        gr.seg = df2gr(gr.seg, 2, 3, 4)
+    } else if (inherits(gr.seg, "GRanges")) {
+        NULL
+    } else {
+        stop("seg must be a path to a CN segmentation file or a GRanges/data frame")
+    }
+    
+
+    super_class = c('het', 'LOH', "homdel")
+    hom_del_class = c('0-100kb', '100kb-1Mb', '>1Mb')
+    # x_labels = c('>40Mb', '10Mb-40Mb', '1Mb-10Mb', '100kb-1Mb', '0-100kb')
+    x_labels = c("0-100kb","100kb-1Mb","1Mb-10Mb","10Mb-40Mb",">40Mb")
+    CN_classes = c("1","2","3-4","5-8","9+") # different total CN states
+
+    gr.seg$hom_seg = cut(width(gr.seg), c(-1, 100e3, 1e6, Inf), labels = hom_del_class)
+    gr.seg$x_seg = cut(width(gr.seg), c(-1, 100e3, 1e6, 10e6, 40e6, Inf), labels = x_labels)
+    gr.seg$tot_cn = with(gr.seg, nMaj1_A + nMin1_A)
+    gr.seg$minor = gr.seg$nMin1_A
+    gr.seg$major = gr.seg$nMaj1_A
+    gr.seg$cn_state = cut(gr.seg$tot_cn, c(-1, 1, 2, 4, 8, Inf), labels = CN_classes)
+    gr.seg$CN_class = with(gr.seg, case_when(tot_cn == 0 ~ "homdel",
+                                             minor == 0 & major > 0 ~ "LOH",
+                                             TRUE ~ "het"))
+
+    gr.seg$x_lv = with(gr.seg, paste(cn_state, CN_class, x_seg, sep = ":"))
+    gr.seg$hom_lv = with(gr.seg, paste(cn_state, CN_class, hom_seg, sep = ":"))
+    gr.seg$is_homdel = with(gr.seg, CN_class == "homdel")
+    gr.seg$feature = with(gr.seg, factor(ifelse(is_homdel, hom_lv, x_lv), features))
+
+    ## sig.cnv.path = "~/Dropbox/Isabl/HRD/Steele-Nature-2022-supp-table2.xlsx"
+    ## esh = readxl::excel_sheets(sig.cnv.path)
+    ## "Pancan sig definitions"
+
+    if (is.character(sig.cnv) && file.exists(sig.cnv)) {
+        sig.def = read.table(sig.cnv)
+    } else if (inherits(sig.def, c("data.frame", "matrix"))) {
+        sig.def = sig.cnv
+    } else {
+        stop("sig.cnv must be a path to signature definition or a matrix/data.frame")
+    }
+
+    nbootFit = 100
+    methodFit = "KLD"
+    threshold_percentFit = 5
+    bootstrapSignatureFit = TRUE
+    nbootFit = 100
+    threshold_p.valueFit = 0.05
+    bootstrapHRDetectScores = FALSE
+    nparallel = 1
+    randomSeed = 10
+
+    cat_cnv = matrify(as.data.frame(gr.seg$feature %>% table))
+
+    bootstrap_fit_cnv <- signature.tools.lib::SignatureFit_withBootstrap(
+                                                  cat_cnv, 
+                                                  sig.def, nboot = nbootFit, method = methodFit, 
+                                                  threshold_percent = threshold_percentFit, threshold_p.value = threshold_p.valueFit, 
+                                                  verbose = FALSE, nparallel = nparallel, randomSeed = randomSeed
+                                              )
+
+    exposures_cnv <- bootstrap_fit_cnv$E_median_filtered
+    exposures_cnv[is.nan(exposures_cnv)] <- 0
+
+    out = as.data.table(transp(exposures_cnv)[[1]])
+    setnames(out, rownames(exposures_cnv))
+    if (!is.null(id)) {
+        out$id = id
+        setcolorder(out, "id")
+    }
+    return(out)
+}
+
+#' @name isv2grl
+#' @title isv2grl
+#'
+#' 
+#' @export 
+isv2grl = function(sv, flipstrand = TRUE) {
+    if (is.character(sv) && file.exists(sv)) {
+        sv.path = sv
+        vcf = readVcf(sv)
+        sv = rowRanges(vcf)
+        mcols(sv) = cbind(mcols(sv), info(vcf))
+    }
+    if (NROW(sv)) {
+        gstrands = transp(strsplit(sv$STRANDS, ""), c)
+        if (flipstrand) {
+            gstrands[[1]] = unname(c("+" = "-", "-" = "+")[gstrands[1][[1]]])
+            gstrands[[2]] = unname(c("+" = "-", "-" = "+")[gstrands[2][[1]]])
+        }
+        strand(sv) = gstrands[[1]]
+        sv$ALT = unlist(sv$ALT)
+        sv$alt = gsub("[\\[N\\]]", "", sv$ALT, perl = T)
+        gr.2 = GRanges(sv$alt)
+        strand(gr.2) = gstrands[[2]]
+        grl = GRangesList(unname(gr.noval(sv)), unname(gr.2))
+        grl = grl.pivot(grl)
+    } else {
+        grl = GRangesList()
+    }
+    mcols(grl) = mcols(sv)
+    return(grl)
+}
+
+
+
 
 ##############################
 ##############################
