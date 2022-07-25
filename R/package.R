@@ -664,7 +664,7 @@ lst.emptyreplace = function(x, replace = NA) {
 #'
 #' @description
 #'
-#' @export read.header
+#' @export
 dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, ...) 
 {
     spl = tbl[[split_col]]
@@ -1347,7 +1347,7 @@ metanames = function(x) {
 #' 
 #'
 #' @export
-split_by = function(dt, fields, do.unname = TRUE) {
+split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE) {
     in_type_is_granges = inherits(dt, c("GRanges", "IRanges", "GRangesList", "IRangesList"))
     if (in_type_is_granges) {
         out = dt
@@ -1361,7 +1361,10 @@ split_by = function(dt, fields, do.unname = TRUE) {
     ## colix = which(names(dt) %in% fields)
     expr = parse(text = sprintf("dt[,%s,drop=FALSE]", mkst(colix)))
     cols = eval(expr)
-    uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+    if (!isTRUE(split_col_sort)) 
+        uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+    else
+        uf = dodo.call2(FUN = function(...) paste(..., sep = " "), as.list(cols))
     ## rles = dodo.call2(FUN = rleseq, as.list(cols))
     if (in_type_is_granges) {
         out = split(out, uf)
