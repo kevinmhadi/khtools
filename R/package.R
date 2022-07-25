@@ -659,6 +659,27 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name dtapply
+#' @title mclapply on a table split by a column
+#'
+#' @description
+#'
+#' @export read.header
+dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, ...) 
+{
+    spl = tbl[[split_col]]
+    if (anyDuplicated(spl)) {
+        if (isTRUE(mc.strict)) errfun = stop else errfun = warning
+        errfun("split column contains duplicates - some entries will have multiple paths")
+    }
+    if (!isTRUE(split_col_sort)) {
+        spl = factor(spl, unique(spl))
+    }
+    lst = split(tbl, spl)
+    mclapply(lst, mc.cores = mc.cores, FUN, ...)
+}
+
+
 #' @name read.header
 #' @title read header of file
 #'
