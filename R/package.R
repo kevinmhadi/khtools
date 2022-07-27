@@ -425,6 +425,41 @@ ix_sdiff = function(obj, filt_out) {
     obj[! ix %in% filt_out]
 }
 
+#' @name false2na
+#' @title replace FALSE with NA
+#'
+#' @description
+#' A convenience function to set a logical vector with NAs to false
+#'
+#' @return A logical vector with NAs set to FALSE
+#' @export
+false2na = function(x) {
+    if (is.logical(x))
+        x[x %in% FALSE] = NA
+    else
+        stop("x is not logical")
+    x
+}
+
+#' @name nonzero2na
+#' @title replace 0 to with NA
+#'
+#' @description
+#' A convenience function to set a logical vector with NAs to false
+#'
+#' @return A logical vector with NAs set to FALSE
+#' @export
+nonzero2na = function(x) {
+    if (is.integer(x))
+        naval = NA_integer_
+    else if (is.double(x))
+        naval = NA_real_
+    else
+        stop("x is not double or integer")
+    x[x > 0] = naval
+    x
+}
+
 #' @name na2false
 #' @title replace logical vector with NA to FALSE
 #'
@@ -659,6 +694,60 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name copydt
+#' @title copy data frame/table columns to a new data table with forced column structure
+#'
+#' @description
+#' Ensure that all columns in out data table possess the specified columns
+#' in which default values for missing columns will be NA valuess
+#'
+#' @export
+copydt = function(dt, columns, as.data.table = TRUE) {
+    out = data.frame()[seq_len(max(NROW(dt), 1)),]
+    ix = seq_len(NROW(columns))
+    outname = names(columns)
+    badnames = !nzchar(outname) | is.na(outname)
+    if (is.null(outname)) outname = columns
+    if (any(badnames)) outname[badnames] = columns[badnames]
+    for (i in ix) {
+        cn = columns[i]
+        nm = outname[i]
+        if (is.null(dt[[cn]]))
+            out[[nm]] = NA
+        else
+            out[[nm]] = dt[[cn]]
+    }
+    if (NROW(dt) == 0) {
+        out = out[0,,drop=F]
+    }
+    if (as.data.table) {
+        setDT(out)
+    }
+    return(out)
+}
+
+#' @name AND
+#' @title test boolean AND across multiple vectors
+#'
+#' @description
+#'
+#' @export
+AND = function(FUN = identity, ...) {
+    lst = lapply(list(...), FUN)
+    Reduce(function(x,y) {x & y}, lst)
+}
+
+#' @name OR
+#' @title test boolean OR across multiple vectors
+#'
+#' @description
+#'
+#' @export
+OR = function(FUN = identity, ...) {
+    lst = lapply(list(...), FUN)
+    Reduce(function(x,y) {x | y}, lst)
+}
+
 #' @name dtapply
 #' @title mclapply on a table split by a column
 #'
@@ -667,15 +756,21 @@ lst.emptyreplace = function(x, replace = NA) {
 #' @export
 dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, ...) 
 {
-    spl = tbl[[split_col]]
-    if (anyDuplicated(spl)) {
+    ## spl = tbl[[split_col]]
+    ## dups = logical(NROW(tbl))
+    dups = 0
+    for (x in split_col) {
+        dups = dups + anyDuplicated(tbl[[x]])
+    }
+    if (dups > 0) {
         if (isTRUE(mc.strict)) errfun = stop else errfun = warning
         errfun("split column contains duplicates - some entries will have multiple paths")
     }
-    if (!isTRUE(split_col_sort)) {
-        spl = factor(spl, unique(spl))
-    }
-    lst = split(tbl, spl)
+    ## if (!isTRUE(split_col_sort)) {
+    ##     spl = factor(spl, unique(spl))
+    ## }
+    ## lst = split(tbl, spl)
+    lst = split_by(tbl, split_col, split_col_sort = split_col_sort)
     mclapply(lst, mc.cores = mc.cores, FUN, ...)
 }
 
@@ -6393,6 +6488,8 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ##############################
 ##############################
 
+
+
 #' @name trans.df
 #' @title transpose data.table or data.frame
 #'
@@ -9021,8 +9118,13 @@ gr2bed <- function(gr) {
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
+grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerobased = TRUE) {
     grpiv = grl.pivot(grl)
+    if (zerobased) {
+        grpiv[[1]] = gr.resize(grpiv[[1]], width = 2, pad = FALSE, fix = "end")
+        grpiv[[2]] = gr.resize(grpiv[[2]], width = 2, pad = FALSE, fix = "end")
+    }
+
 
     mcgrl = as.data.frame(mcols(grl))
 
@@ -9077,7 +9179,7 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
 #' converting bedpe to grl
 #'
 #' @export
-bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
+bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRUE) {
     bedpe$chrom1 = as.character(bedpe$chrom1)
     bedpe$chrom2 = as.character(bedpe$chrom2)
     st1 = bedpe$strand1
@@ -9086,18 +9188,24 @@ bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
         st1 = c("+" = "-", "-" = "+")[st1]
         st2 = c("+" = "-", "-" = "+")[st2]
     }
-    gr1 = data.frame(seqnames = bedpe$chrom1, start = bedpe$start1 + 1,
+    gr1 = data.frame(seqnames = bedpe$chrom1, start = bedpe$start1,
                      end = bedpe$end1, strand = st1)
     gr1 = makeGRangesFromDataFrame(gr1)
-    gr1 = gr.resize(gr1, 1, pad = FALSE, fix = "start")
-    gr2 = data.frame(seqnames = bedpe$chrom2, start = bedpe$start2 + 1,
+    gr1 = gr.resize(gr1, 1, pad = FALSE, fix = "end")
+    gr2 = data.frame(seqnames = bedpe$chrom2, start = bedpe$start2,
                 end = bedpe$end2, strand = st2)
     gr2 = makeGRangesFromDataFrame(gr2)
-    gr2 = gr.resize(gr2, 1, pad = FALSE, fix = "start")
-    d1 = bedpe[, c("name", "score"), drop=F]
+    gr2 = gr.resize(gr2, 1, pad = FALSE, fix = "end")
+    d1.cols = intersect(c("name", "score"), colnames(bedpe))
+    if (length(d1.cols))
+        d1 = tryCatch(bedpe[, d1.cols, drop = F, with = F], error = function(e) bedpe[, d1.cols, drop = F])
+    else
+        d1 = tryCatch(bedpe[, 0, drop = F, with = F], error = function(e) bedpe[, 0, drop = F])
+    ## d1 = bedpe[, c("name", "score"), drop=F]
     d2 = bedpe[, -c(1:10), drop=F]
     grl = grl.pivot(GRangesList(gr1, gr2))
     mcols(grl) = cbind(d1, d2)
+    if (sort) grl = gr.sort(grl)
     return(grl)
 }
 
