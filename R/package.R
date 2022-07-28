@@ -715,7 +715,7 @@ copydt = function(dt, columns, as.data.table = TRUE) {
         if (is.null(dt[[cn]]))
             out[[nm]] = NA
         else
-            out[[nm]] = dt[[cn]]
+            out[[nm]] = rep_len(dt[[cn]], NROW(out))
     }
     if (NROW(dt) == 0) {
         out = out[0,,drop=F]
@@ -6100,8 +6100,7 @@ gg_mytheme = function(gg,
               axis.text.y = element_text(size = rel(y_axis_cex), hjust = y_axis_hjust, colour = "black"),
               plot.title = element_text(size = rel(title_cex)),
               axis.title.x = element_text(size = rel(xlab_cex)),
-              axis.title.y = element_text(size = rel(ylab_cex)),
-              axis)
+              axis.title.y = element_text(size = rel(ylab_cex)))
     if (isTRUE(print)) return(print(gg)) else return(gg)
 }
 
