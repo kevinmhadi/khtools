@@ -11,8 +11,8 @@ fitglmnet(
   ycol,
   dat,
   only_positive = TRUE,
-  maxit = 1e+05,
-  thresh = 1e-07,
+  maxit = 100000,
+  thresh = 0.0000001,
   standardize = FALSE
 )
 }

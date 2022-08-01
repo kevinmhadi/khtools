@@ -425,6 +425,41 @@ ix_sdiff = function(obj, filt_out) {
     obj[! ix %in% filt_out]
 }
 
+#' @name false2na
+#' @title replace FALSE with NA
+#'
+#' @description
+#' A convenience function to set a logical vector with NAs to false
+#'
+#' @return A logical vector with NAs set to FALSE
+#' @export
+false2na = function(x) {
+    if (is.logical(x))
+        x[x %in% FALSE] = NA
+    else
+        stop("x is not logical")
+    x
+}
+
+#' @name nonzero2na
+#' @title replace 0 to with NA
+#'
+#' @description
+#' A convenience function to set a logical vector with NAs to false
+#'
+#' @return A logical vector with NAs set to FALSE
+#' @export
+nonzero2na = function(x) {
+    if (is.integer(x))
+        naval = NA_integer_
+    else if (is.double(x))
+        naval = NA_real_
+    else
+        stop("x is not double or integer")
+    x[x > 0] = naval
+    x
+}
+
 #' @name na2false
 #' @title replace logical vector with NA to FALSE
 #'
@@ -658,6 +693,108 @@ lst.emptyreplace = function(x, replace = NA) {
 ################################################## general R utilities
 ##################################################
 ##################################################
+
+#' @name copydt
+#' @title copy data frame/table columns to a new data table with forced column structure
+#'
+#' @description
+#' Ensure that all columns in out data table possess the specified columns
+#' in which default values for missing columns will be NA valuess
+#'
+#' @export
+copydt = function(dt, columns, as.data.table = TRUE) {
+    out = data.frame()[seq_len(max(NROW(dt), 1)),]
+    ix = seq_len(NROW(columns))
+    outname = names(columns)
+    badnames = !nzchar(outname) | is.na(outname)
+    if (is.null(outname)) outname = columns
+    if (any(badnames)) outname[badnames] = columns[badnames]
+    for (i in ix) {
+        cn = columns[i]
+        nm = outname[i]
+        if (is.null(dt[[cn]]))
+            out[[nm]] = NA
+        else
+            out[[nm]] = rep_len(dt[[cn]], NROW(out))
+    }
+    if (NROW(dt) == 0) {
+        out = out[0,,drop=F]
+    }
+    if (as.data.table) {
+        setDT(out)
+    }
+    return(out)
+}
+
+#' @name AND
+#' @title test boolean AND across multiple vectors
+#'
+#' @description
+#'
+#' @export
+AND = function(FUN = identity, ...) {
+    lst = lapply(list(...), FUN)
+    Reduce(function(x,y) {x & y}, lst)
+}
+
+#' @name OR
+#' @title test boolean OR across multiple vectors
+#'
+#' @description
+#'
+#' @export
+OR = function(FUN = identity, ...) {
+    lst = lapply(list(...), FUN)
+    Reduce(function(x,y) {x | y}, lst)
+}
+
+#' @name dtapply
+#' @title mclapply on a table split by a column
+#'
+#' @description
+#'
+#' @export
+dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, ...) 
+{
+    ## spl = tbl[[split_col]]
+    ## dups = logical(NROW(tbl))
+    dups = 0
+    for (x in split_col) {
+        dups = dups + anyDuplicated(tbl[[x]])
+    }
+    if (dups > 0) {
+        if (isTRUE(mc.strict)) errfun = stop else errfun = warning
+        errfun("split column contains duplicates - some entries will have multiple paths")
+    }
+    ## if (!isTRUE(split_col_sort)) {
+    ##     spl = factor(spl, unique(spl))
+    ## }
+    ## lst = split(tbl, spl)
+    lst = split_by(tbl, split_col, split_col_sort = split_col_sort)
+    mclapply(lst, mc.cores = mc.cores, FUN, ...)
+}
+
+
+#' @name read.header
+#' @title read header of file
+#'
+#' @description
+#'
+#' @export read.header
+read.header = function(path, header.char = "#") {
+    n = 0
+    f = file(path, open = "r")
+    on.exit(close(f))
+    out = character(0)
+    rl = readLines(f, n = 1)
+    while(grepl(paste0("^", header.char), rl)) {
+        n = n + 1
+        out = c(out, rl)
+        rl = readLines(f, n = 1)
+    }
+    return(list(output = out, nlines = n))
+}
+
 
 #' @name kpdf
 #' @title open pdf device with ppdf defaults without closing
@@ -1305,7 +1442,7 @@ metanames = function(x) {
 #' 
 #'
 #' @export
-split_by = function(dt, fields, do.unname = TRUE) {
+split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE) {
     in_type_is_granges = inherits(dt, c("GRanges", "IRanges", "GRangesList", "IRangesList"))
     if (in_type_is_granges) {
         out = dt
@@ -1319,7 +1456,10 @@ split_by = function(dt, fields, do.unname = TRUE) {
     ## colix = which(names(dt) %in% fields)
     expr = parse(text = sprintf("dt[,%s,drop=FALSE]", mkst(colix)))
     cols = eval(expr)
-    uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+    if (!isTRUE(split_col_sort)) 
+        uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+    else
+        uf = dodo.call2(FUN = function(...) paste(..., sep = " "), as.list(cols))
     ## rles = dodo.call2(FUN = rleseq, as.list(cols))
     if (in_type_is_granges) {
         out = split(out, uf)
@@ -2657,15 +2797,12 @@ file.not.exists = function(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", 
 #' @param ... an expression
 #' @return NULL
 #' @export
-silent = function(this_expr, this_env = parent.frame(), enclos = parent.frame(2)) {
-    eval(expr = {capture.output(
-            capture.output(... = this_expr,
-                           file = "/dev/null",
-                           type = c("output")),
-            file = "/dev/null",
-            type = "message")
-    }, envir = this_env, enclos = parent.frame(2))
-    invisible()
+silent <- function (this_expr, this_env = parent.frame(), enclos = parent.frame(2)) {
+        eval(expr = {
+            suppressWarnings(capture.output(capture.output(... = this_expr, file = "/dev/null", 
+                                          type = c("output")), file = "/dev/null", type = "message"))
+        }, envir = .GlobalEnv, enclos = .GlobalEnv)
+        invisible()
 }
 
 
@@ -6350,6 +6487,8 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 ##############################
 ##############################
 
+
+
 #' @name trans.df
 #' @title transpose data.table or data.frame
 #'
@@ -8978,8 +9117,13 @@ gr2bed <- function(gr) {
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
+grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerobased = TRUE) {
     grpiv = grl.pivot(grl)
+    if (zerobased) {
+        grpiv[[1]] = gr.resize(grpiv[[1]], width = 2, pad = FALSE, fix = "end")
+        grpiv[[2]] = gr.resize(grpiv[[2]], width = 2, pad = FALSE, fix = "end")
+    }
+
 
     mcgrl = as.data.frame(mcols(grl))
 
@@ -9034,7 +9178,7 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE) {
 #' converting bedpe to grl
 #'
 #' @export
-bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
+bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRUE) {
     bedpe$chrom1 = as.character(bedpe$chrom1)
     bedpe$chrom2 = as.character(bedpe$chrom2)
     st1 = bedpe$strand1
@@ -9043,18 +9187,24 @@ bedpe2grl <- function(bedpe, flip = FALSE, trim = TRUE, genome = NULL) {
         st1 = c("+" = "-", "-" = "+")[st1]
         st2 = c("+" = "-", "-" = "+")[st2]
     }
-    gr1 = data.frame(seqnames = bedpe$chrom1, start = bedpe$start1 + 1,
+    gr1 = data.frame(seqnames = bedpe$chrom1, start = bedpe$start1,
                      end = bedpe$end1, strand = st1)
     gr1 = makeGRangesFromDataFrame(gr1)
-    gr1 = gr.resize(gr1, 1, pad = FALSE, fix = "start")
-    gr2 = data.frame(seqnames = bedpe$chrom2, start = bedpe$start2 + 1,
+    gr1 = gr.resize(gr1, 1, pad = FALSE, fix = "end")
+    gr2 = data.frame(seqnames = bedpe$chrom2, start = bedpe$start2,
                 end = bedpe$end2, strand = st2)
     gr2 = makeGRangesFromDataFrame(gr2)
-    gr2 = gr.resize(gr2, 1, pad = FALSE, fix = "start")
-    d1 = bedpe[, c("name", "score"), drop=F]
+    gr2 = gr.resize(gr2, 1, pad = FALSE, fix = "end")
+    d1.cols = intersect(c("name", "score"), colnames(bedpe))
+    if (length(d1.cols))
+        d1 = tryCatch(bedpe[, d1.cols, drop = F, with = F], error = function(e) bedpe[, d1.cols, drop = F])
+    else
+        d1 = tryCatch(bedpe[, 0, drop = F, with = F], error = function(e) bedpe[, 0, drop = F])
+    ## d1 = bedpe[, c("name", "score"), drop=F]
     d2 = bedpe[, -c(1:10), drop=F]
     grl = grl.pivot(GRangesList(gr1, gr2))
     mcols(grl) = cbind(d1, d2)
+    if (sort) grl = gr.sort(grl)
     return(grl)
 }
 
@@ -9174,6 +9324,138 @@ sv_filter = function(sv, filt_sv, pad = 500)
         data.table(pair = ent$pair, svaba_unfiltered_somatic_vcf_sv_pon_filtered = NA_character_)
     }
 }
+
+#' @name fit.cnv.sig
+#' @title fit battenberg copy number to CN signatures (Nature 2022)
+#'
+#' 
+#' @export fit.cnv.sig
+fit.cnv.sig = function(gr.seg, sig.cnv = "~/Dropbox/Isabl/HRD/Steele-cnv-signature-definitions.txt",
+         id = NULL) {
+    
+    features = c('0:homdel:0-100kb', '0:homdel:100kb-1Mb', '0:homdel:>1Mb', '1:LOH:0-100kb', 
+                 '1:LOH:100kb-1Mb', '1:LOH:1Mb-10Mb', '1:LOH:10Mb-40Mb', '1:LOH:>40Mb', 
+                 '2:LOH:0-100kb', '2:LOH:100kb-1Mb', '2:LOH:1Mb-10Mb', '2:LOH:10Mb-40Mb', '2:LOH:>40Mb', 
+                 '3-4:LOH:0-100kb', '3-4:LOH:100kb-1Mb', '3-4:LOH:1Mb-10Mb', '3-4:LOH:10Mb-40Mb', '3-4:LOH:>40Mb', 
+                 '5-8:LOH:0-100kb', '5-8:LOH:100kb-1Mb', '5-8:LOH:1Mb-10Mb', '5-8:LOH:10Mb-40Mb', '5-8:LOH:>40Mb', 
+                 '9+:LOH:0-100kb', '9+:LOH:100kb-1Mb', '9+:LOH:1Mb-10Mb', '9+:LOH:10Mb-40Mb', '9+:LOH:>40Mb', 
+                 '2:het:0-100kb', '2:het:100kb-1Mb', '2:het:1Mb-10Mb', '2:het:10Mb-40Mb', '2:het:>40Mb', 
+                 '3-4:het:0-100kb', '3-4:het:100kb-1Mb', '3-4:het:1Mb-10Mb', '3-4:het:10Mb-40Mb', '3-4:het:>40Mb', 
+                 '5-8:het:0-100kb', '5-8:het:100kb-1Mb', '5-8:het:1Mb-10Mb', '5-8:het:10Mb-40Mb', '5-8:het:>40Mb', 
+                 '9+:het:0-100kb', '9+:het:100kb-1Mb', '9+:het:1Mb-10Mb', '9+:het:10Mb-40Mb', '9+:het:>40Mb')
+
+
+    if (is.character(gr.seg) && file.exists(gr.seg)) {
+        gr.seg = readin(gr.seg, other.txt = c("seg"))
+    }
+
+    if (inherits(gr.seg, "data.frame")) {
+        gr.seg = df2gr(gr.seg, 2, 3, 4)
+    } else if (inherits(gr.seg, "GRanges")) {
+        NULL
+    } else {
+        stop("seg must be a path to a CN segmentation file or a GRanges/data frame")
+    }
+    
+
+    super_class = c('het', 'LOH', "homdel")
+    hom_del_class = c('0-100kb', '100kb-1Mb', '>1Mb')
+    # x_labels = c('>40Mb', '10Mb-40Mb', '1Mb-10Mb', '100kb-1Mb', '0-100kb')
+    x_labels = c("0-100kb","100kb-1Mb","1Mb-10Mb","10Mb-40Mb",">40Mb")
+    CN_classes = c("1","2","3-4","5-8","9+") # different total CN states
+
+    gr.seg$hom_seg = cut(width(gr.seg), c(-1, 100e3, 1e6, Inf), labels = hom_del_class)
+    gr.seg$x_seg = cut(width(gr.seg), c(-1, 100e3, 1e6, 10e6, 40e6, Inf), labels = x_labels)
+    gr.seg$tot_cn = with(gr.seg, nMaj1_A + nMin1_A)
+    gr.seg$minor = gr.seg$nMin1_A
+    gr.seg$major = gr.seg$nMaj1_A
+    gr.seg$cn_state = cut(gr.seg$tot_cn, c(-1, 1, 2, 4, 8, Inf), labels = CN_classes)
+    gr.seg$CN_class = with(gr.seg, case_when(tot_cn == 0 ~ "homdel",
+                                             minor == 0 & major > 0 ~ "LOH",
+                                             TRUE ~ "het"))
+
+    gr.seg$x_lv = with(gr.seg, paste(cn_state, CN_class, x_seg, sep = ":"))
+    gr.seg$hom_lv = with(gr.seg, paste(cn_state, CN_class, hom_seg, sep = ":"))
+    gr.seg$is_homdel = with(gr.seg, CN_class == "homdel")
+    gr.seg$feature = with(gr.seg, factor(ifelse(is_homdel, hom_lv, x_lv), features))
+
+    ## sig.cnv.path = "~/Dropbox/Isabl/HRD/Steele-Nature-2022-supp-table2.xlsx"
+    ## esh = readxl::excel_sheets(sig.cnv.path)
+    ## "Pancan sig definitions"
+
+    if (is.character(sig.cnv) && file.exists(sig.cnv)) {
+        sig.def = read.table(sig.cnv)
+    } else if (inherits(sig.def, c("data.frame", "matrix"))) {
+        sig.def = sig.cnv
+    } else {
+        stop("sig.cnv must be a path to signature definition or a matrix/data.frame")
+    }
+
+    nbootFit = 100
+    methodFit = "KLD"
+    threshold_percentFit = 5
+    bootstrapSignatureFit = TRUE
+    nbootFit = 100
+    threshold_p.valueFit = 0.05
+    bootstrapHRDetectScores = FALSE
+    nparallel = 1
+    randomSeed = 10
+
+    cat_cnv = matrify(as.data.frame(gr.seg$feature %>% table))
+
+    bootstrap_fit_cnv <- signature.tools.lib::SignatureFit_withBootstrap(
+                                                  cat_cnv, 
+                                                  sig.def, nboot = nbootFit, method = methodFit, 
+                                                  threshold_percent = threshold_percentFit, threshold_p.value = threshold_p.valueFit, 
+                                                  verbose = FALSE, nparallel = nparallel, randomSeed = randomSeed
+                                              )
+
+    exposures_cnv <- bootstrap_fit_cnv$E_median_filtered
+    exposures_cnv[is.nan(exposures_cnv)] <- 0
+
+    out = as.data.table(transp(exposures_cnv)[[1]])
+    setnames(out, rownames(exposures_cnv))
+    if (!is.null(id)) {
+        out$id = id
+        setcolorder(out, "id")
+    }
+    return(out)
+}
+
+#' @name isv2grl
+#' @title isv2grl
+#'
+#' 
+#' @export 
+isv2grl = function(sv, flipstrand = TRUE) {
+    if (is.character(sv) && file.exists(sv)) {
+        sv.path = sv
+        vcf = readVcf(sv)
+        sv = rowRanges(vcf)
+        mcols(sv) = cbind(mcols(sv), info(vcf))
+    }
+    if (NROW(sv)) {
+        gstrands = transp(strsplit(sv$STRANDS, ""), c)
+        if (flipstrand) {
+            gstrands[[1]] = unname(c("+" = "-", "-" = "+")[gstrands[1][[1]]])
+            gstrands[[2]] = unname(c("+" = "-", "-" = "+")[gstrands[2][[1]]])
+        }
+        strand(sv) = gstrands[[1]]
+        sv$ALT = unlist(sv$ALT)
+        sv$alt = gsub("[\\[N\\]]", "", sv$ALT, perl = T)
+        gr.2 = GRanges(sv$alt)
+        strand(gr.2) = gstrands[[2]]
+        grl = GRangesList(unname(gr.noval(sv)), unname(gr.2))
+        grl = grl.pivot(grl)
+    } else {
+        grl = GRangesList()
+    }
+    mcols(grl) = mcols(sv)
+    return(grl)
+}
+
+
+
 
 ##############################
 ##############################
