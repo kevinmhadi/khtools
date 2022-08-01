@@ -10312,6 +10312,7 @@ pairs.collect.junctions <- function(pairs, jn.field = "complex", id.field = "pai
     }
     lst = mclapply(paths, iter.fun, tbl = pairs, mc.cores = mc.cores)
     cx.edt = rbindlist(lst, fill = TRUE)
+    if (NROW(cx.edt) == 0) return(cx.edt)
     set(cx.edt, j = "fpair", value = factor(cx.edt[[id.field]], levels = prs))
     cx.edt = cx.edt[, !colnames(cx.edt) == "rowname", with = FALSE]
     cx.edt = merge.repl(cx.edt, unique(cx.edt[, .(pair, edge.id, simple_type = gsub("([A-Z]+)([0-9]+)", "\\1", simple), simple_num = gsub("([A-Z]+)([0-9]+)", "\\2", simple))]), by = c("pair", "edge.id"))
