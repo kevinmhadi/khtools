@@ -1568,19 +1568,35 @@ complete.cases2 = function(...) {
 #' in parallel.
 #'
 #' @export uniqf
-uniqf = function(..., sep = paste0(" ", rand.string(length = 8), 
-                                   " ")) {
-    current.rng = .Random.seed
-    txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
-    set_rngseed(seed = 10, verbose = FALSE)
-    on.exit(eval(txt, envir = globalenv()))
+uniqf = function (..., sep = " ")
+{
+    set.seed(10)
     lst = as.list(match.call()[-1])
-    ix = which(names2(lst) != "sep")
-    senv = suppressWarnings(stackenv(parent.frame()))
-    tmpix = do.call(paste, c(lst[ix], alist(sep = dg(sep))), envir = parent.frame())
+    force(sep)
+    nm = names(lst)
+    if (is.null(nm)) {
+        nm = rep_len("", length(lst))
+    }
+    ix = which(nm != "sep")
+    tmpix = do.call(paste, c(lst[ix], alist(sep = sep)))
     tmpix = factor(tmpix, levels = unique(tmpix))
     tmpix
 }
+
+
+## uniqf = function(..., sep = paste0(" ", rand.string(length = 8), 
+##                                    " ")) {
+##     current.rng = .Random.seed
+##     txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
+##     set_rngseed(seed = 10, verbose = FALSE)
+##     on.exit(eval(txt, envir = globalenv()))
+##     lst = as.list(match.call()[-1])
+##     ix = which(names2(lst) != "sep")
+##     ## senv = suppressWarnings(stackenv(parent.frame()))
+##     tmpix = do.call(paste, c(lst[ix], alist(sep = dg(sep))), envir = parent.frame())
+##     tmpix = factor(tmpix, levels = unique(tmpix))
+##     tmpix
+## }
 
 #' @name qq
 #' @title get actual quantile values of vector
