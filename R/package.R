@@ -6368,10 +6368,10 @@ read_bed <- function(bedpath) {
     f = file(bedpath, open = "r")
     thisline = readLines(f, 1)
     headers = character(0)
-    while (grepl("^((#)|(chrom)|(chr))", thisline, ignore.case = T)) {
+    while (length(grep("^((#)|(chrom)|(chr))", thisline, ignore.case = T))) {
         headers = c(headers, thisline)
         thisline = readLines(f, 1)
-    }
+    }    
     lastheader = tail(headers, 1)
     ## ln = sum(length(headers), length(thisline))
     ## while (length(thisline) > 0) {
