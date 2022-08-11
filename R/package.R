@@ -6380,7 +6380,7 @@ write_bed <- function(bed, outpath) {
 #'
 #' @return A data.table
 #' @export read_bed
-read_bed <- function(bedpath) {
+read_bed = function(bedpath) {
     f = file(bedpath, open = "r")
     thisline = readLines(f, 1)
     headers = character(0)
@@ -6397,11 +6397,22 @@ read_bed <- function(bedpath) {
     ##     ln = length(thisline) + ln
     ## }
     ## fread(bedpath, skip = length(headers))
-    bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F),
-                   error = function(e) {
-                       read.table(bedpath, comment.char = "", skip = NROW(headers), header = F)
-                   })
+    ## bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F),
+    ##                error = function(e) {
+    ##                    read.table(bedpath, comment.char = "", skip = NROW(headers), header = F)
+    ##                })
     bedhead = gsub("^#", "", unlist(strsplit(lastheader, "\t")))
+    bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F), 
+                   error = function(e) NULL)
+    if (is.null(bed)) 
+        bed = tryCatch(read.table(bedpath, comment.char = "", skip = NROW(headers), 
+                                  header = F), error = function(e) NULL)
+    
+    if (is.null(bed)) {
+        bed = matrix(integer(0), ncol = length(bedhead))
+        bed = as.data.table(bed)
+    }
+
     if (identical(NROW(bedhead), ncol(bed))) {
         colnames(bed) = bedhead
     }
