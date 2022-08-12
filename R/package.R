@@ -9144,7 +9144,7 @@ gr2bed <- function(gr) {
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerobased = TRUE) {
+grl2bedpe = function(grl, add_breakend_mcol = FALSE, flip = FALSE, as.data.table = TRUE, zerobased = TRUE) {
     grpiv = grl.pivot(grl)
     if (zerobased) {
         grpiv[[1]] = gr.resize(grpiv[[1]], width = 2, pad = FALSE, fix = "end")
