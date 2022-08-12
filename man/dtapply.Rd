@@ -11,6 +11,7 @@ dtapply(
   mc.cores = 1,
   mc.strict = TRUE,
   split_col_sort = FALSE,
+  mclapply = parallel::mclapply,
   ...
 )
 }

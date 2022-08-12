@@ -754,7 +754,7 @@ OR = function(FUN = identity, ...) {
 #' @description
 #'
 #' @export
-dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, mclapply = mclapply, ...) 
+dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, mclapply = parallel::mclapply, ...) 
 {
     ## spl = tbl[[split_col]]
     ## dups = logical(NROW(tbl))
