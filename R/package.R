@@ -9179,6 +9179,11 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerob
     ## reorder
     out = out[, c(canon_col, nix[!nix %in% canon_col]), drop = F]
 
+    if (flip) {
+        out$strand1 = c("+" = "-", "-" = "+")[out$strand1]
+        out$strand2 = c("+" = "-", "-" = "+")[out$strand2]
+    }
+
     if (as.data.table)
         return(as.data.table(out))
     else
@@ -9206,6 +9211,7 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerob
 #'
 #' @export
 bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRUE) {
+    if (!NROW(bedpe)) return(GRangesList())
     bedpe$chrom1 = as.character(bedpe$chrom1)
     bedpe$chrom2 = as.character(bedpe$chrom2)
     st1 = bedpe$strand1
@@ -9228,7 +9234,7 @@ bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRU
     else
         d1 = tryCatch(bedpe[, 0, drop = F, with = F], error = function(e) bedpe[, 0, drop = F])
     ## d1 = bedpe[, c("name", "score"), drop=F]
-    d2 = bedpe[, -c(1:10), drop=F]
+    d2 = bedpe[, -c(1:10), drop=F]    
     grl = grl.pivot(GRangesList(gr1, gr2))
     mcols(grl) = cbind(d1, d2)
     if (sort) grl = gr.sort(grl)
