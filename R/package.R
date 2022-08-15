@@ -1496,7 +1496,10 @@ printerr = function(msg = "", e) {
 #' 
 #'
 #' @export
-nott = Negate
+nott = function(f) {
+    if (missing(f) || is.null(f) || !is.function(f)) f = identity
+    return(Negate(f))
+}
 
 #' @name fillby
 #' @title fill in variables of data table by combos
