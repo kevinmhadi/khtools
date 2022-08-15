@@ -4,7 +4,7 @@
 \alias{uniqf}
 \title{Unique factor}
 \usage{
-uniqf(..., sep = paste0(" ", rand.string(length = 8), " "))
+uniqf(..., sep = " ")
 }
 \description{
 Make a unique factor based on one or more vectors

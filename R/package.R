@@ -754,7 +754,7 @@ OR = function(FUN = identity, ...) {
 #' @description
 #'
 #' @export
-dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, ...) 
+dtapply = function (tbl,  split_col = "system_id", FUN, mc.cores = 1, mc.strict = TRUE, split_col_sort = FALSE, mclapply = parallel::mclapply, ...) 
 {
     ## spl = tbl[[split_col]]
     ## dups = logical(NROW(tbl))
@@ -6383,14 +6383,14 @@ write_bed <- function(bed, outpath) {
 #'
 #' @return A data.table
 #' @export read_bed
-read_bed <- function(bedpath) {
+read_bed = function(bedpath) {
     f = file(bedpath, open = "r")
     thisline = readLines(f, 1)
     headers = character(0)
-    while (grepl("^((#)|(chrom)|(chr))", thisline, ignore.case = T)) {
+    while (length(grep("^((#)|(chrom)|(chr))", thisline, ignore.case = T))) {
         headers = c(headers, thisline)
         thisline = readLines(f, 1)
-    }
+    }    
     lastheader = tail(headers, 1)
     ## ln = sum(length(headers), length(thisline))
     ## while (length(thisline) > 0) {
@@ -6400,11 +6400,22 @@ read_bed <- function(bedpath) {
     ##     ln = length(thisline) + ln
     ## }
     ## fread(bedpath, skip = length(headers))
-    bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F),
-                   error = function(e) {
-                       read.table(bedpath, comment.char = "", skip = NROW(headers), header = F)
-                   })
+    ## bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F),
+    ##                error = function(e) {
+    ##                    read.table(bedpath, comment.char = "", skip = NROW(headers), header = F)
+    ##                })
     bedhead = gsub("^#", "", unlist(strsplit(lastheader, "\t")))
+    bed = tryCatch(fread(bedpath, skip = NROW(headers), header = F), 
+                   error = function(e) NULL)
+    if (is.null(bed)) 
+        bed = tryCatch(read.table(bedpath, comment.char = "", skip = NROW(headers), 
+                                  header = F), error = function(e) NULL)
+    
+    if (is.null(bed)) {
+        bed = matrix(integer(0), ncol = length(bedhead))
+        bed = as.data.table(bed)
+    }
+
     if (identical(NROW(bedhead), ncol(bed))) {
         colnames(bed) = bedhead
     }
@@ -9136,7 +9147,7 @@ gr2bed <- function(gr) {
 #' also shifts coordinates to half closed 0 based
 #'
 #' @export
-grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerobased = TRUE) {
+grl2bedpe = function(grl, add_breakend_mcol = FALSE, flip = FALSE, as.data.table = TRUE, zerobased = TRUE) {
     grpiv = grl.pivot(grl)
     if (zerobased) {
         grpiv[[1]] = gr.resize(grpiv[[1]], width = 2, pad = FALSE, fix = "end")
@@ -9171,6 +9182,11 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerob
     ## reorder
     out = out[, c(canon_col, nix[!nix %in% canon_col]), drop = F]
 
+    if (flip) {
+        out$strand1 = c("+" = "-", "-" = "+")[out$strand1]
+        out$strand2 = c("+" = "-", "-" = "+")[out$strand2]
+    }
+
     if (as.data.table)
         return(as.data.table(out))
     else
@@ -9198,6 +9214,7 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, as.data.table = TRUE, zerob
 #'
 #' @export
 bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRUE) {
+    if (!NROW(bedpe)) return(GRangesList())
     bedpe$chrom1 = as.character(bedpe$chrom1)
     bedpe$chrom2 = as.character(bedpe$chrom2)
     st1 = bedpe$strand1
@@ -9220,7 +9237,7 @@ bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRU
     else
         d1 = tryCatch(bedpe[, 0, drop = F, with = F], error = function(e) bedpe[, 0, drop = F])
     ## d1 = bedpe[, c("name", "score"), drop=F]
-    d2 = bedpe[, -c(1:10), drop=F]
+    d2 = bedpe[, -c(1:10), drop=F]    
     grl = grl.pivot(GRangesList(gr1, gr2))
     mcols(grl) = cbind(d1, d2)
     if (sort) grl = gr.sort(grl)
