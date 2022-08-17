@@ -694,6 +694,57 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name bool
+#' @title Clean Up Boolean Logic
+#'
+#' @description
+#' wrapping around boolean statements to ignore NULL or length(0) vectors
+#' in a series of boolean statements
+#'
+#' @export
+bool = function(x, nullignore = TRUE, na2false = TRUE) {
+    bools = as.list(substitute(x))
+    arg1 = logical(0)
+    arg2 = logical(0)
+    ## lst = list()
+    boollist = list()
+    counter = 1
+    while(length(bools) > 1 && toString(bools[[1]]) %in% c("&", "|")) {
+        boollist[[counter]] = eval(bools[[1]])
+        ## lst[[1]] = eval(bools[[length(bools)]])
+        if (counter > 1) {
+            arg2 = eval(bools[[length(bools)]])
+            if (anyNA(arg2) && na2false) {
+                arg2 = na2false(arg2)
+            }
+            if (length(arg2) == 0 && length(arg1) && nullignore) {
+                arg2 = arg1
+            }
+        } else {
+            arg1 = eval(bools[[length(bools)]])
+            if (anyNA(arg2) && na2false) {
+                arg1 = na2false(arg1)
+            }
+            if (length(arg1) == 0 & nullignore) {
+                arg1 = logical(0)
+            }
+        }
+
+        bools = bools[-length(bools)]
+        tmp = as.list(bools[[length(bools)]])
+        if (length(tmp) > 1 && toString(tmp[[1]]) %in% c("&", "|"))
+            bools = tmp
+        if (counter > 1 && length(arg1) && length(arg2)) {
+            arg1 = boollist[[counter - 1]](arg1, arg2)
+        } else if (counter > 1 && length(arg1) == 0) {
+            arg1 = arg2
+        }
+        counter = counter + 1
+    }
+    return(arg1)
+}
+
+
 #' @name copydt
 #' @title copy data frame/table columns to a new data table with forced column structure
 #'
@@ -1676,7 +1727,7 @@ flag2int = function(flags) {
 #'
 #'
 #' @export
-mkst <- function(v, f = "c", po = "(", pc = ")", collapse = ",", asnull = FALSE) {
+mkst = function(v, f = "c", po = "(", pc = ")", collapse = ",", asnull = FALSE) {
     if (identical(NROW(v), 0L)) {
         if (isTRUE(asnull)) return(NULL) else return("")
     }
@@ -3580,7 +3631,7 @@ dedup = function(x, suffix = ".") {
 #' @return random string
 #' @author Someone from Stackoverflow
 #' @export rand.string
-rand.string <- function(n=1, length=12)
+rand.string = function(n=1, length=12)
 {
     randomString <- c(1:n)                  # initialize vector
     for (i in 1:n)
@@ -6362,7 +6413,7 @@ vcf_remove_sample = function(x = '/gpfs/commons/groups/imielinski_lab/data/PCAWG
 #'
 #' @return A data.table
 #' @export write_bed
-write_bed <- function(bed, outpath) {
+write_bed = function(bed, outpath) {
     cn = colnames(bed)
     cn[1] = paste0("#", cn[1])
     bedhead = paste0(cn, collapse = "\t")
@@ -8121,7 +8172,7 @@ gr.sort = function(gr, ignore.strand = TRUE) {
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export gr.order
-gr.order <- function(gr, ignore.strand = T) {
+gr.order = function(gr, ignore.strand = T) {
     sgr = GenomeInfoDb::sortSeqlevels(gr)
     if (isTRUE(ignore.strand))
         sgr = gr.stripstrand(sgr)
