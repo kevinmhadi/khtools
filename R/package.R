@@ -703,12 +703,14 @@ lst.emptyreplace = function(x, replace = NA) {
 #'
 #' @export
 bool = function(x, nullignore = TRUE, na2false = TRUE) {
-    bools = as.list(substitute(x))
+    x1 = bools = substitute(x)
+    bools = as.list(bools)
     arg1 = logical(0)
     arg2 = logical(0)
     ## lst = list()
     boollist = list()
     counter = 1
+    if (!toString(bools[[1]]) %in% c("&", "|")) return(eval(x1))
     while(length(bools) > 1 && toString(bools[[1]]) %in% c("&", "|")) {
         boollist[[counter]] = eval(bools[[1]])
         ## lst[[1]] = eval(bools[[length(bools)]])
