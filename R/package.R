@@ -703,47 +703,47 @@ lst.emptyreplace = function(x, replace = NA) {
 #'
 #' @export
 bool = function(x, nullignore = TRUE, na2false = TRUE) {
-    x1 = bools = substitute(x)
-    bools = as.list(bools)
-    arg1 = logical(0)
-    arg2 = logical(0)
+    x1.2394823987394875 = bools.234987987293487329487 = substitute(x)
+    bools.234987987293487329487 = as.list(bools.234987987293487329487)
+    arg1.143487587 = logical(0)
+    arg2.143487587 = logical(0)
     ## lst = list()
-    boollist = list()
-    counter = 1
-    if (!toString(bools[[1]]) %in% c("&", "|")) return(eval(x1))
-    while(length(bools) > 1 && toString(bools[[1]]) %in% c("&", "|")) {
-        boollist[[counter]] = eval(bools[[1]])
-        ## lst[[1]] = eval(bools[[length(bools)]])
-        if (counter > 1) {
-            arg2 = eval(bools[[length(bools)]])
-            if (anyNA(arg2) && na2false) {
-                arg2 = na2false(arg2)
+    boollist.239487239857928752938473987 = list()
+    counter.12934872394872394897 = 1
+    if (!toString(bools.234987987293487329487[[1]]) %in% c("&", "|")) return(eval(x1.2394823987394875))
+    while(length(bools.234987987293487329487) > 1 && toString(bools.234987987293487329487[[1]]) %in% c("&", "|")) {
+        boollist.239487239857928752938473987[[counter.12934872394872394897]] = eval(bools.234987987293487329487[[1]])
+        ## lst[[1]] = eval(bools.234987987293487329487[[length(bools.234987987293487329487)]])
+        if (counter.12934872394872394897 > 1) {
+            arg2.143487587 = eval(bools.234987987293487329487[[length(bools.234987987293487329487)]])
+            if (anyNA(arg2.143487587) && na2false) {
+                arg2.143487587 = na2false(arg2.143487587)
             }
-            if (length(arg2) == 0 && length(arg1) && nullignore) {
-                arg2 = arg1
+            if (length(arg2.143487587) == 0 && length(arg1.143487587) && nullignore) {
+                arg2.143487587 = arg1.143487587
             }
         } else {
-            arg1 = eval(bools[[length(bools)]])
-            if (anyNA(arg2) && na2false) {
-                arg1 = na2false(arg1)
+            arg1.143487587 = eval(bools.234987987293487329487[[length(bools.234987987293487329487)]])
+            if (anyNA(arg2.143487587) && na2false) {
+                arg1.143487587 = na2false(arg1.143487587)
             }
-            if (length(arg1) == 0 & nullignore) {
-                arg1 = logical(0)
+            if (length(arg1.143487587) == 0 & nullignore) {
+                arg1.143487587 = logical(0)
             }
         }
 
-        bools = bools[-length(bools)]
-        tmp = as.list(bools[[length(bools)]])
-        if (length(tmp) > 1 && toString(tmp[[1]]) %in% c("&", "|"))
-            bools = tmp
-        if (counter > 1 && length(arg1) && length(arg2)) {
-            arg1 = boollist[[counter - 1]](arg1, arg2)
-        } else if (counter > 1 && length(arg1) == 0) {
-            arg1 = arg2
+        bools.234987987293487329487 = bools.234987987293487329487[-length(bools.234987987293487329487)]
+        tmp.2394872958349587987 = as.list(bools.234987987293487329487[[length(bools.234987987293487329487)]])
+        if (length(tmp.2394872958349587987) > 1 && toString(tmp.2394872958349587987[[1]]) %in% c("&", "|"))
+            bools.234987987293487329487 = tmp.2394872958349587987
+        if (counter.12934872394872394897 > 1 && length(arg1.143487587) && length(arg2.143487587)) {
+            arg1.143487587 = boollist.239487239857928752938473987[[counter.12934872394872394897 - 1]](arg1.143487587, arg2.143487587)
+        } else if (counter.12934872394872394897 > 1 && length(arg1.143487587) == 0) {
+            arg1.143487587 = arg2.143487587
         }
-        counter = counter + 1
+        counter.12934872394872394897 = counter.12934872394872394897 + 1
     }
-    return(arg1)
+    return(arg1.143487587)
 }
 
 
@@ -7452,6 +7452,60 @@ gr.flipstrand = function(gr) {
     return(gr)
 }
 
+#' @name gr.sub2
+#' @title Substitute chr in GRanges or GRangesList
+#' 
+#' @description
+#' substitute characters in seqnames
+#'
+#' @return GRanges or GRangesList
+#' @author Kevin Hadi
+#' @export gr.sub2
+gr.sub2 = function(x, sub.pt = c("^chr", "MT"), sub.rp = c("", "M")) {
+    ans = copy3(x)
+    osi = seqinfo(x)
+    subs = cbind(sub.pt, sub.rp)
+    seqn = seqo = seqnames(x)
+    df.si = rn2col(as.data.frame(osi), "seqlevels")
+    slsi = df.si$seqlevels
+    if (inherits(seqn, "List")) seqn = unlist(seqn)
+    slvn = levels(seqn)
+    for (i in seq_len(NROW(subs))) {
+        slsi = gsub(subs[i,1], subs[i,2], slsi)
+        slvn = gsub(subs[i,1], subs[i,2], slvn)
+    }
+    levels(seqn) = slvn
+    df.si$nseqlevels = slsi
+    if (anyDuplicated(df.si$nseqlevels)) {
+        rleix = rleseq(df.si$nseqlevels, use.data.table = FALSE, clump = TRUE)
+        ix = rleix$idx[rleix$lns > 1]
+        dupix = which(rleix$lns > 1)
+        collapse_ix = unique(rleix$idx)
+        unl = unlist(lapply(collapse_ix, function(i) {
+            out = max(subset(df.si, df.si$nseqlevels == i)$seqlengths, na.rm = T)
+            ifelse(is.infinite(out), NA_integer_, out)
+        }))
+        ## unl = as.vector(unlist(by(df.si, ix, function(x) {
+        ##     out = max(x$seqlengths, na.rm = T)
+        ##     ifelse(is.infinite(out), NA_integer_, out)
+        ## })))
+        df.si = df.si[!duplicated(df.si$nseqlevels),,drop=F]
+        df.si[df.si$nseqlevels == collapse_ix,]$seqlengths = unl
+    }
+    newsi = Seqinfo(df.si$nseqlevels, seqlengths = df.si$seqlengths, isCircular = df.si$isCircular,
+                    genome = df.si$genome)
+    if (inherits(x, "GRangesList")) {
+        unlans = unlist(ans)
+        unlans@seqnames = seqn
+        unlans@seqinfo = newsi
+        return(relist(unlans, ans))
+    } else if (inherits(x, "GRanges")) {
+        levels(seqn) = slvn
+        ans@seqnames = seqn
+        ans@seqinfo = newsi
+        return(ans)
+    }
+}
 
 #' @name gr_deconstruct_by
 #' @title removing by field and random string barcode to seqnames for more efficient by queries

@@ -4,7 +4,7 @@
 \alias{binom.conf}
 \title{Get confidence intervals around fractions}
 \usage{
-binom.conf(n, tot, alpha = 0.025, tol = 0.00000001)
+binom.conf(n, tot, alpha = 0.025, tol = 1e-08)
 }
 \value{
 A vector
