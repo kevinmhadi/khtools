@@ -573,7 +573,7 @@ ws2und = function(df)
 #' A logical vector to select which list elements are empty
 #'
 #' @return A list
-#' @export
+#' @export lst.empty
 lst.empty = function(x) {
     lengths(x) == 0
     ## S4Vectors::elementNROWS(x) == 0
@@ -584,7 +584,7 @@ lst.empty = function(x) {
 #' set empty list elements to zero
 #'
 #' @return A logical vector of length(x)
-#' @export
+#' @export lst.empty2zero
 lst.empty2zero = function(x) {
     x[lengths(x) == 0] = 0
     ## x[S4Vectors::elementNROWS(x) == 0] = 0
@@ -598,7 +598,7 @@ lst.empty2zero = function(x) {
 #' set empty list elements to NA
 #'
 #' @return A list
-#' @export
+#' @export lst.empty2na
 lst.empty2na = function(x) {
     x[lengths(x) == 0] = NA
     ## x[S4Vectors::elementNROWS(x) == 0] = NA
@@ -615,7 +615,7 @@ lst.empty2na = function(x) {
 #' set empty list elements to NULL
 #'
 #' @return A list
-#' @export
+#' @export lst.empty2null
 lst.empty2null = function(x) {
     x[lengths(x) == 0] = NULL
     ## x[S4Vectors::elementNROWS(x) == 0] = NULL
@@ -633,7 +633,7 @@ lst.empty2null = function(x) {
 #' set NULL list elements to NA
 #'
 #' @return A list
-#' @export
+#' @export lst.null2na
 lst.null2na = function(x) {
     x[x == "NULL"] = NA
     x
@@ -645,7 +645,7 @@ lst.null2na = function(x) {
 #' set empty character to null
 #'
 #' @return A list
-#' @export
+#' @export lst.emptychar2null
 lst.emptychar2null = function(x) {
     x[!nzchar(x)] = NULL
     x
@@ -658,7 +658,7 @@ lst.emptychar2null = function(x) {
 #' set empty character to NA
 #'
 #' @return A list
-#' @export
+#' @export lst.emptychar2na
 lst.emptychar2na = function(x) {
     x[!nzchar(x)] = NA_character_
     x
@@ -671,7 +671,7 @@ lst.emptychar2na = function(x) {
 #' set 0 length chracter to empty
 #'
 #' @return A list
-#' @export
+#' @export lst.zerochar2empty
 lst.zerochar2empty = function(x) {
     x[x == "character(0)"] = list("")
     x
