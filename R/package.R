@@ -3664,83 +3664,96 @@ rand.string = function(n=1, length=12)
 #' @export
 rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE, 
                    na.ignore = FALSE, sep = paste0(" ", rand.string(length = 6), 
-                     " "), use.data.table = TRUE) 
+                     " "), use.data.table = FALSE) 
 {
-  force(sep)
-  out = if (use.data.table) {
-    tryCatch(
-    {
-      dt = data.table(...)
-      setnames(dt, make.names(rep("", ncol(dt)), unique = T))
-      ## make.unique
-      cmd = sprintf("dt[, I := .I][, .(idx = .GRP, seq = seq_len(.N), lns = .N, I), by = %s]", mkst(colnames(dt), "list"))
-      dt = eval(parse(text = cmd))
-      setkey(dt, I)[, .(idx, seq, lns)]
-    }, error = function(e) structure("data table didn't work...", class = "err"))
-  }
-  if (!(is.null(out) || class(out)[1] == "err"))
-    return(as.list(out))
-  rand.string <- function(n = 1, length = 12) {
-    randomString <- c(1:n)
-    for (i in 1:n) {
-      randomString[i] <- paste(sample(c(0:9, letters, LETTERS), 
-        length, replace = TRUE), collapse = "")
+    rand.string <- function(n = 1, length = 12) {
+        randomString <- c(1:n)
+        for (i in 1:n) {
+            randomString[i] <- paste(sample(c(0:9, letters, LETTERS), 
+                                            length, replace = TRUE), collapse = "")
+        }
+        return(randomString)
     }
-    return(randomString)
-  }
-  if (isTRUE(na.clump)) 
-    paste = function(..., sep) base::paste(..., sep = sep)
-  else paste = function(..., sep) base::paste(stringr::str_c(..., 
-    sep = sep))
-  lns = base::lengths(list(...))
-  if (!all(lns == lns[1])) 
-    warning("not all vectors provided have same length")
-  fulllens = max(lns, na.rm = T)
-  vec = setNames(paste(..., sep = sep), seq_len(fulllens))
-  if (length(vec) == 0) {
-    out = list(idx = integer(0), seq = integer(0), lns = integer(0))
-    return(out)
-  }
-  if (na.ignore) {
-    isnotna = which(rowSums(as.data.frame(lapply(list(...), 
-      is.na))) == 0)
-    out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
-      lns = rep(NA, fulllens))
-    if (length(isnotna)) 
-      vec = vec[isnotna]
-    tmpout = do.call(rleseq, c(alist(... = vec), alist(clump = clump, 
-      recurs = recurs, na.clump = na.clump, na.ignore = FALSE, use.data.table = FALSE)))
-    for (i in seq_along(out)) out[[i]][isnotna] = tmpout[[i]]
-    return(out)
-  }
-  if (!isTRUE(clump)) {
-    rlev = rle(vec)
-    if (isTRUE(recurs)) {
-        ## return(unlist(unname(lapply(rlev$lengths, seq_len))))
-        return(sequence(rlev$lengths))
+    force(sep)
+    out = if (use.data.table) {
+              tryCatch(
+              {
+                  dt = data.table(...)
+                  setnames(dt, make.names(rep("", ncol(dt)), unique = T))
+                  ## make.unique
+                  cmd = sprintf("dt[, I := .I][, .(idx = .GRP, seq = seq_len(.N), lns = .N, I), by = %s]", mkst(colnames(dt), "list"))
+                  dt = eval(parse(text = cmd))
+                  setkey(dt, I)[, .(idx, seq, lns)]
+              }, error = function(e) structure("data table didn't work...", class = "err"))
+          }
+    if (!(is.null(out) || class(out)[1] == "err"))
+        return(as.list(out))
+
+
+    lns = base::lengths(list(...))
+    if (!all(lns == lns[1])) 
+        warning("not all vectors provided have same length")
+    fulllens = max(lns, na.rm = T)
+    vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+    if (length(vec) == 0) {
+        out = list(idx = integer(0), seq = integer(0), lns = integer(0))
+        return(out)
+    }
+    if (na.clump) {
+        paste = function(..., sep) base::paste(..., sep = sep)
+    } else {
+        ## paste = function(..., sep) base::paste(stringr::str_c(..., sep = sep))
+        paste = function(..., sep) {
+            comp = complete.cases(list(...))
+            out = base::paste(..., sep)
+            out[!comp] = NA_character_
+            return(out)
+
+        }
+    }
+    if (na.ignore) {
+        isnotna = which(rowSums(is.na(as.data.frame(list(...)))) == 0)
+        ## isnotna = which(rowSums(as.data.frame(lapply(list(...), 
+        ##                                              is.na))) == 0)
+        out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
+                   lns = rep(NA, fulllens))
+        if (length(isnotna)) 
+            vec = vec[isnotna]
+        tmpout = do.call(rleseq, c(alist(... = vec), alist(clump = clump, 
+                                                           recurs = recurs, na.clump = na.clump, na.ignore = FALSE, use.data.table = FALSE)))
+        for (i in seq_along(out)) out[[i]][isnotna] = tmpout[[i]]
+        return(out)
+    }
+    if (!clump) {
+        rlev = rle(vec)
+        if (recurs) {
+            ## return(unlist(unname(lapply(rlev$lengths, seq_len))))
+            return(sequence(rlev$lengths))
+        }
+        else {
+            out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
+                       ## seq = unlist(unname(lapply(rlev$lengths, seq_len))))
+                       seq = sequence(rlev$lengths))
+            out$lns = ave(out[[1]], out[[1]], FUN = length)
+            return(out)
+        }
     }
     else {
-      out = list(idx = rep(seq_along(rlev$lengths), times = rlev$lengths), 
-        seq = unlist(unname(lapply(rlev$lengths, seq_len))))
-      out$lns = ave(out[[1]], out[[1]], FUN = length)
-      return(out)
+        if (!na.clump) {
+            vec[which(x == "NA")] = make.unique(vec[which(x == "NA")])
+            ## vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
+            ##                                                   "NA"]))
+        }
+        vec = setNames(vec, seq_along(vec))
+        lst = split(vec, factor(vec, levels = unique(vec)))
+        ord = as.integer(names(unlist(unname(lst))))
+        idx = rep(seq_along(lst), times = base::lengths(lst))
+        out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
+                                                       recurs = TRUE, use.data.table = FALSE)[order(ord)])
+        ## out$lns = ave(out[[1]], out[[1]], FUN = length)
+        out$lns = unname(rep(base::lengths(lst), times = base::lengths(lst)))
+        return(out)
     }
-  }
-  else {
-    if (!isTRUE(na.clump)) {
-      vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
-                                                          "NA"]))
-    }
-    vec = setNames(vec, seq_along(vec))
-    lst = split(vec, factor(vec, levels = unique(vec)))
-    ord = as.integer(names(unlist(unname(lst))))
-    idx = rep(seq_along(lst), times = base::lengths(lst))
-    out = list(idx = idx[order(ord)], seq = rleseq(idx, clump = FALSE, 
-      recurs = TRUE, use.data.table = FALSE)[order(ord)])
-    ## out$lns = ave(out[[1]], out[[1]], FUN = length)
-    out$lns = unname(rep(base::lengths(lst), times = base::lengths(lst)))
-    return(out)
-  }
 }
 
 ## rleseq = function(..., clump = TRUE, recurs = FALSE, na.clump = TRUE, na.ignore = FALSE,
