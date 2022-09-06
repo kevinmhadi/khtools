@@ -5000,7 +5000,12 @@ system3 = function (command, args = character(), stdout = "", stderr = "",
         command <- paste(command, "<", stdin)
     if (!wait && !intern)
         command <- paste(command, "&")
-    .Internal(system(command, intern, timeout))
+    ## .Internal(system(command, intern, timeout))
+    tmp = tempfile()
+    on.exit(system2("rm", tmp))
+    writeLines(command, tmp)
+    command2 = paste("sh", tmp)
+    .Internal(system(command2, intern, timeout))
 }
 
 #' @name is.empty
