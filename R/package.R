@@ -874,7 +874,7 @@ kpdf = function(filename = "plot.pdf", height = 10, width = 10,
     if (!file.exists(file.dir(filename))) 
         system(paste("mkdir -p", file.dir(filename)))
     cat("rendering to", filename, "\n")
-    pdf(file = filename, height = height, width = width, useDingbats = useDingbats, ...)
+    dev = pdf(file = filename, height = height, width = width, useDingbats = useDingbats, ...)
     if (!is.null(dim)) {
             if (length(dim) == 1) 
                 dim = rep(dim, 2)
@@ -884,6 +884,45 @@ kpdf = function(filename = "plot.pdf", height = 10, width = 10,
     }
     if (!is.null(title)) 
         title(title, cex.main = cex.title * max(cex))
+    return(dev)
+}
+
+#' @name kcpdf
+#' @title open Cairo pdf device with ppdf defaults without closing
+#'
+#' @description
+#'
+#' @export
+kcpdf = function(filename = "plot.pdf", height = 10, width = 10, 
+    h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+    dim = NULL, cex.title = 1, oma.scale = 0, oma.val = c(1, 1, 1, 1), useDingbats = FALSE, res = 0, pars = list(), 
+    ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    dev = Cairo::Cairo(file = filename, height = height, width = width, useDingbats = useDingbats, type = "pdf", units = "in", ...)
+    if (!is.null(dim)) {
+            if (length(dim) == 1) 
+                dim = rep(dim, 2)
+            dim = dim[1:2]
+            graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+    return(dev)
 }
 
 #' @name ksvg
@@ -953,7 +992,7 @@ kpng = function(filename = "plot.png", height = 10, width = 10,
     if (!file.exists(file.dir(filename))) 
         system(paste("mkdir -p", file.dir(filename)))
     cat("rendering to", filename, "\n")
-    png(file = filename, height = height, width = width, units = units, res = res, ...)
+    dev = png(file = filename, height = height, width = width, units = units, res = res, ...)
     if (!is.null(dim)) {
         if (length(dim) == 1) 
             dim = rep(dim, 2)
@@ -963,10 +1002,50 @@ kpng = function(filename = "plot.png", height = 10, width = 10,
     }
     if (!is.null(title)) 
         title(title, cex.main = cex.title * max(cex))
+    return(dev)
 }
 
-#' @name kpng
-#' @title open png device with ppng defaults without closing
+#' @name kcpng
+#' @title open Cairo png device with ppng defaults without closing
+#'
+#' @description
+#'
+#' @export
+kcpng = function(filename = "plot.png", height = 10, width = 10,
+                h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 
+                dim = NULL, cex.title = 1, oma.scale = 0, units = 'in', oma.val = c(1, 1, 1, 1),
+                useDingbats = FALSE, res = 300, pars = list(),
+                ...) {
+    this.env = environment()
+    if (length(cex) == 1) 
+        cex = rep(cex, 2)
+    height = h
+    width = w
+    height = cex[1] * height
+    width = cex[2] * width
+    DEFAULT.OUTDIR = Sys.getenv("PPDF.DIR")
+    if (nchar(DEFAULT.OUTDIR) == 0) 
+        DEFAULT.OUTDIR = normalizePath("~/public_html/")
+    if (!grepl("^[~/]", filename)) 
+        filename = paste(DEFAULT.OUTDIR, filename, sep = "/")
+    if (!file.exists(file.dir(filename))) 
+        system(paste("mkdir -p", file.dir(filename)))
+    cat("rendering to", filename, "\n")
+    dev = Cairo::Cairo(file = filename, height = height, width = width, units = units, res = res, type = "png", ...)
+    if (!is.null(dim)) {
+        if (length(dim) == 1) 
+            dim = rep(dim, 2)
+        dim = dim[1:2]
+        graphics::layout(matrix(1:prod(dim), nrow = dim[1], 
+                                ncol = dim[2], byrow = byrow))
+    }
+    if (!is.null(title)) 
+        title(title, cex.main = cex.title * max(cex))
+    return(dev)
+}
+
+#' @name kjpeg
+#' @title open jpg device with ppng defaults without closing
 #'
 #' @description
 #'
@@ -1603,6 +1682,22 @@ reset.dev = function(x) {
   }
 }
 
+#' @name no.dev
+#' @title Turn off all graphic devices
+#'
+#' @description
+#' dealing with annoying plot resets
+#'
+#' @export no.dev
+no.dev = function() {
+    evalq({
+        for (d in dev.list()) {
+            dev.off(d)
+        }
+    }, envir = globalenv())
+}
+
+
 
 
 #' @name complete.cases2
@@ -1634,7 +1729,8 @@ uniqf = function (..., sep = " ")
         nm = rep_len("", length(lst))
     }
     ix = which(nm != "sep")
-    tmpix = do.call(paste, c(lst[ix], alist(sep = sep)))
+    tmpix = paste(..., sep = sep)
+    ## tmpix = do.call(paste, c(lst[ix], alist(sep = sep)))
     tmpix = factor(tmpix, levels = unique(tmpix))
     tmpix
 }
@@ -3330,11 +3426,34 @@ rn2col = rownames_to_column
 normpath = function(p) {
     fe = file.exists2(p)
     bn = basename(p)
-    d = dirname(normalizePath(p))
+    d = normalizePath(dirname(p))
     return(ifelse(fe, paste0(d, "/", bn), as.character(p)))
     ## return(paste0(d, "/", bn))
 }
 
+
+#' @name rintersect
+#' @title Reduce intersect
+#'
+#' @description
+#' intersect more than 2 vectors
+#'
+#' @export
+rintersect = function(...) {
+    Reduce(intersect, list(...))
+}
+
+
+#' @name runion
+#' @title Reduce union
+#'
+#' @description
+#' get union of more than 2 vectors
+#'
+#' @export
+runion = function(...) {
+    Reduce(union, list(...))
+}
 
 
 
@@ -4937,6 +5056,8 @@ system3 = function (command, args = character(), stdout = "", stderr = "",
     stdin = "", input = NULL, env = character(), wait = TRUE,
     minimized = FALSE, invisible = TRUE, timeout = 0)
 {
+    isTRUE = function(x) identical(x, TRUE)
+    isFALSE = function(x) identical(x, FALSE)
     if (!missing(minimized) || !missing(invisible))
         message("arguments 'minimized' and 'invisible' are for Windows only")
     if (!is.logical(wait) || is.na(wait))
@@ -5002,7 +5123,7 @@ system3 = function (command, args = character(), stdout = "", stderr = "",
         command <- paste(command, "&")
     ## .Internal(system(command, intern, timeout))
     tmp = tempfile()
-    on.exit(system2("rm", tmp))
+    on.exit(system2("rm", tmp), add = TRUE)
     writeLines(command, tmp)
     command2 = paste("sh", tmp)
     .Internal(system(command2, intern, timeout))
@@ -9340,7 +9461,9 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, flip = FALSE, as.data.table
 #' @export
 bedpe2grl = function(bedpe, flip = FALSE, trim = TRUE, genome = NULL, sort = TRUE) {
     if (!NROW(bedpe)) return(GRangesList())
-    bedpe$chrom1 = as.character(bedpe$chrom1)
+    if (!is.character(bedpe$chrom1))
+        bedpe$chrom1 = as.character(bedpe$chrom1)
+    if (!is.character(bedpe$chrom2))
     bedpe$chrom2 = as.character(bedpe$chrom2)
     st1 = bedpe$strand1
     st2 = bedpe$strand2
