@@ -8056,7 +8056,7 @@ gr.patch = function(gr, patch, onlystandard = TRUE) {
 #' @return GRangesList
 #' @author Kevin Hadi
 #' @export gr2df
-gr2df = function(gr, var = "rowname") {
+gr2df = function(gr, var = "rowname", as.data.table = FALSE) {
     sf = options()$stringsAsFactors
     on.exit({options(stringsAsFactors = sf)})
     options(stringsAsFactors = FALSE)
@@ -8067,13 +8067,27 @@ gr2df = function(gr, var = "rowname") {
         rn2 = as.character(seq_along(gr))
     if (inherits(gr, "GRanges")) {
         df = GenomicRanges::as.data.frame(gr, row.names = rn2)
-        cmd = sprintf("cbind(%s = rn2, df)", var)
-        df = et(cmd)
+        if ("rowname" %in% df) {
+            df$rowname = rn2
+        } else {
+            cmd = sprintf("cbind(%s = rn2, df)", var)
+            df = et(cmd)
+        }
     } else if (inherits(gr, "GRangesList"))
         df = GenomicRanges::as.data.frame(gr)
-    setDT(df)
-    return(dt_f2char(df,c("seqnames", "strand")))
+    if (identical(as.data.table, TRUE)) {
+        setDT(df)
+    }
+    if (is.factor(df$seqnames)) {
+        df$seqnames = as.character(df$seqnames)
+    }
+    if (is.factor(df$strand)) {
+        df$strand = as.character(df$strand)
+    }
+    ## return(dt_f2char(df,c("seqnames", "strand")))
+    return(df)
 }
+
 
 
 #' @name grl.undf
