@@ -5,6 +5,9 @@
 #' @import tools
 #' @exportMethod with
 
+#' @export 
+mysep = "__ss__"
+
 #' @name match_s
 #' @title match x indices in terms of y
 #'
@@ -79,8 +82,9 @@ find_dups = function(..., re_sort = FALSE, sep = " ", as.logical = FALSE) {
   if (!re_sort) {
     return(which(vec %in% vec[dupix]))
   } else {
-    matching_idx = match2(sort(vec[dupix]), vec)
-    return(which(!is.na(matching_idx))[order(na.omit(matching_idx))])
+    return(seq_along(vec)[order(vec[dupix])])
+    ## matching_idx = match2(sort(vec[dupix]), vec)
+    ## return(which(!is.na(matching_idx))[order(na.omit(matching_idx))])
   }
 }
 
@@ -3859,7 +3863,7 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
     }
     else {
         if (!na.clump) {
-            vec[which(x == "NA")] = make.unique(vec[which(x == "NA")])
+            vec[which(vec == "NA")] = make.unique(vec[which(vec == "NA")])
             ## vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
             ##                                                   "NA"]))
         }
