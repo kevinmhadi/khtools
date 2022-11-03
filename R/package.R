@@ -694,6 +694,56 @@ lst.emptyreplace = function(x, replace = NA) {
 ##################################################
 ##################################################
 
+#' @name lg2f
+#' @title logical to factor
+#'
+#' @description
+#' logical to factor
+#'
+#' @export
+lg2f = function(x, labels = NULL) {
+  if (is.logical(x))
+    if (is.null(labels))
+      return(factor(x, c(FALSE, TRUE)))
+    else
+      return(factor(x, c(FALSE, TRUE), labels))
+}
+
+
+#' @name one_vs_other
+#' @title one level vs other
+#'
+#' @description
+#' create factor levels
+#'
+#' @export
+one_vs_other = function(fac, ref_level = 1) {
+    lvs = levels(fac)
+    ref = lvs[ref_level]
+    others = lvs[-ref_level]
+    if (NROW(lvs) == 1) {
+        stop("only 1 level, no comparisons to be made")
+    }
+    ix = seq_len(NROW(lvs))
+    mat = t(combn(ix, 2))
+    mat = cbind(mat[,2], mat[,1])
+    comparisons = matrix(lvs[mat], nrow = nrow(mat), ncol = ncol(mat))
+    lst = lapply(
+        setNames(
+            seq_len(NROW(comparisons)),
+            paste(comparisons[,1], comparisons[,2], sep = "__vs__")
+        ), function(x) {
+            ref.lv = comparisons[x,2]
+            test.lv = comparisons[x,1]
+            ref = fac == ref.lv
+            test = fac == test.lv
+            eligible = ref | test
+            list(test = test, eligible = eligible, comparison = paste(test.lv, ref.lv, sep = "__vs__"))
+        })
+    return(lst)
+}
+
+
 #' @name bool
 #' @title Clean Up Boolean Logic
 #'
@@ -8371,7 +8421,8 @@ gr.round = function(gr, nearest = 1e4, all = TRUE, reduce = FALSE) {
 #' @author Kevin Hadi
 #' @export gr.sort
 gr.sort = function(gr, ignore.strand = TRUE) {
-    return(sort(sortSeqlevels(gr), ignore.strand = ignore.strand))
+    return(gr[gr.order(gr, ignore.strand = ignore.strand)])
+    ## return(sort(sortSeqlevels(gr), ignore.strand = ignore.strand))
 }
 
 #' @name gr.order

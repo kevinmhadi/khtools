@@ -10,7 +10,7 @@ asm(obj)
 matrix
 }
 \description{
-
+coerce to matrix
 }
 \author{
 Kevin Hadi

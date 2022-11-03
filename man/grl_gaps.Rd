@@ -11,7 +11,7 @@
 GRangesList
 }
 \description{
-
+gaps on GRangesList
 }
 \author{
 Kevin Hadi

@@ -10,7 +10,7 @@ subgr(x, y)
 granges
 }
 \description{
-
+subgr
 }
 \author{
 Kevin Hadi

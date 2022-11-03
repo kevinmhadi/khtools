@@ -7,5 +7,5 @@
 eNROW(x)
 }
 \description{
-
+does vapply NROW
 }

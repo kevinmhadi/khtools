@@ -19,7 +19,7 @@ gr.splgaps(
 GRangesList
 }
 \description{
-
+gaps on GRanges, splitting by values in a metadata field
 }
 \author{
 Kevin Hadi

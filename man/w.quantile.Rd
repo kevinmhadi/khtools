@@ -7,5 +7,5 @@
 w.quantile(x, w = 1, qs)
 }
 \description{
-
+weighted quantile
 }

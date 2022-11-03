@@ -7,5 +7,5 @@
 fitzscore(x, mean, stddev)
 }
 \description{
-
+calculate zscores based on prior mean and stddev
 }

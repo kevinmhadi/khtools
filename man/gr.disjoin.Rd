@@ -10,7 +10,7 @@ gr.disjoin(x, ..., ignore.strand = TRUE)
 GRanges or GRangesList
 }
 \description{
-
+updated gr.disjoin from gUtils to work with GRangesList
 }
 \author{
 Kevin Hadi

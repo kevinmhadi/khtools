@@ -7,5 +7,5 @@
 matrify2(df, ..., rownames = 1, rnsep = " ")
 }
 \description{
-
+create matrix from table like obj with dplyr syntax
 }

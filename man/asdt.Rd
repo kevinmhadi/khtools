@@ -10,7 +10,7 @@ asdt(obj)
 data table
 }
 \description{
-
+coerce to data table via setDT
 }
 \author{
 Kevin Hadi

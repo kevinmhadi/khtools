@@ -25,5 +25,5 @@ kcpng(
 )
 }
 \description{
-
+open Cairo png device with ppng defaults without closing
 }

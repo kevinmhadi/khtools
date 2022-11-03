@@ -4,7 +4,7 @@
 \alias{gr2df}
 \title{granges to datatable via dataframe}
 \usage{
-gr2df(gr, var = "rowname")
+gr2df(gr, var = "rowname", as.data.table = FALSE)
 }
 \value{
 GRangesList

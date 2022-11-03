@@ -26,5 +26,5 @@ kjpeg(
 )
 }
 \description{
-
+open jpg device with ppng defaults without closing
 }

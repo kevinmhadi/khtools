@@ -7,7 +7,7 @@
 bp2grl(df, bp1.field = "bp1", bp2.field = "bp2", sort = TRUE)
 }
 \description{
-
+convert table of paired string coordinates to GRangesList
 }
 \author{
 Kevin Hadi

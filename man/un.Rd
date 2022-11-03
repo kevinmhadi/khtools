@@ -7,5 +7,5 @@
 un(..., i = 1, sep = " ")
 }
 \description{
-
+shortcut to check unique entries
 }

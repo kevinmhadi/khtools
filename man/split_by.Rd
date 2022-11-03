@@ -7,5 +7,5 @@
 split_by(dt, fields, do.unname = FALSE, split_col_sort = FALSE)
 }
 \description{
-
+split data frame-like object based on columns
 }

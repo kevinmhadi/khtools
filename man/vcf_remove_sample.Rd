@@ -8,8 +8,8 @@ take vcf read in chunks and write clean vcf without sample info
 i.e. fixing up svaba indel crap}
 \usage{
 vcf_remove_sample(
- 
-    x = "/gpfs/commons/groups/imielinski_lab/data/PCAWG/mutations/f393baf9-2710-9203-e040-11ac0d484504,vcf",
+  x =
+    "/gpfs/commons/groups/imielinski_lab/data/PCAWG/mutations/f393baf9-2710-9203-e040-11ac0d484504,vcf",
   out.vcf = "~/outtest.vcf",
   ref = "~/DB/GATK/hg19_gatk_decoy.fasta",
   chunk = 10000,

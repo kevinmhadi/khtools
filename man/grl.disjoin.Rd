@@ -10,7 +10,7 @@ grl.disjoin(x, ..., ignore.strand = T)
 GRangesList
 }
 \description{
-
+disjoin on grangeslist
 }
 \author{
 Kevin Hadi

@@ -7,5 +7,5 @@
 rows.any(mat)
 }
 \description{
-
+test whether any row entries are TRUE
 }

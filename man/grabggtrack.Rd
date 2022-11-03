@@ -12,9 +12,6 @@ grabggtrack(
   cov_y_field = NULL
 )
 }
-\value{
-
-}
 \description{
 convenience function to pull out jabba model + coverage
 }

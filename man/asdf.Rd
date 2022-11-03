@@ -10,7 +10,7 @@ asdf(obj)
 data frame
 }
 \description{
-
+coerce to data frame
 }
 \author{
 Kevin Hadi

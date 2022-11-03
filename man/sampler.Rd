@@ -15,5 +15,5 @@ sampler(
 )
 }
 \description{
-
+sample elements of vector or rows of table
 }
