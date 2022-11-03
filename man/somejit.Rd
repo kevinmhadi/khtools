@@ -4,7 +4,7 @@
 \alias{somejit}
 \title{add tiny jitter}
 \usage{
-somejit(x, factor = 1e-06)
+somejit(x, factor = 0.000001)
 }
 \description{
 add tiny jitter

@@ -8,7 +8,7 @@ gr_calc_cov(
   gr,
   PAD = 50,
   field = NULL,
-  start.base = -1e+06,
+  start.base = -1000000,
   end.base = -5000,
   win = 10000,
   FUN = "mean",
