@@ -3863,29 +3863,48 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
         return(as.list(out))
 
 
-    lns = base::lengths(list(...))
-    if (!all(lns == lns[1])) 
-        warning("not all vectors provided have same length")
-    fulllens = max(lns, na.rm = T)
-    vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+    if (na.clump) {
+        paste = function(..., sep) base::paste(..., sep = sep)
+    } else {
+        paste = function(..., sep) {
+            tryCatch({
+                stringr::str_c(..., sep = sep)
+            }, error = function(e) {
+                comp = complete.cases(list(...))
+                out = base::paste(..., sep = sep)
+                out[!comp] = NA_character_
+                return(out)
+            })
+        }
+    }
+    ## vec = setNames(do.call(paste, ...), seq_len(fulllens))
+    ddd = match.call(expand.dots = FALSE)$`...`
+    doeval = length(ddd) == 1 && (is.call(ddd[[1]]) || is.symbol(ddd[[1]]))
+    if (doeval) ddd = eval(ddd[[1]], parent.frame())
+    dodocall = inherits(ddd, c("data.frame", "DataFrame", "list", "List"))
+    if (dodocall) {
+        ddd = as.list(ddd)
+        lns = base::lengths(ddd)
+        if (!all(lns == lns[1])) 
+            warning("not all vectors provided have same length")
+        fulllens = max(lns, na.rm = T)        
+        vec = setNames(do.call(function(...) paste(..., sep = sep), ddd), seq_len(fulllens))
+    } else {
+        lns = base::lengths(list(...))
+        if (!all(lns == lns[1])) 
+            warning("not all vectors provided have same length")
+        fulllens = max(lns, na.rm = T)        
+        vec = setNames(paste(..., sep = sep), seq_len(fulllens))
+    }
     if (length(vec) == 0) {
         out = list(idx = integer(0), seq = integer(0), lns = integer(0))
         return(out)
     }
-    if (na.clump) {
-        paste = function(..., sep) base::paste(..., sep = sep)
-    } else {
-        ## paste = function(..., sep) base::paste(stringr::str_c(..., sep = sep))
-        paste = function(..., sep) {
-            comp = complete.cases(list(...))
-            out = base::paste(..., sep)
-            out[!comp] = NA_character_
-            return(out)
-
-        }
-    }
     if (na.ignore) {
-        isnotna = which(rowSums(is.na(as.data.frame(list(...)))) == 0)
+        if (!(doeval && dodocall))
+            isnotna = which(rowSums(is.na(as.data.frame(list(...)))) == 0)
+        else
+            isnotna = which(rowSums(is.na(as.data.frame(ddd))) == 0)
         ## isnotna = which(rowSums(as.data.frame(lapply(list(...), 
         ##                                              is.na))) == 0)
         out = list(idx = rep(NA, fulllens), seq = rep(NA, fulllens), 
@@ -3913,9 +3932,7 @@ rleseq = function (..., clump = TRUE, recurs = FALSE, na.clump = TRUE,
     }
     else {
         if (!na.clump) {
-            vec[which(vec == "NA")] = make.unique(vec[which(vec == "NA")])
-            ## vec = replace2(vec, which(x == "NA"), dedup(dg(x)[dg(x) == 
-            ##                                                   "NA"]))
+            vec[which(isNA(vec))] = base::paste(make.unique(vec[which(isNA(vec))]))
         }
         vec = setNames(vec, seq_along(vec))
         lst = split(vec, factor(vec, levels = unique(vec)))
