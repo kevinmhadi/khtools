@@ -24,5 +24,5 @@ kcpdf(
 )
 }
 \description{
-open Cairo pdf device with ppdf defaults without closing
+
 }

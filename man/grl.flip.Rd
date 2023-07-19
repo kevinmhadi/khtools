@@ -7,5 +7,5 @@
 grl.flip(x, flipstrand = TRUE)
 }
 \description{
-flip each GRangesList element
+
 }

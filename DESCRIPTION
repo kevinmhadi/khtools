@@ -10,31 +10,26 @@ Description: This is a collection of miscellaneous wrappers for
     pipelining and processing genomic data. In addition there are
     utilities for quick interactive programming.
 License: GPL v3.0
-Depends:
-    R (>= 3.1.0),
+Depends: R (>= 3.1.0),
+Imports:
     tools,
-    data.table,
     stringr,
     parallel,
     S4Vectors,
     forcats,
     purrr,
     rlang,
-    rtracklayer
-Imports:
+    rtracklayer,
+    GenomicRanges,
+    IRanges,
+    gUtils,
     data.table,
-    S4Vectors,
-    purrr,
+    ggplot2,
     dplyr,
-    forcats,
     MASS,
-    tidyr,
     tibble,
     Flow,
-    ggplot2,
-    rlang,
-    rtracklayer,
-    tools
+    UpSetR
 Suggests:
     XML,
     testthat

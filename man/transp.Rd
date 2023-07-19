@@ -7,5 +7,5 @@
 transp(lst, ffun = list)
 }
 \description{
-transpose a list
+
 }

@@ -7,5 +7,5 @@
 DIM(x)
 }
 \description{
-extending NROW and NCOL
+
 }

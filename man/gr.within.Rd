@@ -10,7 +10,7 @@ gr.within(data, expr)
 GRanges
 }
 \description{
-within on GRanges, S3
+
 }
 \author{
 Kevin Hadi

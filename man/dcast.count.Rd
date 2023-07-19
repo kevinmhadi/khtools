@@ -6,7 +6,7 @@
 
 Counting up occurrences in a table while taking factor levels into account}
 \usage{
-\method{dcast}{count}(tbl, lh, rh = NULL, countcol = "count", ...)
+dcast.count(tbl, lh, rh = NULL, countcol = "count", ...)
 }
 \value{
 A data frame or data.table

@@ -7,5 +7,5 @@
 frac(x)
 }
 \description{
-fraction from a vector of numeric values
+
 }

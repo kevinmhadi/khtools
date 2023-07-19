@@ -10,7 +10,7 @@ x \%Q\% y
 granges
 }
 \description{
-query
+
 }
 \author{
 Kevin Hadi

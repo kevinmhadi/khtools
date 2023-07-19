@@ -7,5 +7,5 @@
 jitter2(x, factor = 1, amount = NULL, seed = 10)
 }
 \description{
-jitter with consistent seed
+
 }

@@ -10,6 +10,9 @@ will look for hetpileups data and run JaBbA:::jabba.alleles}
 \usage{
 grabhjab(pairs, id = NULL)
 }
+\value{
+
+}
 \description{
 convenience function to pull out jabba model with allelic cn
 

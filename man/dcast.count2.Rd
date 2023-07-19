@@ -4,7 +4,7 @@
 \alias{dcast.count2}
 \title{Counts up occurrences from a melted table}
 \usage{
-\method{dcast}{count2}(
+dcast.count2(
   tbl,
   lh,
   rh = NULL,

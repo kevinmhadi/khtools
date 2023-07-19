@@ -7,5 +7,5 @@
 softmax(x, neg = FALSE)
 }
 \description{
-calculate softmax
+
 }

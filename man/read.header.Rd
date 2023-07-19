@@ -7,5 +7,5 @@
 read.header(path, header.char = "#")
 }
 \description{
-read header of file
+
 }

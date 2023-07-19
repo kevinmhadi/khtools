@@ -6,7 +6,7 @@
 
 Collapse a named list with vectors as each element into a data.table}
 \usage{
-stack.dt(lst, ind = "ind", values = "values", ind.as.character = TRUE)
+\method{stack}{dt}(lst, ind = "ind", values = "values", ind.as.character = TRUE)
 }
 \description{
 collapse a named list of vectors into a data.table

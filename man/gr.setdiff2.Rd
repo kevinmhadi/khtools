@@ -10,7 +10,7 @@ gr.setdiff2(query, subject, ignore.strand = TRUE, by = NULL, new = TRUE, ...)
 GRanges
 }
 \description{
-gr.setdiff that works with multiple by columns
+
 }
 \author{
 Kevin Hadi

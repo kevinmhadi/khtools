@@ -5,13 +5,13 @@
 \alias{within,GRanges-method}
 \title{within on GRanges}
 \usage{
-\S4method{within}{GRanges}(data, expr)
+within(data, expr, ...)
 }
 \value{
 GRanges
 }
 \description{
-within on GRanges
+
 }
 \author{
 Kevin Hadi

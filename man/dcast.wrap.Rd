@@ -7,7 +7,7 @@
 A convenience wrapper around dcast to make formula generation more
 programmatic}
 \usage{
-\method{dcast}{wrap}(x, lh, rh, dcast.fun, ...)
+dcast.wrap(x, lh, rh, dcast.fun, ...)
 }
 \value{
 A data frame or data.table

@@ -10,7 +10,7 @@ na.seql(x)
 A GRanges with NA in all seqlevels
 }
 \description{
-NA out seqlevels
+
 }
 \author{
 Kevin Hadi

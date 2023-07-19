@@ -30,5 +30,5 @@ process_tbl(
 a list of idx and seq
 }
 \description{
-flexibly read in a field and append an id to the output
+
 }

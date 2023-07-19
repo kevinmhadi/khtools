@@ -7,5 +7,5 @@
 AND(FUN = identity, ...)
 }
 \description{
-test boolean AND across multiple vectors
+
 }

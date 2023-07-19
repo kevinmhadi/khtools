@@ -5,13 +5,13 @@
 \alias{gaps,GRangesList-method}
 \title{gaps on GRangesList}
 \usage{
-\S4method{gaps}{CompressedGRangesList}(x, start = 1L, end = seqlengths(x))
+gaps(x, start = NA, end = NA)
 }
 \value{
 GRangesList
 }
 \description{
-gaps on GRangesList
+
 }
 \author{
 Kevin Hadi

@@ -10,7 +10,7 @@
 GRangesList
 }
 \description{
-query on CompressedGRangesList
+
 }
 \author{
 Kevin Hadi

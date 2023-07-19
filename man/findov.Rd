@@ -7,7 +7,7 @@
 findov(query, subject, by = NULL, ...)
 }
 \description{
-GenomicRanges::findOverlaps wrapper
+
 }
 \author{
 Kevin Hadi

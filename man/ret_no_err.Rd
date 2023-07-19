@@ -6,7 +6,7 @@
 \usage{
 ret_no_err(
   lst,
-  class_condition = c("simpleError", "try-error", "error", "errored", "err")
+  class_condition = (c("simpleError", "try-error", "error", "errored", "err"))
 )
 }
 \arguments{

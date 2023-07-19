@@ -7,5 +7,5 @@
 metanames(x)
 }
 \description{
-metanames
+
 }

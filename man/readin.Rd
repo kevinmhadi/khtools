@@ -15,5 +15,5 @@ readin(
 )
 }
 \description{
-flexible file opening
+
 }
