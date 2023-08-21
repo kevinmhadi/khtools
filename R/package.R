@@ -11,6 +11,8 @@
 #' @importFrom methods setClass setGeneric setMethod setRefClass
 #' @importFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
 #' @importMethodsFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
+#' @importFrom data.table key `:=`
+#' @importFrom ggplot2 ggplot aes scale_fill_manual scale_colour_manual scale_color_manual geom_histogram geom_hex geom_point geom_path geom_bar geom_errorbar geom_smooth facet_wrap facet_grid xlab ylab scale_y_continuous scale_x_continuous theme theme_bw element_blank element_line element_text rel
 
 #' @export 
 mysep = "__ss__"
@@ -6583,27 +6585,27 @@ gbar.error = function(y, conf.low, conf.high, group, wes = "Royal1", other.palet
     if (is.null(fill)) fill.arg = group else fill.arg = fill
     dat[, fill.arg := fill.arg]
     if (is.character(stat) && stat == "count")
-        gg = ggplot(dat, aes(fill = fill.arg, x = y))
+        gg = ggplot2::ggplot(dat, ggplot2::aes(fill = fill.arg, x = y))
     else
-        gg = ggplot(dat, aes(x = group, fill = fill.arg, y = y))
-    gg = gg + geom_bar(stat = stat, position = position, width = bar.width)
+        gg = ggplot2::ggplot(dat, ggplot2::aes(x = group, fill = fill.arg, y = y))
+    gg = gg + ggplot2::geom_bar(stat = stat, position = position, width = bar.width)
     if (any(!is.na(conf.low)) & any(!is.na(conf.high)))
-        gg = gg + geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position)
+        gg = gg + ggplot2::geom_errorbar(aes(ymin = conf.low, ymax = conf.high), size = 0.1, width = 0.3, position = position)
     if (!is.null(wes))
-        gg = gg + scale_fill_manual(values = skitools::brewer.master(n = length(unique(fill.arg)), wes = TRUE, palette = wes))
+        gg = gg + ggplot2::scale_fill_manual(values = skitools::brewer.master(n = length(unique(fill.arg)), wes = TRUE, palette = wes))
         ## gg = gg + scale_fill_manual(values = wesanderson::wes_palette(wes))
     if (!is.null(other.palette))
-        gg = gg + scale_fill_manual(values = other.palette)
+        gg = gg + ggplot2::scale_fill_manual(values = other.palette)
     if (!is.null(dat$facet1)) {
         if (!is.null(dat$facet2)) {
             if (transpose)
-                gg = gg + facet_grid(facet2 ~ facet1, scales = facet.scales)
-            else gg = gg + facet_grid(facet1 ~ facet2, scales = facet.scales)
+                gg = gg + ggplot2::facet_grid(facet2 ~ facet1, scales = facet.scales)
+            else gg = gg + ggplot2::facet_grid(facet1 ~ facet2, scales = facet.scales)
         }
         else {
             if (transpose)
-                gg = gg + facet_grid(. ~ facet1, scales = facet.scales)
-            else gg = gg + facet_grid(facet1 ~ ., scales = facet.scales)
+                gg = gg + ggplot2::facet_grid(. ~ facet1, scales = facet.scales)
+            else gg = gg + ggplot2::facet_grid(facet1 ~ ., scales = facet.scales)
         }
     }
     if (print) print(gg) else gg
