@@ -25,5 +25,5 @@ kpng(
 )
 }
 \description{
-
+open png device with ppng defaults without closing
 }

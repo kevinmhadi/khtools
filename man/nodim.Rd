@@ -7,5 +7,5 @@
 nodim(x)
 }
 \description{
-
+testing if object is empty
 }

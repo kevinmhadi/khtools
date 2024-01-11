@@ -15,7 +15,7 @@ rep_each(x, each)
 vector
 }
 \description{
-
+recycle vector - shortcut for rep(x, each = each)
 }
 \author{
 Kevin Hadi

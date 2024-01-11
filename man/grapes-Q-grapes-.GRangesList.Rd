@@ -10,7 +10,7 @@
 GRangesList
 }
 \description{
-
+query on GRangesList
 }
 \author{
 Kevin Hadi

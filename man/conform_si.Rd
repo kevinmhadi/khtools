@@ -10,7 +10,7 @@ conform_si(x, si)
 GRanges
 }
 \description{
-
+force a ranges to conform to a new seqinfo
 }
 \author{
 Kevin Hadi

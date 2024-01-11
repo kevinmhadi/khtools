@@ -6,9 +6,6 @@
 \usage{
 off_diag(x)
 }
-\value{
-
-}
 \description{
 used for get_accuracy()
 }

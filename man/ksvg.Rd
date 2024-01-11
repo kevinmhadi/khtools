@@ -25,5 +25,5 @@ ksvg(
 )
 }
 \description{
-
+open svg device with ppdf defaults without closing
 }

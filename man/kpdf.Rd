@@ -24,5 +24,5 @@ kpdf(
 )
 }
 \description{
-
+open pdf device with ppdf defaults without closing
 }

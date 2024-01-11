@@ -10,7 +10,7 @@ gr.strand(gr, str = "*")
 granges or grangeslist
 }
 \description{
-
+specify strand of granges or grangeslist
 }
 \author{
 Kevin Hadi

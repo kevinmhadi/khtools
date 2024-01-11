@@ -16,5 +16,5 @@
 )
 }
 \description{
-
+collect junctions from pairs as breakpoints
 }

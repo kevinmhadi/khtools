@@ -11,7 +11,7 @@ within(data, expr, ...)
 GRanges
 }
 \description{
-
+within on GRanges
 }
 \author{
 Kevin Hadi

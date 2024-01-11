@@ -11,8 +11,9 @@
 #' @importFrom methods setClass setGeneric setMethod setRefClass
 #' @importFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
 #' @importMethodsFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
-#' @importFrom data.table key `:=`
-#' @importFrom ggplot2 ggplot aes scale_fill_manual scale_colour_manual scale_color_manual geom_histogram geom_hex geom_point geom_path geom_bar geom_errorbar geom_smooth facet_wrap facet_grid xlab ylab scale_y_continuous scale_x_continuous theme theme_bw element_blank element_line element_text rel
+#' @importFrom data.table key `:=` rbindlist
+#' @importFrom dplyr `%>%`
+#' @importFrom ggplot2 ggplot aes scale_fill_manual scale_colour_manual scale_color_manual geom_histogram geom_hex geom_point geom_path geom_bar geom_errorbar geom_smooth facet_wrap facet_grid xlab ylab scale_y_continuous scale_x_continuous theme theme_bw element_blank element_line element_text rel position_dodge
 
 #' @export 
 mysep = "__ss__"
@@ -1546,7 +1547,7 @@ sampler = function(x, n = NROW(x), seed = 10, rngkind = "L'Ecuyer-CMRG", verbose
 enframe_list = function(lst, name = "name", value = "value", as.data.table = TRUE, rbind = TRUE, mc.cores = 1) {
     nms = names(lst)
     expr = parse(text = sprintf("cbind(%s = nm, df)", name, value))
-    out = mcmapply(function(el, nm) {
+    out = parallel::mcmapply(function(el, nm) {
         if (NROW(el)) {
             if (is.null(dim(el)))
                 df = setColnames(as.data.frame(el), value)
@@ -1559,7 +1560,7 @@ enframe_list = function(lst, name = "name", value = "value", as.data.table = TRU
     }, lst, nms, SIMPLIFY = FALSE, mc.cores = mc.cores)
     if (rbind) {
         if (as.data.table)
-            return(rbindlist(out))
+            return(data.table::rbindlist(out))
         else
             return(do.call(rbind, out))
     }
@@ -5376,8 +5377,7 @@ dir2 = function(path = ".", pattern = NULL, all.files = FALSE, full.names = FALS
 #' @author Kevin Hadi
 #' @export
 dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
-    unlist = TRUE, do_dirname = TRUE, ...)
-{
+    unlist = TRUE, do_dirname = TRUE, ...) {
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
@@ -5386,7 +5386,7 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
     else
         input = x
     lst = lst.empty2na(
-        mcMap(
+        parallel::mcMap(
             function(m.x, m.pattern, ...) {
                 dir(
                     path = m.x,
@@ -5441,8 +5441,7 @@ dig_dir = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
 #' @author Kevin Hadi
 #' @export
 dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
-    unlist = TRUE,  do_dirname = TRUE, ...)
-{
+    unlist = TRUE,  do_dirname = TRUE, ...) {
     if (is.null(pattern)) {
         pattern = list(NULL)
     }
@@ -5451,7 +5450,7 @@ dig_dir2 = function (x, pattern = NULL, full.names = TRUE, mc.cores = 1,
     else
         input = x
     lst = lst.empty2na(
-        mcMap(
+        parallel::mcMap(
             function(m.x, m.pattern, ...) {
                 dir2(
                     path = m.x,
@@ -5788,8 +5787,8 @@ refactor = function(fac, keep, ref_level = "OTHER") {
     if (!inherits(fac, "factor")) {
         fac = factor(fac)
     }
-    new_fac = fct_explicit_na(factor(fac, levels = intersect(levels(fac), keep), ordered = FALSE), na_level = ref_level) %>%
-        relevel(ref_level)
+    new_fac = forcats::fct_explicit_na(factor(fac, levels = intersect(levels(fac), keep), ordered = FALSE), na_level = ref_level) %>%
+        stats::relevel(ref_level)
     new_fac
 }
 
@@ -8472,7 +8471,7 @@ df2gr = function (df, seqnames.field = "seqnames", start.field = "start",
     start.field = paste(start.field, addon, sep = "_")
     end.field = paste(end.field, addon, sep = "_")
     strand.field = paste(strand.field, addon, sep = "_")
-    makeGRangesFromDataFrame(
+    GenomicRanges::makeGRangesFromDataFrame(
       df,
       seqnames.field = seqnames.field, 
       start.field = start.field,
@@ -8578,7 +8577,7 @@ df2grl = function(df,
         if (!keepgrmeta)
             df = qmat(df, ,-which(colnames(df) %in% asmcols))
     }
-    out = makeGRangesListFromDataFrame(
+    out = GenomicRanges::makeGRangesListFromDataFrame(
       df,
       seqnames.field = seqnames.field,
       start.field = start.field,

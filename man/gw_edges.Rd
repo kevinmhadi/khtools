@@ -7,5 +7,5 @@
 gw_edges(gw, full = FALSE)
 }
 \description{
-
+pull edge metadata from gwalk
 }

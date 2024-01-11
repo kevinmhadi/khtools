@@ -7,5 +7,5 @@
 OR(FUN = identity, ...)
 }
 \description{
-
+test boolean OR across multiple vectors
 }
