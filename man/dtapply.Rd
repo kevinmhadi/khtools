@@ -16,5 +16,5 @@ dtapply(
 )
 }
 \description{
-mclapply on a table split by a column
+Do function on splits of a table in parallel
 }

@@ -13,5 +13,5 @@ selfname(char)
 A named character vector
 }
 \description{
-name a character vector to itself
+self explanatory
 }

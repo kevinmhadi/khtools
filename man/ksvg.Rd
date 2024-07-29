@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{ksvg}
 \alias{ksvg}
-\title{open svg device with ppdf defaults without closing}
+\title{open svg device with defaults}
 \usage{
 ksvg(
   filename = "plot.svg",
@@ -25,5 +25,5 @@ ksvg(
 )
 }
 \description{
-open svg device with ppdf defaults without closing
+output to svg device in default directory and keep open
 }

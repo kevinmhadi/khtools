@@ -18,9 +18,11 @@
 #' @export 
 mysep = "__ss__"
 
-#' @name match_s
-#' @title match x indices in terms of y
+#' ordered match
 #'
+#' match x indices in terms of y
+#' 
+#' @name match_s
 #' @param x A vector
 #' @param y A vector
 #' @return a vector of indices of \code{x} ordered by \code{y}
@@ -43,12 +45,12 @@ match_s = function(x, y) {
     return(setNames(x_ind[find_in_x], names(find_in_x)))
 }
 
-#' @name match2
-#' @title matches x in terms of y
+#' matches x in terms of y
 #'
 #' returns vector of indices of matches in x with length of vector = length(y)
 #' non matches are NA
 #'
+#' @name match2
 #' @export
 match2 = function(x, y) {
     ## x_tmp = factor(as.character(x), levels = as.character(y))
@@ -67,16 +69,17 @@ match2 = function(x, y) {
     return(new_index)
 }
 
-#' @name find_dups
-#' @title find all duplicates in a vector
+#' find all duplicates in a vector
+#' 
+#' find all elements that have duplicates in a vector 
 #'
+#' @name find_dups
 #' @param vec A vector
 #' @return a logical vector with all positions marked TRUE being duplicates
 #' @examples
 #' find_dups(c(1,1,1,3,5))
 #' find_dups(c(1,3,1,3,1))
 #' find_dups(c(3,1,5,4,4))
-#'
 #' @export
 find_dups = function(..., re_sort = FALSE, sep = " ", as.logical = FALSE) {
   lst = as.list(match.call())[-1]
@@ -98,9 +101,11 @@ find_dups = function(..., re_sort = FALSE, sep = " ", as.logical = FALSE) {
   }
 }
 
-#' @name undup
-#' @title an alternative to base::unique() that preserves names
+#' an alternative to base::unique() that preserves names
 #'
+#' unique(), but keep names
+#' 
+#' @name undup
 #' @param obj an R vector
 #' @return unique values of obj with names preserved
 #' @export
@@ -118,15 +123,18 @@ undup = function(obj, fromLast = FALSE, nmax = NA, na.rm = FALSE) {
 
 
 
-#' @name selfname
+#' name a character vector to itself
 #'
-#' @title name a character vector to itself
+#' self explanatory
+#' 
+#' @name selfname
 #' @param char A character vector
 #' @return A named character vector
 #' @export
 selfname = function(char) {setNames2(char, char)}
 
 #' @name check_lst
+#'
 #' @title checking list for elements that are errors
 #'
 #' checking a list for any elements that are try-errors
@@ -144,12 +152,12 @@ check_lst = function(
     return(vapply(lst, function(x) class(x)[1], "") %in% class_condition)
 }
 
-#' @name iderr
-#' @title returns ids of list elements that are errors
+#' returns ids of list elements that are errors
 #'
 #' checking a list for any elements that are try-errors
 #' usually from an lapply(..., function(x) try({})) call
 #'
+#' @name iderr
 #' @param lst A list
 #' @return a logical vector marking which elements are try-errors"
 #' @export
@@ -162,12 +170,12 @@ iderr = function(
 }
 
 
-#' @name whicherr
-#' @title iderr
-#'
+#' same as iderr
+#' 
 #' checking a list for any elements that are try-errors
 #' usually from an lapply(..., function(x) try({})) call
-#'
+#' 
+#' @name whicherr
 #' @param lst A list
 #' @return a logical vector marking which elements are try-errors"
 #' @export
@@ -175,9 +183,8 @@ whicherr = iderr
 
 
 #' @name ret_no_err
-#' @title a wrapper around check_lst
-#'
 #' 
+#' @title a wrapper around check_lst 
 #'
 #' @param lst A list (usually the output of lapply(... , function(x) try({}))
 #' @return only returns the non-errors in the list
@@ -571,11 +578,13 @@ na2empty = function(v) {
 }
 
 
-#' @name empty2na
-#'
+
+#' Set vector to NA
+#' 
 #' A convenience function to set a character vector with NAs to an
 #' empty character
 #'
+#' @name empty2na
 #' @return A character vector
 #' @export
 empty2na = function(v) {
@@ -585,12 +594,13 @@ empty2na = function(v) {
 }
 
 
-#' @name ws2und
+#' Clean up whitespace from columns of data.frame-like object
 #'
 #' make data.frame or data.table column name whitespaces into
 #' underscores and remove end whitespaces
 #'
 #' @return A character vector
+#' @name ws2und
 #' @export
 ws2und = function(df)
 {
@@ -611,6 +621,7 @@ ws2und = function(df)
 
 
 #' @name lst.empty
+#' 
 #' @title lst.empty
 #'
 #' A logical vector to select which list elements are empty
@@ -622,11 +633,12 @@ lst.empty = function(x) {
     ## S4Vectors::elementNROWS(x) == 0
 }
 
-#' @name lst.empty2zero
+#' Convert empty elements to zero.
 #'
 #' set empty list elements to zero
 #'
 #' @return A logical vector of length(x)
+#' @name lst.empty2zero
 #' @export lst.empty2zero
 lst.empty2zero = function(x) {
     x[lengths(x) == 0] = 0
@@ -635,12 +647,12 @@ lst.empty2zero = function(x) {
 }
 
 
-#' @name lst.empty2na
-#' @title empty list elements set to NA
+#' empty list elements set to NA
 #'
 #' set empty list elements to NA
 #'
 #' @return A list
+#' @name lst.empty2na
 #' @export lst.empty2na
 lst.empty2na = function(x) {
     x[lengths(x) == 0] = NA
@@ -876,33 +888,32 @@ copydt = function(dt, columns, as.data.table = TRUE) {
     return(out)
 }
 
+
+#' test boolean AND across multiple vectors
+#'
+#' testing boolean across multiple vectors for simplifying interactive coding
+#'
 #' @name AND
-#' @title test boolean AND across multiple vectors
-#'
-#' @description
-#'
 #' @export
 AND = function(FUN = identity, ...) {
     lst = lapply(list(...), FUN)
     Reduce(function(x,y) {x & y}, lst)
 }
 
+#' test boolean OR across multiple vectors
+#'
 #' @name OR
-#' @title test boolean OR across multiple vectors
-#'
-#' @description
-#'
 #' @export
 OR = function(FUN = identity, ...) {
     lst = lapply(list(...), FUN)
     Reduce(function(x,y) {x | y}, lst)
 }
 
+#' mclapply on a table split by a column
+#'
+#' Do function on splits of a table in parallel
+#'
 #' @name dtapply
-#' @title mclapply on a table split by a column
-#'
-#' @description
-#'
 #' @export
 dtapply = function (
     tbl,
@@ -933,11 +944,11 @@ dtapply = function (
 }
 
 
+#' read header of file
+#'
+#' Get header of file (apply to vcf, sam, or bam formats)
+#' 
 #' @name read.header
-#' @title read header of file
-#'
-#' @description
-#'
 #' @export read.header
 read.header = function(path, header.char = "#") {
     n = 0
@@ -954,11 +965,11 @@ read.header = function(path, header.char = "#") {
 }
 
 
+#' open pdf device with defaults
+#' 
+#' output to pdf device in default directory and keep open
+#'
 #' @name kpdf
-#' @title open pdf device with ppdf defaults without closing
-#'
-#' @description
-#'
 #' @export
 kpdf = function(
     filename = "plot.pdf",
@@ -998,11 +1009,12 @@ kpdf = function(
     return(dev)
 }
 
+
+#' open Cairo pdf device with defaults
+#' 
+#' output to Cairo pdf device in default directory and keep open
+#'
 #' @name kcpdf
-#' @title open Cairo pdf device with ppdf defaults without closing
-#'
-#' @description
-#'
 #' @export
 kcpdf = function(
     filename = "plot.pdf",
@@ -1049,11 +1061,11 @@ kcpdf = function(
     return(dev)
 }
 
+#' open svg device with defaults
+#' 
+#' output to svg device in default directory and keep open
+#'
 #' @name ksvg
-#' @title open svg device with ppdf defaults without closing
-#'
-#' @description
-#'
 #' @export
 ksvg = function(filename = "plot.svg", height = 10, width = 10,
                 h = height, w = width, cex = 1, title = NULL, byrow = TRUE, 

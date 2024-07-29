@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{kcpdf}
 \alias{kcpdf}
-\title{open Cairo pdf device with ppdf defaults without closing}
+\title{open Cairo pdf device with defaults}
 \usage{
 kcpdf(
   filename = "plot.pdf",
@@ -24,5 +24,5 @@ kcpdf(
 )
 }
 \description{
-open Cairo pdf device with ppdf defaults without closing
+output to Cairo pdf device in default directory and keep open
 }

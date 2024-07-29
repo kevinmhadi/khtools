@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{match2}
 \alias{match2}
-\title{matches x in terms of y
-
-returns vector of indices of matches in x with length of vector = length(y)
-non matches are NA}
+\title{matches x in terms of y}
 \usage{
 match2(x, y)
 }
 \description{
-matches x in terms of y
-
 returns vector of indices of matches in x with length of vector = length(y)
 non matches are NA
 }

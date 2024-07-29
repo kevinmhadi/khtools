@@ -13,11 +13,10 @@ find_dups(..., re_sort = FALSE, sep = " ", as.logical = FALSE)
 a logical vector with all positions marked TRUE being duplicates
 }
 \description{
-find all duplicates in a vector
+find all elements that have duplicates in a vector
 }
 \examples{
 find_dups(c(1,1,1,3,5))
 find_dups(c(1,3,1,3,1))
 find_dups(c(3,1,5,4,4))
-
 }

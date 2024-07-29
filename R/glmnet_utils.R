@@ -1,10 +1,11 @@
 ## source("/gpfs/commons/groups/imielinski_lab/home/khadi/git/khscripts/.Rprofile")
 ## require3(khtools, glmnet, randomForest, caret, dplyr, signature.tools.lib, pROC)
 
-#' @name robust.scale
-#' @title flatten outliers by quantile
+#' flatten outliers by quantile
 #'
-#' 
+#' enforce outliers to pmax and pmin within a quantile
+#'
+#' @name robust.scale
 #' @return a vector of features pmin and pmax by quantile
 #' @export robust.scale
 robust.scale <- function(x, qlow = 0.1, qhigh = 0.9) {
@@ -17,6 +18,7 @@ robust.scale <- function(x, qlow = 0.1, qhigh = 0.9) {
 }
 
 #' @name do.pp
+#'
 #' @title do caret preProcess
 #'
 #' 
@@ -345,10 +347,11 @@ get_pred = function(mod, newdata, feats, type = "response", s = 0, alpha = 1, ex
 }
 
 
-#' @name make_roc
-#' @title make_roc
+#' make_roc
 #'
+#' Make an roc curve from data using MultiROC
 #' 
+#' @name make_roc
 #' @export make_roc
 make_roc <- function(dat, lab = "lab", score = "HRD", include_group = FALSE) {
   mrlab = mroclab(dat[[lab]])

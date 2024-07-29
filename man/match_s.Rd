@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{match_s}
 \alias{match_s}
-\title{match x indices in terms of y}
+\title{ordered match}
 \usage{
 match_s(x, y)
 }

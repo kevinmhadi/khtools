@@ -13,5 +13,5 @@ undup(obj, fromLast = FALSE, nmax = NA, na.rm = FALSE)
 unique values of obj with names preserved
 }
 \description{
-an alternative to base::unique() that preserves names
+unique(), but keep names
 }

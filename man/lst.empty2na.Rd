@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{lst.empty2na}
 \alias{lst.empty2na}
-\title{empty list elements set to NA
-
-set empty list elements to NA}
+\title{empty list elements set to NA}
 \usage{
 lst.empty2na(x)
 }
@@ -12,7 +10,5 @@ lst.empty2na(x)
 A list
 }
 \description{
-empty list elements set to NA
-
 set empty list elements to NA
 }

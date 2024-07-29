@@ -10,5 +10,5 @@ robust.scale(x, qlow = 0.1, qhigh = 0.9)
 a vector of features pmin and pmax by quantile
 }
 \description{
-flatten outliers by quantile
+enforce outliers to pmax and pmin within a quantile
 }

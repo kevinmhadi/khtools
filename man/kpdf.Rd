@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{kpdf}
 \alias{kpdf}
-\title{open pdf device with ppdf defaults without closing}
+\title{open pdf device with defaults}
 \usage{
 kpdf(
   filename = "plot.pdf",
@@ -24,5 +24,5 @@ kpdf(
 )
 }
 \description{
-open pdf device with ppdf defaults without closing
+output to pdf device in default directory and keep open
 }

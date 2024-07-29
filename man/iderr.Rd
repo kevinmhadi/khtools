@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{iderr}
 \alias{iderr}
-\title{returns ids of list elements that are errors
-
-checking a list for any elements that are try-errors
-usually from an lapply(..., function(x) try({})) call}
+\title{returns ids of list elements that are errors}
 \usage{
 iderr(
   lst,
@@ -19,8 +16,6 @@ iderr(
 a logical vector marking which elements are try-errors"
 }
 \description{
-returns ids of list elements that are errors
-
 checking a list for any elements that are try-errors
 usually from an lapply(..., function(x) try({})) call
 }

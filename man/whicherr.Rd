@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{whicherr}
 \alias{whicherr}
-\title{iderr
-
-checking a list for any elements that are try-errors
-usually from an lapply(..., function(x) try({})) call}
+\title{same as iderr}
 \usage{
 whicherr(
   lst,
@@ -19,8 +16,6 @@ whicherr(
 a logical vector marking which elements are try-errors"
 }
 \description{
-iderr
-
 checking a list for any elements that are try-errors
 usually from an lapply(..., function(x) try({})) call
 }

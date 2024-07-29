@@ -7,5 +7,5 @@
 make_roc(dat, lab = "lab", score = "HRD", include_group = FALSE)
 }
 \description{
-make_roc
+Make an roc curve from data using MultiROC
 }
