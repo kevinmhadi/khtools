@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{lst.null2na}
 \alias{lst.null2na}
-\title{NULL elements of list to NA
-
-set NULL list elements to NA}
+\title{NULL elements of list to NA}
 \usage{
 lst.null2na(x)
 }
@@ -12,7 +10,5 @@ lst.null2na(x)
 A list
 }
 \description{
-NULL elements of list to NA
-
 set NULL list elements to NA
 }

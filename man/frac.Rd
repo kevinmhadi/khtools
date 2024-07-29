@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{frac}
 \alias{frac}
-\title{fraction from a vector of numeric values}
+\title{calculate fraction}
 \usage{
 frac(x)
 }

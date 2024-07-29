@@ -30,5 +30,6 @@ process_tbl(
 a list of idx and seq
 }
 \description{
-flexibly read in a field and append an id to the output
+perform an embarrassingly parallel operation on files
+i.e. read in and do some pre processing
 }

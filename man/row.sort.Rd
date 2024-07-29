@@ -7,9 +7,7 @@
 row.sort(a, use_rfast = TRUE)
 }
 \description{
-matrix(a[order(row(a), a)], ncol = ncol(a), byrow = TRUE)
-^^ came from stackoverflow
+Came from stackoverflow
 https://stackoverflow.com/questions/9506442/fastest-way-to-sort-each-row-of-a-large-matrix-in-r
-
 Rfast::rowsort is faster than the base function but it is still very fast
 }

@@ -15,7 +15,7 @@ rep_len2(x, objalong, uselen = TRUE)
 vector
 }
 \description{
-recycle vector along length OR nrow of object
+repeat vector along the length or nrow of object
 }
 \author{
 Kevin Hadi

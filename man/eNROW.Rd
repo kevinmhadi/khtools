@@ -7,5 +7,6 @@
 eNROW(x)
 }
 \description{
-does vapply NROW
+get either length or nrow (if dim(x)[1] > 1)
+of each list element
 }

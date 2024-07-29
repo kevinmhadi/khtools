@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{copy2}
 \alias{copy2}
-\title{make deep copy
-
-useful for dev
-makes deep copy of R6 object, S4 object, or anything else really}
+\title{make deep copy}
 \usage{
 copy2(x)
 }
 \description{
-make deep copy
-
 useful for dev
 makes deep copy of R6 object, S4 object, or anything else really
 }

@@ -15,5 +15,5 @@ readin(
 )
 }
 \description{
-flexible file opening
+open text, vcf, or rds files flexibly
 }

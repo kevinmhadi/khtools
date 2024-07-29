@@ -32,7 +32,8 @@ data.table/frame if as.data.table is TRUE, otherwise a list
 \description{
 Convenience function to apply a function to columns of a data.table/frame.
 The syntax for the columns is flexible
-
+}
+\details{
 lapply_dt(c(newcolname = colname), dt, dosomething)
 will give a data.table or list with the column name
 renamed to newcolname

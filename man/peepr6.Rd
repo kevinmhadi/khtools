@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{peepr6}
 \alias{peepr6}
-\title{peepr6
-
-useful for dev}
+\title{peepr6}
 \usage{
 peepr6(x)
 }
 \description{
-peepr6
-
 useful for dev
 }

@@ -7,5 +7,5 @@
 save.r(file, note = NULL, verbose = FALSE, compress = FALSE, ...)
 }
 \description{
-save R data session
+save the current
 }

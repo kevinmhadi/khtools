@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{overwriteR6}
 \alias{overwriteR6}
-\title{overwrite a method in R6 class generator
-
-useful for dev purposes.}
+\title{overwrite a method in R6 class generator}
 \usage{
 overwriteR6(
   newfun,
@@ -16,7 +14,5 @@ overwriteR6(
 )
 }
 \description{
-overwrite a method in R6 class generator
-
 useful for dev purposes.
 }

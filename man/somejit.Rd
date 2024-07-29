@@ -7,5 +7,5 @@
 somejit(x, factor = 1e-06)
 }
 \description{
-add tiny jitter
+jitter with seed
 }

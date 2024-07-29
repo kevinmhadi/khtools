@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{copys4}
 \alias{copys4}
-\title{make deep copy of all private slots in s4 object
-
-useful for dev}
+\title{make deep copy of all private slots in s4 object}
 \usage{
 copys4(x)
 }
 \description{
-make deep copy of all private slots in s4 object
-
 useful for dev
 }

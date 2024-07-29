@@ -14,5 +14,5 @@ make_dummy(
 )
 }
 \description{
-make table of dummy encodings
+not sure what I used this for
 }

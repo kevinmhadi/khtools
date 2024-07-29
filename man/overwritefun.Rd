@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{overwritefun}
 \alias{overwritefun}
-\title{overwrite a function in its namespace
-
-useful for dev purposes.}
+\title{overwrite a function in its namespace}
 \usage{
 overwritefun(newfun, oldfun, package, envir = globalenv())
 }
 \description{
-overwrite a function in its namespace
-
 useful for dev purposes.
 }

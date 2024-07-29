@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{file.not.exists}
 \alias{file.not.exists}
-\title{slightly more robust test for whether file does not exist
-
-test whether a file is NA, NULL, or /dev/null OR if
-the file exists}
+\title{slightly more robust test for whether file does not exist}
 \usage{
 file.not.exists(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", ""))
 }
@@ -16,8 +13,6 @@ file.not.exists(x, nullfile = "/dev/null", bad = c(NA, "NA", "NULL", ""))
 logical
 }
 \description{
-slightly more robust test for whether file does not exist
-
 test whether a file is NA, NULL, or /dev/null OR if
 the file exists
 }

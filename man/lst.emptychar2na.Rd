@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{lst.emptychar2na}
 \alias{lst.emptychar2na}
-\title{empty character elements of list to NA
-
-set empty character to NA}
+\title{empty character elements of list to NA}
 \usage{
 lst.emptychar2na(x)
 }
@@ -12,7 +10,5 @@ lst.emptychar2na(x)
 A list
 }
 \description{
-empty character elements of list to NA
-
 set empty character to NA
 }

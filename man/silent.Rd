@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{silent}
 \alias{silent}
-\title{run expression without any printed output
-
-execute expression without any output to console.
-silent({var = function_that_has_explicit_print(...)})}
+\title{run expression without any printed output}
 \usage{
 silent(this_expr, this_env = parent.frame(), enclos = parent.frame(2))
 }
@@ -13,8 +10,6 @@ silent(this_expr, this_env = parent.frame(), enclos = parent.frame(2))
 \item{...}{an expression}
 }
 \description{
-run expression without any printed output
-
 execute expression without any output to console.
 silent({var = function_that_has_explicit_print(...)})
 }

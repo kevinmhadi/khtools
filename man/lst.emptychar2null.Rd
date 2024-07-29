@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{lst.emptychar2null}
 \alias{lst.emptychar2null}
-\title{empty character elements of list to NULL
-
-set empty character to null}
+\title{empty character elements of list to NULL}
 \usage{
 lst.emptychar2null(x)
 }
@@ -12,7 +10,5 @@ lst.emptychar2null(x)
 A list
 }
 \description{
-empty character elements of list to NULL
-
 set empty character to null
 }

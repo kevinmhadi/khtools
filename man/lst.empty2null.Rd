@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{lst.empty2null}
 \alias{lst.empty2null}
-\title{empty list elements set to NULL
-
-set empty list elements to NULL}
+\title{empty list elements set to NULL}
 \usage{
 lst.empty2null(x)
 }
@@ -12,7 +10,5 @@ lst.empty2null(x)
 A list
 }
 \description{
-empty list elements set to NULL
-
 set empty list elements to NULL
 }

@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{copy3}
 \alias{copy3}
-\title{make deep copy, recursively
-
-useful for dev
-makes deep copy of R6 object, S4 object, or anything else really}
+\title{make deep copy, recursively}
 \usage{
 copy3(x, recurse_list = TRUE)
 }
 \description{
-make deep copy, recursively
-
 useful for dev
 makes deep copy of R6 object, S4 object, or anything else really
 }

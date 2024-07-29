@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{kpng}
 \alias{kpng}
-\title{open png device with ppng defaults without closing}
+\title{open png device with defaults}
 \usage{
 kpng(
   filename = "plot.png",
@@ -25,5 +25,5 @@ kpng(
 )
 }
 \description{
-open png device with ppng defaults without closing
+output to png device in default directory and keep open
 }

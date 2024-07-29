@@ -7,5 +7,5 @@
 rows.all(mat)
 }
 \description{
-test whether all row entries are TRUE
+perform all() rowwise
 }

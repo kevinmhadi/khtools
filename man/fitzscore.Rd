@@ -2,10 +2,11 @@
 % Please edit documentation in R/package.R
 \name{fitzscore}
 \alias{fitzscore}
-\title{calculate zscores based on prior mean and stddev}
+\title{calculate z score}
 \usage{
 fitzscore(x, mean, stddev)
 }
 \description{
-calculate zscores based on prior mean and stddev
+busywork function to calculate z score with mean and stddev
+stores mean and stddev as attributes
 }

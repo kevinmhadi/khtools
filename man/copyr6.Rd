@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{copyr6}
 \alias{copyr6}
-\title{make deep copy of all non-function public and private fields in R6
-
-useful for dev}
+\title{make deep copy of all non-function public and private fields in R6}
 \usage{
 copyr6(x)
 }
 \description{
-make deep copy of all non-function public and private fields in R6
-
 useful for dev
 }
