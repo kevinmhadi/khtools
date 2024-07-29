@@ -11,5 +11,5 @@ fit.cnv.sig(
 )
 }
 \description{
-fit battenberg copy number to CN signatures (Nature 2022)
+extract copy number CN signatures and fit using NNLS
 }

@@ -19,7 +19,8 @@ gr.splgaps(
 GRangesList
 }
 \description{
-gaps on GRanges, splitting by values in a metadata field
+Gaps method that extracts the differences of a GRangesList
+object from the Seqinfo() reference.
 }
 \author{
 Kevin Hadi

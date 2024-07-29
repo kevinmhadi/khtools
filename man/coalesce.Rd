@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{coalesce}
 \alias{coalesce}
-\title{same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber
-
-clobber NA, or some value between multiple vectors
-bads can be a function that returns a logical}
+\title{same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber}
 \usage{
 coalesce(
   ...,
@@ -20,8 +17,6 @@ coalesce(
 )
 }
 \description{
-same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber
-
 clobber NA, or some value between multiple vectors
 bads can be a function that returns a logical
 }

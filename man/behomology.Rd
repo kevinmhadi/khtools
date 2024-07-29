@@ -12,5 +12,5 @@ behomology(gg, hg, PAD = 2)
 \item{hg}{character path to fasta or rtracklayer representation of fasta-like file}
 }
 \description{
-pull out the
+pull out homology across exact breakends from gGraph object
 }

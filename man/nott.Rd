@@ -2,10 +2,10 @@
 % Please edit documentation in R/package.R
 \name{nott}
 \alias{nott}
-\title{nott}
+\title{negate a function}
 \usage{
 nott(f)
 }
 \description{
-nott
+negate a function that returns boolean
 }

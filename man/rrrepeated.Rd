@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{rrrepeated}
 \alias{rrrepeated}
-\title{Recursively repeat a function call
-
-Recursively repeat a function
-Found on stackoverflow}
+\title{Recursively repeat a function call}
 \usage{
 rrrepeated(.x, .reps = 1, .f, ...)
 }
@@ -13,8 +10,6 @@ rrrepeated(.x, .reps = 1, .f, ...)
 Same as .x
 }
 \description{
-Recursively repeat a function call
-
 Recursively repeat a function
 Found on stackoverflow
 }

@@ -12,7 +12,8 @@ extract_ggplot(ggplot_obj)
 \description{
 takes an input function and grabs the processed data frame
 that ggplot employs to draw its plots
-
+}
+\details{
 Note: reordering plot data to fit the ggplot wrangled data is
 (if there is a 1 to 1 mapping)
 plot_data[order(<facet.x>, <facet.y>, <grouping_variable>)]

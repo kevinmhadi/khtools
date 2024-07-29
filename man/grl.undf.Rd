@@ -10,7 +10,7 @@ grl.undf(grl)
 data table
 }
 \description{
-GRangesList
+grangeslist to data table via dataframe
 }
 \author{
 Kevin Hadi

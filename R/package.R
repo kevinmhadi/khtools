@@ -1653,10 +1653,8 @@ split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE) {
 }
 
 
-#' @name printerr
-#' @title print error message from tryCatch
+#' print error message from tryCatch
 #'
-#' @description
 #' useful for tryCatch(..., error = function(e) printerr(<some_custom_msg>))
 #'
 #' @export
@@ -1669,11 +1667,9 @@ printerr = function(msg = "", e) {
     eval(quote(print(structure(paste("error: ", msg, cm, cc), class = "err"))))
 }
 
-#' @name nott
-#' @title nott
+#' negate a function
 #'
-#' @description
-#' 
+#' negate a function that returns boolean 
 #'
 #' @export
 nott = function(f) {
@@ -1715,39 +1711,6 @@ seevar = function(calling_env = parent.frame()) {
 }
 
 
-#' @name reset.dev
-#' @title reset.dev
-#'
-#' @description
-#' dealing with annoying plot resets
-#'
-#' @export reset.dev
-reset.dev = function(x) {
-  err = NULL
-  while (is.null(err)) {
-    err = tryCatch({eval(quote(dev.off()), globalenv()); NULL}, error = function(e) structure("", class = "err"))
-    ## err = tryCatch({evalq(dev.off(), globalenv()); NULL}, error = function(e) structure("", class = "err"))
-  }
-}
-
-#' @name no.dev
-#' @title Turn off all graphic devices
-#'
-#' @description
-#' dealing with annoying plot resets
-#'
-#' @export no.dev
-no.dev = function() {
-    evalq({
-        for (d in dev.list()) {
-            dev.off(d)
-        }
-    }, envir = globalenv())
-}
-
-
-
-
 #' @name complete.cases2
 #' @title complete.cases wrapper
 #'
@@ -1783,20 +1746,6 @@ uniqf = function (..., sep = " ")
     tmpix
 }
 
-
-## uniqf = function(..., sep = paste0(" ", rand.string(length = 8), 
-##                                    " ")) {
-##     current.rng = .Random.seed
-##     txt = parse(text = sprintf(".Random.seed = as.integer(%s)", mkst(current.rng)))
-##     set_rngseed(seed = 10, verbose = FALSE)
-##     on.exit(eval(txt, envir = globalenv()))
-##     lst = as.list(match.call()[-1])
-##     ix = which(names2(lst) != "sep")
-##     ## senv = suppressWarnings(stackenv(parent.frame()))
-##     tmpix = do.call(paste, c(lst[ix], alist(sep = dg(sep))), envir = parent.frame())
-##     tmpix = factor(tmpix, levels = unique(tmpix))
-##     tmpix
-## }
 
 #' @name qq
 #' @title get actual quantile values of vector
@@ -2094,15 +2043,13 @@ colexists = function(nm, df) {
     return(nm %in% cnames)
 }
 
-#' @name dodo.call2
-#' @title dodo.call+
+#' dodo.call+
 #'
 #' FUN can be an anonymous function call
 #' dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
 #' can also omit the brackets
 #'
-#'
-#'
+#' @name dodo.call2
 #' @param FUN function
 #' @author Marcin Imielinski
 #' @export dodo.call2
@@ -2164,12 +2111,10 @@ et = function(txt, eval = TRUE, envir = parent.frame(), enclos = parent.frame(2)
 
 
 
-#' @name clobber
-#' @title same as dplyr::coalesce
+#' same as dplyr::coalesce
 #'
 #' clobber NA, or some value between multiple vectors
 #' bads can be a function that returns a logical
-#'
 #'
 #' @param ... vectors to merge together
 #' @param bads a set of values to clobber, or a function that returns a logical
@@ -2338,8 +2283,7 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
 ##     else return(Reduce(function(x, y) dofun(y, x), lst, right = fromLast))
 ## }
 
-#' @name coalesce
-#' @title same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber
+#' same as dplyr::coalesce, khtools:coalesce is an alias for khtools::clobber
 #'
 #' clobber NA, or some value between multiple vectors
 #' bads can be a function that returns a logical
@@ -2347,10 +2291,9 @@ clobber = function(..., bads = NA, bads.x = NULL, bads.y = NULL, r2l = FALSE, fr
 #' @export
 coalesce = clobber
 
-#' @name enframe
-#' @title same as tibble::enframe
+#' same as tibble::enframe
 #'
-#' enframe
+#' kevin's implementation of tibble::enframe()
 #'
 #'
 #' @param x named vector
@@ -2374,8 +2317,7 @@ enframe = function(x, name = "name", value = "value", as.data.table = TRUE) {
 }
 
 
-#' @name ppng
-#' @title kevin's modification of ppng
+#' kevin's modification of ppng
 #'
 #' height and width are specified in inches by default
 #' resolution is specified as 300 by default
@@ -2479,12 +2421,12 @@ file.dir <- function (paths) {
     return(gsub("(^|(.*\\/))?([^\\/]*)$", "\\2", paths))
 }
 
-#' @name ppdf
-#' @title kevin's modification of ppdf
+#' kevin's modification of ppdf
 #'
 #' height and width are specified in inches by default
 #' resolution is specified as 300 but is not used
 #'
+#' @name ppdf
 #' @export
 ppdf = function (expr, filename = "plot.pdf", height = 10, width = 10,
                  h = height, w = width,
@@ -2767,9 +2709,11 @@ set_rngseed = function(seed = 10, rngkind = "L'Ecuyer-CMRG", normal.kind = "Inve
     return(invisible(NULL))
 }
 
-#' @name make_ttsplit
-#' @title make training/test splits
+#' make training/test splits
+#'
+#' training and testing
 #' 
+#' @name make_ttsplit
 #' @author Kevin Hadi
 #' @param dat data.table or data.frame of one row per observation. assumes each observation is a row
 #' @param k number of groups
@@ -4124,10 +4068,11 @@ dynget = function(x, px = TRUE,
 dg = dynget
 
 
-#' @name %inn%
+#' %inn%
 #'
 #' Same as %in% but keeps NA values as NA
 #'
+#' @name %inn%
 #' @return a logical vector
 #' @export
 `%inn%` = function(x, table) {
@@ -4269,7 +4214,7 @@ zscore <- function(x, na.rm = F) {
 }
 
 
-#' @name select.matrix
+#' select.matrix
 #'
 #' wrapper to pick out rows and columns without erroring out
 #'
@@ -4309,7 +4254,6 @@ select.matrix = function(x, rows = NULL, cols = NULL, int.rows = TRUE, int.cols 
 
 
 
-#' @name ne
 #' @title "no error"
 #'
 #' "no error"
@@ -4374,8 +4318,7 @@ loop_grepl = function(patterns, vec_char, ignore.case = FALSE) {
 
 
 
-#' @name rrrepeated
-#' @title Recursively repeat a function call
+#' Recursively repeat a function call
 #'
 #' Recursively repeat a function
 #' Found on stackoverflow
@@ -4409,9 +4352,9 @@ rrrepeated <- function(.x, .reps = 1, .f, ...) {
 }
 
 
-#' @name ez_string
+#' don't use this. use base::dput()
 #'
-#' An easy way to print out a c() vector into a blog file
+#' Don't use this... use base::dput() An easy way to print out a c() vector into a blog file
 #'
 #' @export
 ez_string = function(string_vec, c = T, list = !c, quotes = T, ws = "\n") {
@@ -6012,7 +5955,6 @@ summ_glm = function(glm_mod, as.data.table = TRUE, ...) {
 ##################################################
 ##### gTrack stuff!
 
-#' @name lbl.gg
 #' @title convenience function to label the nodes and edges of gGraph
 #'
 #' @description
@@ -6031,7 +5973,6 @@ lbl.gg = function(gg, do = T) {
 }
 
 
-#' @name gt.each
 #' @title convenience function to plot each element separately
 #'
 #' useful for grangeslists and gwalks to plot each one on a separate track
@@ -6054,7 +5995,6 @@ gt.each = function(gr) {
     lapply(ix, fx) %>% dodo.call2(FUN = c)
 }
 
-#' @name grab_cov
 #' @title convenience function to pull out coverage data from table
 #'
 #'
@@ -6201,10 +6141,8 @@ gt.fix = function(gt, lwd.scale = 1, lwd.border.scale = 1, ywid.scale = 1) {
 ############################## ggplot2 stuff
 ##############################
 
-#' @name extract_ggplot
-#' @title helper function to grab relevant ggplot_build outputs
+#' helper function to grab relevant ggplot_build outputs
 #'
-#' @description
 #' takes an input function and grabs the processed data frame
 #' that ggplot employs to draw its plots
 #'
@@ -6294,8 +6232,7 @@ extract_ggplot = function(ggplot_obj) {
 }
 
 
-#' @name integer_breaks
-#' @title make integer breaks on axes
+#' make integer breaks on axes
 #'
 #' a la scales::breaks_pretty
 #'
@@ -6743,7 +6680,6 @@ read_vcf2 = function(fn, gr = NULL, type = c("snps", "indels", "all"), hg = 'hg1
 
 
 
-#' @name trans.df
 #' @title transpose data.table or data.frame
 #'
 #' @description
@@ -6768,7 +6704,6 @@ trans.df = function(df, rn = 1) {
 }
 
 
-#' @name dunlist2
 #' @title unlist into a data.table
 #'
 #' unlisting a list into a data table with
@@ -6797,8 +6732,7 @@ dunlist2 = function (x, simple = FALSE)
 }
 
 
-#' @name debug.s4
-#' @title trace into an S4 function
+#' trace into an S4 function
 #'
 #' Debugging an S4 function can't be done with debug().
 #' This function is a convenience wrapper around trace()
@@ -6817,8 +6751,7 @@ debug.s4 = function(what, signature, where) {
           signature = signature, where = where)
 }
 
-#' @name undebug.s4
-#' @title reverse debug.s4
+#' reverse debug.s4
 #'
 #' undebugging an S4 function when debug.s4/trace were
 #' called on an S4 method.
@@ -6834,8 +6767,7 @@ undebug.s4 = function(what, signature, where) {
     untrace(what = what, signature = signature, where = where)
 }
 
-#' @name mstrsplit
-#' @title make matrix out of stringsplitted character vector
+#' make matrix out of stringsplitted character vector
 #'
 #' split a vector by a delimiter,
 #' fill in to make same length
@@ -6857,7 +6789,7 @@ mstrsplit = function(x, ...) {
 
 
 
-#' @name grep_order
+#' grep_order
 #'
 #' order text based on the supplied order of multiple patterns
 #'
@@ -6880,7 +6812,7 @@ grep_order = function(patterns, text, return_na = FALSE, first_only = FALSE, per
     return(unlist(match_lst))
 }
 
-#' @name grep_col_sort
+#' grep_col_sort
 #'
 #' order columns of a data.frame/data.table based on the supplied
 #' order of multiple character patterns.
@@ -7235,7 +7167,6 @@ dt_na2zero = function(dt, these_cols = NULL) {
     return(dt)
 }
 
-#' @name dt_na2empty
 #' @title convert columns with NA to empty character
 #'
 #' coerce NA in columns of class "character" to ""
@@ -7255,7 +7186,6 @@ dt_na2empty = function(dt) {
 }
 
 
-#' @name dt_empty2na
 #' @title convert columns with empty character to NA
 #'
 #' coerce "" in columns of class "character" to NA_character_
@@ -7274,7 +7204,8 @@ dt_empty2na = function(dt) {
     }
     return(dt)
 }
-#' @name dt_empty2na
+
+
 #' @title set columnn to NULL in data.table
 #'
 #' remove column from data table by setting to NULL
@@ -7290,7 +7221,6 @@ dt_setnull = function(dt, cols) {
     return(dt)
 }
 
-#' @name dt_setint
 #' @title convert column to integer
 #'
 #' coerce column of type "numeric" by default to "integer"
@@ -7309,7 +7239,7 @@ dt_setint = function(dt, cols = NULL) {
     return(dt)
 }
 
-#' @name dt_setallna
+
 #' @title convert all data.table entries to NA
 #'
 #' Set all columns to NA...
@@ -7350,7 +7280,6 @@ dt_setchar = function(dt, cols = NULL) {
     return(dt)
 }
 
-#' @name dt_any2lg
 #' @title convert all columns to logical
 #'
 #' set columns to logical
@@ -7370,7 +7299,7 @@ dt_any2lg = function(dt, cols = NULL) {
     return(dt)
 }
 
-#' @name dt_f2char
+
 #' @title convert factor columns to character
 #'
 #' coerce factor columns to character
@@ -8035,27 +7964,20 @@ subgr = function(x, y) {
 #' @export
 "%Q%.GRangesList" = subgr
 
-#' @name %Q%.CompressedGRangesList
 #' @title query on CompressedGRangesList
 #'
-#' @description
-#'
-#'
-#'
+#' @name  %Q%.CompressedGRangesList
 #' @return GRangesList
 #' @author Kevin Hadi
 #' @export
 "%Q%.CompressedGRangesList" = subgr
 
 
-#' @name gr.genome
-#' @title create GRanges of full genome coordinates
-#' @description
+#' create GRanges of full genome coordinates
 #'
 #' Grabs *.chrom.sizes file from
 #' environmental variable "DEFAULT_GENOME" or
 #' "DEFAULT_BSGENOME"
-#'
 #' May need to set either of these via
 #' Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
 #' Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")
@@ -8073,12 +7995,9 @@ gr.genome = function(si, onlystandard = TRUE, genome = NULL) {
     gr.sort(gr)
 }
 
-#' @name gr.fixseq
-#' @title get permissive seqlengths from multiple GRanges-like objects
-#' @description
+#' get permissive seqlengths from multiple GRanges-like objects
 #'
 #' takes seqlengths
-#'
 #' May need to set either of these via
 #' Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
 #' Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")
@@ -8102,12 +8021,10 @@ gr.fixseq = function(...) {
 }
 
 
-#' @name conform_si
-#' @title force a ranges to conform to a new seqinfo
+#' conform_si
+#'
+#' force a ranges to conform to a new seqinfo
 #' 
-#' @description
-#'
-#'
 #' @return GRanges
 #' @author Kevin Hadi
 #' @export conform_si
@@ -8130,9 +8047,7 @@ conform_si = function(x, si) {
 }
 
 
-#' @name gr.patch
-#' @title same as gr.fix basically
-#' @description
+#' same as gr.fix basically
 #'
 #' need to change implementation...
 #' it doesn't add to gr.fix so far
@@ -8151,11 +8066,8 @@ gr.patch = function(gr, patch, onlystandard = TRUE) {
     gr.fix(gr, sl)
 }
 
-#' @name gr2df
-#' @title granges to datatable via dataframe
-#' @description
-#'
-#' GRangesList
+
+#' granges to datatable via dataframe
 #'
 #' @return GRangesList
 #' @author Kevin Hadi
@@ -8194,11 +8106,7 @@ gr2df = function(gr, var = "rowname", as.data.table = FALSE) {
 
 
 
-#' @name grl.undf
-#' @title grangeslist to data table via dataframe
-#' @description
-#'
-#' GRangesList
+#' grangeslist to data table via dataframe
 #'
 #' @return data table
 #' @author Kevin Hadi
@@ -8214,11 +8122,7 @@ grl.undf = function(grl) {
     return(dedup.cols(cbind(gr, mc, as.data.frame(lst))))
 }
 
-#' @name asdt
-#' @title coerce to data table via setDT
-#' @description
-#'
-#'
+#' coerce to data table via setDT
 #'
 #' @return data table
 #' @author Kevin Hadi
@@ -8228,11 +8132,7 @@ asdt = function(obj) {
     return(out)
 }
 
-#' @name asdf
-#' @title coerce to data frame
-#' @description
-#'
-#'
+#' coerce to data frame
 #'
 #' @return data frame
 #' @author Kevin Hadi
@@ -8241,11 +8141,9 @@ asdf = function(obj) {
     return(as.data.frame(obj))
 }
 
-#' @name asm
-#' @title coerce to matrix
-#' @description
-#'
-#'
+#' asm
+#' 
+#' coerce to matrix
 #'
 #' @return matrix
 #' @author Kevin Hadi
@@ -8254,11 +8152,7 @@ asm = function(obj) {
     return(as.matrix(obj))
 }
 
-#' @name grl.flipstrand
-#' @title flip strand of grangeslist
-#' @description
-#'
-#' GRangesList
+#' flip strand of grangeslist
 #'
 #' @return GRangesList
 #' @author Kevin Hadi
@@ -8273,10 +8167,7 @@ grl.flipstrand = function(grl) {
 }
 
 
-#' @name gr.strand
-#' @title specify strand of granges or grangeslist
-#' @description
-#'
+#' specify strand of granges or grangeslist
 #'
 #' @return granges or grangeslist
 #' @author Kevin Hadi
@@ -8288,9 +8179,7 @@ gr.strand = function(gr, str = "*") {
 
 
 
-#' @name df2gr
-#' @title data frame to GRanges
-#' @description
+#' data frame to GRanges
 #'
 #' data frame to GRanges
 #'
@@ -8355,9 +8244,7 @@ df2gr = function (df, seqnames.field = "seqnames", start.field = "start",
     )
 }
 
-#' @name df2grl
-#' @title data frame to GRangesList
-#' @description
+#' data frame to GRangesList
 #'
 #' data frame to grl
 #'
@@ -8468,9 +8355,7 @@ df2grl = function(df,
 }
 
 
-#' @name gr.round
-#' @title round window to nearest unit
-#' @description
+#' round window to nearest unit
 #'
 #' Rounding window to nearest unit.
 #' meant to be used for plotting window in gTrack.
@@ -8491,9 +8376,7 @@ gr.round = function(gr, nearest = 1e4, all = TRUE, reduce = FALSE) {
 }
 
 
-#' @name gr.sort
-#' @title sort granges, grangeslist
-#' @description
+#' sort granges, grangeslist
 #'
 #' sort granges or grangeslist by seqlevels
 #' also reorders seqlevels into 1:22, X, Y format
@@ -8506,9 +8389,7 @@ gr.sort = function(gr, ignore.strand = TRUE) {
     ## return(sort(sortSeqlevels(gr), ignore.strand = ignore.strand))
 }
 
-#' @name gr.order
-#' @title order granges, grangeslist
-#' @description
+#' order granges, grangeslist
 #'
 #' order granges or grangeslist by seqlevels
 #' also reorders seqlevels into 1:22, X, Y format
@@ -8524,9 +8405,7 @@ gr.order = function(gr, ignore.strand = T) {
 }
 
 
-#' @name gr.resize
-#' @title Resize granges without running into negative width error
-#' @description
+#' Resize granges without running into negative width error
 #'
 #' lower size limit of window is 0
 #'
@@ -8583,9 +8462,7 @@ gr.resize = function (gr, width, pad = TRUE, minwid = 0, each = TRUE, ignore.str
 
 
 
-#' @name parse.gr2
-#' @title a robust parse.gr
-#' @description
+#' a robust parse.gr
 #'
 #' version of parse.gr that is able to convert ranges with minus signs
 #'
@@ -8597,9 +8474,7 @@ parse.gr2 = function(...) {
 }
 
 
-#' @name parse.grl2
-#' @title a robust parse.grl
-#' @description
+#' a robust parse.grl
 #'
 #' version of parse.grl that is able to convert ranges with minus signs
 #'
@@ -8653,9 +8528,7 @@ parse.grl2 = function (str, meta = NULL, fixna = FALSE)
 ##     return(gr)
 ## }
 
-#' @name gr_calc_cov
-#' @title output data structure for ski slope from anchorlifted SNV
-#'
+#' output data structure for ski slope from anchorlifted SNV
 #'
 #' @return A GRanges
 #' @export gr_calc_cov
@@ -8712,11 +8585,7 @@ std.calc.cov = function(anci, pad, field = NULL, baseline = NULL, FUN = "median"
 }
 
 
-#' @name gr.disjoin
-#' @title updated gr.disjoin from gUtils to work with GRangesList
-#' @description
-#'
-#'
+#' updated gr.disjoin from gUtils to work with GRangesList
 #'
 #' @return GRanges or GRangesList
 #' @author Kevin Hadi
@@ -8736,11 +8605,7 @@ gr.disjoin = function (x, ..., ignore.strand = TRUE)
 
 
 
-#' @name grl.disjoin
-#' @title disjoin on grangeslist
-#' @description
-#'
-#'
+#' disjoin on grangeslist
 #'
 #' @return GRangesList
 #' @author Kevin Hadi
@@ -8759,9 +8624,7 @@ grl.disjoin = function(x, ..., ignore.strand = T) {
 }
 
 
-#' @name gr.split
-#' @title split a gr by field(s) in elementMetadata of GRanges or a given vector
-#' @description
+#' split a gr by field(s) in elementMetadata of GRanges or a given vector
 #'
 #' split GRanges by field(s)
 #' if providing a variable not already within the GRanges,
@@ -8794,9 +8657,8 @@ gr.split = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), ad
   return(grl)
 }
 
-#' @name gr.spreduce
-#' @title reduce based on a field(s) to split by in elementMetadata of GRanges, or given vector
-#' @description
+
+#' reduce based on a field(s) to split by in elementMetadata of GRanges, or given vector
 #'
 #' split and reduce GRanges by field(s)
 #' if providing a variable not already within the GRanges,
@@ -8833,9 +8695,7 @@ gr.spreduce = function(gr,  ..., ignore.strand = FALSE, pad = 0, return.grl = FA
   }
 }
 
-#' @name gr.sprange
 #' @title get range based on a field(s) to split by in elementMetadata of GRanges, or given vector
-#' @description
 #'
 #' split and get range of GRanges by field(s)
 #' if providing a variable not already within the GRanges,
@@ -8901,9 +8761,7 @@ gr.sprange = function (gr, ..., ignore.strand = FALSE, pad = 0, return.grl = FAL
 ## }
 
 
-#' @name gr.noval
-#' @title get rid of mcols on GRanges/GRangesLists
-#' @description
+#' get rid of mcols on GRanges/GRangesLists
 #'
 #' remove all metadata from GRanges or GRangesList
 #'
@@ -8951,10 +8809,9 @@ gr.noval = function(gr, keep.col = NULL, drop.col = NULL) {
     return(gr)
 }
 
-#' @name gr.within
-#' @title within on GRanges, S3
-#' @description
+#' within on GRanges, S3
 #'
+#' s3 method for GRanges within
 #'
 #' @return GRanges
 #' @rdname gr.within
@@ -9076,10 +8933,9 @@ gr.within2 = function(data, expr) {
 
 
 
-#' @name within
-#' @title within on GRanges
-#' @description
-#'
+#' within on GRanges
+#' 
+#' within() method on GRanges
 #'
 #' @return GRanges
 #' @rdname gr_within
@@ -9250,10 +9106,9 @@ tmpgrlgaps2 = function(x, start = 1L, end = seqlengths(x), expand.levels = TRUE)
 }
 
 
-#' @name gaps
-#' @title gaps on GRangesList
-#' @description
-#'
+#' gaps on GRangesList
+#' 
+#' gap methods on GRangesList
 #'
 #' @return GRangesList
 #' @rdname grl_gaps
@@ -9266,10 +9121,10 @@ setMethod(f = "gaps", signature = signature(x = "GRangesList"), definition = NUL
 setMethod("gaps", signature(x = "GRangesList"), tmpgrlgaps)
 setMethod("gaps", signature(x = "CompressedGRangesList"), tmpgrlgaps)
 
-#' @name gr.splgaps
-#' @title gaps on GRanges, splitting by values in a metadata field
-#' @description
-#'
+#' gaps on GRanges, splitting by values in a metadata field
+#' 
+#' Gaps method that extracts the differences of a GRangesList
+#' object from the Seqinfo() reference.
 #'
 #' @return GRangesList
 #' @rdname gr.splgaps
@@ -9302,9 +9157,9 @@ gr.splgaps <- function(gr, ..., ignore.strand = TRUE, sep = paste0(" ", rand.str
 }
 
 
-#' @name gr.setdiff2
-#' @title gr.setdiff that works with multiple by columns
-#' @description
+#' gr.setdiff that works with multiple by columns
+#' 
+#' setdiff that allows for multiple columns
 #'
 #'
 #' @return GRanges
@@ -9366,21 +9221,6 @@ gr.setdiff2 = function (query, subject, ignore.strand = TRUE, by = NULL, new = T
   return(out)
 }
 
-
-## gr.splgaps = function(gr, ..., sep = paste0(" ", rand.string(length = 8), " "), start = 1L, end = seqlengths(gr), cleannm = TRUE) {
-##   lst = as.list(match.call())[-1]
-##   ix = which(!names(lst) %in% c("gr", "sep", "cleannm", "start", "end"))
-##   tmpix = with(as.list(mcols(gr)), do.call(paste, c(lst[ix], alist(sep = sep))))
-##   tmpix = factor(tmpix, levels = unique(tmpix))
-##   grl = gr %>% GenomicRanges::split(tmpix)
-##   ## out = tmpgrlgaps(grl, start = start, end = end)
-##   out = gaps(grl, start = start, end = end)
-##   mcols(out) = data.table::tstrsplit(names(out), sep)
-##   colnames(mcols(out)) = unlist(strsplit(toString(lst[ix]), ", "))
-##   if (cleannm)
-##     names(out) = gsub(sep, " ", names(out))
-##   out
-## }
 
 
 
@@ -9485,11 +9325,11 @@ inherits.edf = function(DF) {
 
 
 
-#' @name ra.overlaps6
+#' ra.overlaps6
 #'
 #' One of the many rewrites of ra.overlaps
 #'
-#' @export
+#' @export ra.overlaps6
 ra.overlaps6 <- function(ra1, ra2, pad = 0, ignore.strand = ignore.strand) {
     ra1 = gr.noval(ra1)
     ra2 = gr.noval(ra2)
@@ -9524,7 +9364,7 @@ ra.overlaps6 <- function(ra1, ra2, pad = 0, ignore.strand = ignore.strand) {
     ## return(ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))][, cbind(grl.ix.x, grl.ix.y)])
 }
 
-#' @name ra.dedup6
+#' ra.dedup6
 #'
 #' One of the many rewrites of ra.overlaps
 #'
@@ -9554,25 +9394,7 @@ ra.dedup6 <- function (grl, pad = 500, ignore.strand = FALSE)
 }
 
 
-## ra.overlaps6 <- function(ra1, ra2, pad = 0, ignore.strand = ignore.strand) {
-##     ra1 = gr.noval(ra1)
-##     ra2 = gr.noval(ra2)
-##     bp1 = grl.unlist(ra1) + pad
-##     bp2 = grl.unlist(ra2) + pad
-##     browser()
-##     ## data.table::foverlaps
-##     findOverlaps(bp1, bp2, ignore.strand = FALSE)
-##     ix2 = unname(plyranges::find_overlaps_directed(bp1, bp2))
-##     ix2 = gr2dt(ix2)
-##     ix2[, ra.match := all(c(1,2) %in% grl.iix.x & all(c(1,2) %in% grl.iix.y)), by = .(grl.ix.x, grl.ix.y)]
-##     ix2 = ix2[ra.match == TRUE][!duplicated(data.table(grl.ix.x, grl.ix.y))]
-##     ix2[, cbind(grl.ix.x, grl.ix.y)]
-## }
-
-
-
-
-#' @name gr2bed
+#' gr2bed
 #'
 #' converting gr to bed like table
 #' also shifts coordinates to half closed 0 based
@@ -9589,12 +9411,8 @@ gr2bed <- function(gr) {
 }
 
 
-## gr2bed = function(gr) {
-##     df = gr2dt(gr) %>% select(-one_of("chr")) %>% rename_at(1:3, ~c("chr", "start", "end")) %>% mutate(chr = as.character(chr), start = start - 1) %>% select(-one_of("width"))
-## }
 
-
-#' @name grl2bedpe
+#' grl2bedpe
 #'
 #' converting grl to bedpe-like table
 #' also shifts coordinates to half closed 0 based
@@ -9648,7 +9466,7 @@ grl2bedpe = function(grl, add_breakend_mcol = FALSE, flip = FALSE, as.data.table
 }
 
 
-#' @name bedpe2grl
+#' bedpe2grl
 #'
 #' converting bedpe to grl
 #'
@@ -9782,7 +9600,7 @@ sv_filter = function(sv, filt_sv, pad = 500)
 
 
 
-#' @name .filter_sv
+#' .filter_sv
 #'
 #' perform sv filtering on a pairs entry
 #'
@@ -9809,10 +9627,12 @@ sv_filter = function(sv, filt_sv, pad = 500)
     }
 }
 
-#' @name fit.cnv.sig
-#' @title fit battenberg copy number to CN signatures (Nature 2022)
+
+#' fit battenberg copy number to CN signatures (Nature 2022)
 #'
+#' extract copy number CN signatures and fit using NNLS
 #' 
+#' @name fit.cnv.sig
 #' @export fit.cnv.sig
 fit.cnv.sig = function(gr.seg, sig.cnv = "~/Dropbox/Isabl/HRD/Steele-cnv-signature-definitions.txt",
          id = NULL) {
@@ -9906,9 +9726,9 @@ fit.cnv.sig = function(gr.seg, sig.cnv = "~/Dropbox/Isabl/HRD/Steele-cnv-signatu
     return(out)
 }
 
-#' @name isv2grl
-#' @title isv2grl
-#'
+#' isv2grl
+#' 
+#' Transform format to GRangesList
 #' 
 #' @export 
 isv2grl = function(sv, flipstrand = TRUE) {
@@ -9944,9 +9764,10 @@ isv2grl = function(sv, flipstrand = TRUE) {
 ##############################
 ##############################
 
-#' @name parsesnpeff
-#' @title parse snpeff output into granges
+#' parse snpeff output into granges
 #'
+#' parse snpeff output into granges
+#' expand all annotations into separate rows
 #'
 #' @param vcf path to snpeff vcf
 #' @param pad Exposed argument to skitools::ra.overlaps()
@@ -10437,12 +10258,11 @@ est_snv_cn = function(gr, jabba, somatic = FALSE) {
   return(dt)
 }
 
+#' breakend exact homology
+#'
+#' pull out homology across exact breakends from gGraph object
+#'
 #' @name behomology
-#' @title breakend exact homology
-#'
-#' @description
-#' pull out the
-#'
 #' @param gg gGraph (R6) object
 #' @param hg character path to fasta or rtracklayer representation of fasta-like file
 #' @export
@@ -10688,11 +10508,9 @@ getbp = function(gg, ignore.small = T, ignore.isolated = T, max.small = 1e4, min
     return(bp.dt)
 }
 
-#' @name interbp_dist
-#' @title interbp_dist
-#'
-#' @description
 #' interbp_dist
+#'
+#' get base pair distances between breakends
 #' 
 #' @export
 interbp_dist = function(gg) {

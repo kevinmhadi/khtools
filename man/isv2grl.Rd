@@ -7,5 +7,5 @@
 isv2grl(sv, flipstrand = TRUE)
 }
 \description{
-isv2grl
+Transform format to GRangesList
 }

@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{enframe}
 \alias{enframe}
-\title{same as tibble::enframe
-
-enframe}
+\title{same as tibble::enframe}
 \usage{
 enframe(x, name = "name", value = "value", as.data.table = TRUE)
 }
@@ -16,7 +14,5 @@ enframe(x, name = "name", value = "value", as.data.table = TRUE)
 \item{value}{name of column containing x values}
 }
 \description{
-same as tibble::enframe
-
-enframe
+kevin's implementation of tibble::enframe()
 }

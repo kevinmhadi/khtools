@@ -2,11 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dodo.call2}
 \alias{dodo.call2}
-\title{dodo.call+
-
-FUN can be an anonymous function call
-dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
-can also omit the brackets}
+\title{dodo.call+}
 \usage{
 dodo.call2(FUN, args, use.names = T)
 }
@@ -14,8 +10,6 @@ dodo.call2(FUN, args, use.names = T)
 \item{FUN}{function}
 }
 \description{
-dodo.call+
-
 FUN can be an anonymous function call
 dodo.call2({function(...) paste(..., collapse = " ")}, list(bstring1, bstring2))
 can also omit the brackets

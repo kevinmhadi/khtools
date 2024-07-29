@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{ppdf}
 \alias{ppdf}
-\title{kevin's modification of ppdf
-
-height and width are specified in inches by default
-resolution is specified as 300 but is not used}
+\title{kevin's modification of ppdf}
 \usage{
 ppdf(
   expr,
@@ -28,8 +25,6 @@ ppdf(
 )
 }
 \description{
-kevin's modification of ppdf
-
 height and width are specified in inches by default
 resolution is specified as 300 but is not used
 }

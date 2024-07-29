@@ -11,7 +11,6 @@ GRanges
 }
 \description{
 takes seqlengths
-
 May need to set either of these via
 Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
 Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")

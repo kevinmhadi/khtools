@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{conform_si}
 \alias{conform_si}
-\title{force a ranges to conform to a new seqinfo}
+\title{conform_si}
 \usage{
 conform_si(x, si)
 }

@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{ppng}
 \alias{ppng}
-\title{kevin's modification of ppng
-
-height and width are specified in inches by default
-resolution is specified as 300 by default}
+\title{kevin's modification of ppng}
 \usage{
 ppng(
   expr,
@@ -27,8 +24,6 @@ ppng(
 )
 }
 \description{
-kevin's modification of ppng
-
 height and width are specified in inches by default
 resolution is specified as 300 by default
 }

@@ -28,4 +28,5 @@ GRangesList of breakpoint pairs with junctions that overlap removed
 }
 \description{
 parse snpeff output into granges
+expand all annotations into separate rows
 }

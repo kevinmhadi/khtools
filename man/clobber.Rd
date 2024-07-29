@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{clobber}
 \alias{clobber}
-\title{same as dplyr::coalesce
-
-clobber NA, or some value between multiple vectors
-bads can be a function that returns a logical}
+\title{same as dplyr::coalesce}
 \usage{
 clobber(
   ...,
@@ -31,8 +28,6 @@ clobber(
 \item{comparefun}{A 2 argument function (i.e. function(x,y) x < y), if r2l = FALSE, then the greater value will be chosen as y is on the right, for function(x,y) x < y. if r2l = TRUE, then the lesser value will be chosen}
 }
 \description{
-same as dplyr::coalesce
-
 clobber NA, or some value between multiple vectors
 bads can be a function that returns a logical
 }

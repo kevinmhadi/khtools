@@ -13,7 +13,6 @@ GRanges
 Grabs *.chrom.sizes file from
 environmental variable "DEFAULT_GENOME" or
 "DEFAULT_BSGENOME"
-
 May need to set either of these via
 Sys.setenv(DEFAULT_BSGENOME = "path_to_ref.chrom.sizes")
 Sys.setenv(DEFAULT_GENOME = "path_to_ref.chrom.sizes")

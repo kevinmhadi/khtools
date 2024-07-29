@@ -11,7 +11,7 @@ gaps(x, start = NA, end = NA, ...)
 GRangesList
 }
 \description{
-gaps on GRangesList
+gap methods on GRangesList
 }
 \author{
 Kevin Hadi

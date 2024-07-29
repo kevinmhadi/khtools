@@ -11,12 +11,6 @@ undebug.s4(what, signature, where)
 undebug.s4(what, signature, where)
 }
 \description{
-undebug an S4 function
-
-wrapper around untrace
-
-reverse debug.s4
-
 undebugging an S4 function when debug.s4/trace were
 called on an S4 method.
 }

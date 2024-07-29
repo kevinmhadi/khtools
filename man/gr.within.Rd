@@ -10,7 +10,7 @@ gr.within(data, expr)
 GRanges
 }
 \description{
-within on GRanges, S3
+s3 method for GRanges within
 }
 \author{
 Kevin Hadi

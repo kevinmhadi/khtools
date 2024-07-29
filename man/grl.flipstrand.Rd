@@ -10,7 +10,7 @@ grl.flipstrand(grl)
 GRangesList
 }
 \description{
-GRangesList
+flip strand of grangeslist
 }
 \author{
 Kevin Hadi

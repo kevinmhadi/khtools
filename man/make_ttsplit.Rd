@@ -28,7 +28,7 @@ make_ttsplit(
 a list of row ids corresponding to each fold and training and test split
 }
 \description{
-make training/test splits
+training and testing
 }
 \author{
 Kevin Hadi

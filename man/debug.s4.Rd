@@ -11,12 +11,6 @@ debug.s4(what, signature, where)
 debug.s4(what, signature, where)
 }
 \description{
-debug an S4 function
-
-wrapper around trace
-
-trace into an S4 function
-
 Debugging an S4 function can't be done with debug().
 This function is a convenience wrapper around trace()
 to step into S4 methods

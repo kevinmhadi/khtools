@@ -7,5 +7,5 @@
 interbp_dist(gg)
 }
 \description{
-interbp_dist
+get base pair distances between breakends
 }

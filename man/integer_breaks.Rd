@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{integer_breaks}
 \alias{integer_breaks}
-\title{make integer breaks on axes
-
-a la scales::breaks_pretty}
+\title{make integer breaks on axes}
 \usage{
 integer_breaks(n = 5, ...)
 }
 \description{
-make integer breaks on axes
-
 a la scales::breaks_pretty
 }

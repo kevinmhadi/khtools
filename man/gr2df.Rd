@@ -10,7 +10,7 @@ gr2df(gr, var = "rowname", as.data.table = FALSE)
 GRangesList
 }
 \description{
-GRangesList
+granges to datatable via dataframe
 }
 \author{
 Kevin Hadi
