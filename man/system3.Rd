@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{system3}
 \alias{system3}
-\title{modified system2
-
-A modification of system2 to be able to return either or the stderr
-or stdout to console or flexibly return to a path.}
+\title{modified system2}
 \usage{
 system3(
   command,
@@ -22,8 +19,6 @@ system3(
 )
 }
 \description{
-modified system2
-
 A modification of system2 to be able to return either or the stderr
 or stdout to console or flexibly return to a path.
 }

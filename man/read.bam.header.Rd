@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{read.bam.header}
 \alias{read.bam.header}
-\title{read.bam.header
-
-Read in a bam header into tabular format}
+\title{read.bam.header}
 \usage{
 read.bam.header(bam, trim = FALSE)
 }
@@ -12,7 +10,5 @@ read.bam.header(bam, trim = FALSE)
 A data.table
 }
 \description{
-read.bam.header
-
 Read in a bam header into tabular format
 }

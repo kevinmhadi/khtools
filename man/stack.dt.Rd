@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{stack.dt}
 \alias{stack.dt}
-\title{collapse a named list of vectors into a data.table
-
-Collapse a named list with vectors as each element into a data.table}
+\title{collapse a named list of vectors into a data.table}
 \usage{
 \method{stack}{dt}(lst, ind = "ind", values = "values", ind.as.character = TRUE)
 }
 \description{
-collapse a named list of vectors into a data.table
-
 Collapse a named list with vectors as each element into a data.table
 }

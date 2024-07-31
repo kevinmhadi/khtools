@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gt.each}
 \alias{gt.each}
-\title{convenience function to plot each element separately
-
-useful for grangeslists and gwalks to plot each one on a separate track
-good for visualization}
+\title{convenience function to plot each element separately}
 \usage{
 gt.each(gr)
 }
@@ -13,8 +10,6 @@ gt.each(gr)
 gTrack
 }
 \description{
-convenience function to plot each element separately
-
 useful for grangeslists and gwalks to plot each one on a separate track
 good for visualization
 }

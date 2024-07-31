@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_any2lg}
 \alias{dt_any2lg}
-\title{convert all columns to logical
-
-set columns to logical}
+\title{convert all columns to logical}
 \usage{
 dt_any2lg(dt, cols = NULL)
 }
@@ -17,7 +15,5 @@ dt_any2lg(dt, cols = NULL)
 A data.table
 }
 \description{
-convert all columns to logical
-
 set columns to logical
 }

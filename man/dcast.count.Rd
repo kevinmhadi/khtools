@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dcast.count}
 \alias{dcast.count}
-\title{dcast.count
-
-Counting up occurrences in a table while taking factor levels into account}
+\title{dcast.count}
 \usage{
 dcast.count(tbl, lh, rh = NULL, countcol = "count", ...)
 }
@@ -12,7 +10,5 @@ dcast.count(tbl, lh, rh = NULL, countcol = "count", ...)
 A data frame or data.table
 }
 \description{
-dcast.count
-
 Counting up occurrences in a table while taking factor levels into account
 }

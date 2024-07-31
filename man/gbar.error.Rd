@@ -2,19 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gbar.error}
 \alias{gbar.error}
-\title{barplot with errorbars
-
-Barplot with confidence intervals.
-To plot with confidence intervals around an event that has a binary
-outcome with a simple example:
-
-heads = 30, tails = 20,
-y = heads / (heads + tails)
-dt = binom.conf(y, heads + tails)
-conf.low = dt$conf.low
-conf.high = dt$conf.high
-
-gbar.error(y, conf.low, conf.high)}
+\title{barplot with errorbars}
 \usage{
 gbar.error(
   y,
@@ -45,12 +33,11 @@ gbar.error(
 A ggplot object
 }
 \description{
-barplot with errorbars
-
 Barplot with confidence intervals.
 To plot with confidence intervals around an event that has a binary
 outcome with a simple example:
-
+}
+\details{
 heads = 30, tails = 20,
 y = heads / (heads + tails)
 dt = binom.conf(y, heads + tails)

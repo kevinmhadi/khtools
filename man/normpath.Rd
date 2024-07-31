@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{normpath}
 \alias{normpath}
-\title{normalize directory, but not basepath
-
-get the absolute file directory without following the
-base path link}
+\title{normalize directory, but not basepath}
 \usage{
 normpath(p)
 }
@@ -16,8 +13,6 @@ normpath(p)
 a normalized path
 }
 \description{
-normalize directory, but not basepath
-
 get the absolute file directory without following the
 base path link
 }

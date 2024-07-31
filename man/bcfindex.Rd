@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{bcfindex}
 \alias{bcfindex}
-\title{bcfindex
-
-index a bcf/vcf file}
+\title{bcfindex}
 \usage{
 bcfindex(vcf, force = TRUE)
 }
@@ -12,7 +10,5 @@ bcfindex(vcf, force = TRUE)
 vcf path
 }
 \description{
-bcfindex
-
 index a bcf/vcf file
 }

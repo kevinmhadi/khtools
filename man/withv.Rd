@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{withv}
 \alias{withv}
-\title{withv
-
-to be used for quick interactive programming
-withv(toolongtotypemeagain, x * sum(x))}
+\title{withv}
 \usage{
 withv(x, expr)
 }
 \description{
-withv
-
 to be used for quick interactive programming
 withv(toolongtotypemeagain, x * sum(x))
 }

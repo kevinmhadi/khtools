@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{summ_glm}
 \alias{summ_glm}
-\title{tabular summary of glm model coefficients
-
-Parse a tabular summary of a glm model}
+\title{tabular summary of glm model coefficients}
 \usage{
 summ_glm(glm_mod, as.data.table = TRUE, ...)
 }
@@ -12,7 +10,5 @@ summ_glm(glm_mod, as.data.table = TRUE, ...)
 A data.frame/data.table
 }
 \description{
-tabular summary of glm model coefficients
-
 Parse a tabular summary of a glm model
 }

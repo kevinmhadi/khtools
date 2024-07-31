@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gg.hist}
 \alias{gg.hist}
-\title{generate ggplot histogram
-
-generate ggplot histogram}
+\title{generate ggplot histogram}
 \usage{
 gg.hist(
   dat.x,
@@ -27,7 +25,5 @@ gg.hist(
 A ggplot object
 }
 \description{
-generate ggplot histogram
-
 generate ggplot histogram
 }

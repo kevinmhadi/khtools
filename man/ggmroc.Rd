@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{ggmroc}
 \alias{ggmroc}
-\title{ggplot for multiROC
-
-helper function for outputting ggplot}
+\title{ggplot for multiROC}
 \usage{
 ggmroc(
   gdat,
@@ -23,7 +21,5 @@ ggmroc(
 A data.frame that can be fed into ggplot
 }
 \description{
-ggplot for multiROC
-
 helper function for outputting ggplot
 }

@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{\%K\%}
 \alias{\%K\%}
-\title{similar to setkey except a general use utility
-
-slower version of setkey, but for interactive use}
+\title{similar to setkey except a general use utility}
 \usage{
 thisx \%K\% thisy
 }
 \description{
-similar to setkey except a general use utility
-
 slower version of setkey, but for interactive use
 }

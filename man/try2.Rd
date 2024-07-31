@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{try2}
 \alias{try2}
-\title{wrapper around tryCatch - robust to parallel:: functions
-
-A slightly more robust version of try that works within the parallel:: set of functions
-that pre-deploy a cluster.}
+\title{wrapper around tryCatch - robust to parallel:: functions}
 \usage{
 try2(expr, ..., finally)
 }
 \description{
-wrapper around tryCatch - robust to parallel:: functions
-
 A slightly more robust version of try that works within the parallel:: set of functions
 that pre-deploy a cluster.
 }

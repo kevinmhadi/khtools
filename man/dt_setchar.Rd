@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_setchar}
 \alias{dt_setchar}
-\title{convert column to character
-
-set columns to character
-default is nonsensical?}
+\title{convert column to character}
 \usage{
 dt_setchar(dt, cols = NULL)
 }
@@ -18,8 +15,6 @@ dt_setchar(dt, cols = NULL)
 A data.table
 }
 \description{
-convert column to character
-
 set columns to character
 default is nonsensical?
 }

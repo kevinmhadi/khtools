@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{sstat}
 \alias{sstat}
-\title{kevin's implementation of sstat}
+\title{Kevin's implementation of sstat}
 \usage{
 sstat(full = FALSE, numslots = TRUE, resources = T)
 }

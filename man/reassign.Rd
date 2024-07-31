@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{reassign}
 \alias{reassign}
-\title{reassign elements of named list into environment
-
-ONLY USE IF YOU KNOW WHAT YOU ARE DOING
-this function takes a list of named objects and assigns them to the calling environment}
+\title{reassign elements of named list into environment}
 \usage{
 reassign(variables_lst, calling_env = parent.frame())
 }
@@ -16,8 +13,6 @@ reassign(variables_lst, calling_env = parent.frame())
 the input list
 }
 \description{
-reassign elements of named list into environment
-
 ONLY USE IF YOU KNOW WHAT YOU ARE DOING
 this function takes a list of named objects and assigns them to the calling environment
 }

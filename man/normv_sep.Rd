@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{normv_sep}
 \alias{normv_sep}
-\title{normalize a vector, treating positives and negatives separately
-
-i.e. rescale negatives to be between 0-0.5
-rescale positives to be between 0.5-1}
+\title{normalize a vector, treating positives and negatives separately}
 \usage{
 normv_sep(x)
 }
@@ -13,8 +10,6 @@ normv_sep(x)
 vector
 }
 \description{
-normalize a vector, treating positives and negatives separately
-
 i.e. rescale negatives to be between 0-0.5
 rescale positives to be between 0.5-1
 }

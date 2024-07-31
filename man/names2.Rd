@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{names2}
 \alias{names2}
-\title{robust name()
-
-gives back character vector same length of input regardless whether named or not}
+\title{robust name()}
 \usage{
 names2(x)
 }
@@ -15,7 +13,5 @@ names2(x)
 a string with multiple parentheses replaced with a single parenthesis
 }
 \description{
-robust name()
-
 gives back character vector same length of input regardless whether named or not
 }

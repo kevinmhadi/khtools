@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{rownames_to_column}
 \alias{rownames_to_column}
-\title{making column out of rownames
-
-internal version that doesn't require library(tibble)}
+\title{making column out of rownames}
 \usage{
 rownames_to_column(
   .data,
@@ -21,7 +19,5 @@ rownames_to_column(
 a data frame/table with the rownames as an additional column
 }
 \description{
-making column out of rownames
-
 internal version that doesn't require library(tibble)
 }

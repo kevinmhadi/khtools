@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{vmatch}
 \alias{vmatch}
-\title{make list of matches and nonmatches
-
-get match indices and non matched indices}
+\title{make list of matches and nonmatches}
 \usage{
 vmatch(x, y, ...)
 }
 \description{
-make list of matches and nonmatches
-
 get match indices and non matched indices
 }

@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{vcf_remove_sample}
 \alias{vcf_remove_sample}
-\title{take vcf read in chunks and write clean vcf
-
-take vcf read in chunks and write clean vcf without sample info
-i.e. fixing up svaba indel crap}
+\title{take vcf read in chunks and write clean vcf}
 \usage{
 vcf_remove_sample(
   x =
@@ -20,8 +17,6 @@ vcf_remove_sample(
 character
 }
 \description{
-take vcf read in chunks and write clean vcf
-
 take vcf read in chunks and write clean vcf without sample info
 i.e. fixing up svaba indel crap
 }

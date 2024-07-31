@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_setnull}
 \alias{dt_setnull}
-\title{set columnn to NULL in data.table
-
-remove column from data table by setting to NULL}
+\title{set columnn to NULL in data.table}
 \usage{
 dt_setnull(dt, cols)
 }
@@ -17,7 +15,5 @@ dt_setnull(dt, cols)
 A data.table
 }
 \description{
-set columnn to NULL in data.table
-
 remove column from data table by setting to NULL
 }

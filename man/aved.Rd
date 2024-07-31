@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{aved}
 \alias{aved}
-\title{modification of ave
-
-slight update of ave}
+\title{modification of ave}
 \usage{
 aved(..., FUN = length, drop = TRUE)
 }
 \description{
-modification of ave
-
 slight update of ave
 }

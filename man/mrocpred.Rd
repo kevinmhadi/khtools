@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{mrocpred}
 \alias{mrocpred}
-\title{format predicted scores for multiROC
-
-from predict(...)}
+\title{format predicted scores for multiROC}
 \usage{
 mrocpred(prd0, nm = "agg")
 }
@@ -15,7 +13,5 @@ mrocpred(prd0, nm = "agg")
 A prediction
 }
 \description{
-format predicted scores for multiROC
-
 from predict(...)
 }

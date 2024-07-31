@@ -16,5 +16,5 @@
 )
 }
 \description{
-collect junctions from pairs as breakpoints
+get junctions from gGraph object column in pairs table
 }

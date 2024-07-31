@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_setallna}
 \alias{dt_setallna}
-\title{convert all data.table entries to NA
-
-Set all columns to NA...
-can't remember why one would want this...}
+\title{convert all data.table entries to NA}
 \usage{
 dt_setallna(dt, cols = NULL, na_type = NA_integer_)
 }
@@ -18,8 +15,6 @@ dt_setallna(dt, cols = NULL, na_type = NA_integer_)
 A data.table
 }
 \description{
-convert all data.table entries to NA
-
 Set all columns to NA...
 can't remember why one would want this...
 }

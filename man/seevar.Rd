@@ -7,5 +7,5 @@
 seevar(calling_env = parent.frame())
 }
 \description{
-seevar
+get variable names in the environment
 }

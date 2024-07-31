@@ -7,5 +7,5 @@
 tailf(x, n = NULL, grep = NULL)
 }
 \description{
-modification of tailf from skitools
+overcomes the line limitations in the skitools version
 }

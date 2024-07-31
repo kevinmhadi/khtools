@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gg.sline}
 \alias{gg.sline}
-\title{wrapper around geom_point and geom_smooth
-
-a wrapper around geom_smooth to fit dot plot with lm line}
+\title{wrapper around geom_point and geom_smooth}
 \usage{
 gg.sline(
   x,
@@ -38,7 +36,5 @@ gg.sline(
 A ggplot object
 }
 \description{
-wrapper around geom_point and geom_smooth
-
 a wrapper around geom_smooth to fit dot plot with lm line
 }

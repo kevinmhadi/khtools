@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{match3}
 \alias{match3}
-\title{similar to setkey except a general use utility
-
-very slow version of keying a la data.table
-but for general/interactive use}
+\title{similar to setkey except a general use utility}
 \usage{
 match3(x, table, nomatch = NA_integer_, old = TRUE, use.data.table = TRUE)
 }
 \description{
-similar to setkey except a general use utility
-
 very slow version of keying a la data.table
 but for general/interactive use
 }

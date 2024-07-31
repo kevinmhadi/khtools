@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{table2}
 \alias{table2}
-\title{wrapper around table(), show NA counts if there are any
-
-Convenience wrapper around table to show NA if there are any}
+\title{wrapper around table(), show NA counts if there are any}
 \usage{
 table2(...)
 }
 \description{
-wrapper around table(), show NA counts if there are any
-
 Convenience wrapper around table to show NA if there are any
 }

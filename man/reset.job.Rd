@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{reset.job}
 \alias{reset.job}
-\title{reset.job
-
-Reset a job with different params}
+\title{reset.job}
 \usage{
 reset.job(
   x,
@@ -22,7 +20,5 @@ reset.job(
 A Flow job object
 }
 \description{
-reset.job
-
 Reset a job with different params
 }

@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{pg_mytheme}
 \alias{pg_mytheme}
-\title{print gg_mytheme output
-
-convenience wrapper around gg_mytheme
-to automatically print the output}
+\title{print gg_mytheme output}
 \usage{
 pg_mytheme(..., print = TRUE)
 }
@@ -13,8 +10,6 @@ pg_mytheme(..., print = TRUE)
 A ggplot object
 }
 \description{
-print gg_mytheme output
-
 convenience wrapper around gg_mytheme
 to automatically print the output
 }

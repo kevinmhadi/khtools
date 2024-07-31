@@ -2,15 +2,15 @@
 % Please edit documentation in R/package.R
 \name{debug.s4}
 \alias{debug.s4}
-\title{debug an S4 function
-
-wrapper around trace}
+\title{debug an S4 function}
 \usage{
 debug.s4(what, signature, where)
 
 debug.s4(what, signature, where)
 }
 \description{
+wrapper around trace
+
 Debugging an S4 function can't be done with debug().
 This function is a convenience wrapper around trace()
 to step into S4 methods

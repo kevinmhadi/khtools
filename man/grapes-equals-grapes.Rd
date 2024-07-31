@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{\%=\%}
 \alias{\%=\%}
-\title{test if two vectors are equal (uses conversion to character)
-
-Robust to NA}
+\title{test if two vectors are equal (uses conversion to character)}
 \usage{
 x \%=\% y
 }
@@ -17,8 +15,6 @@ x \%=\% y
 logical vector
 }
 \description{
-test if two vectors are equal (uses conversion to character)
-
 Robust to NA
 }
 \author{

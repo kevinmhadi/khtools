@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{rownames2}
 \alias{rownames2}
-\title{robust rownames
-
-gives back character vector same number of rows of input regardless whether named or not}
+\title{robust rownames}
 \usage{
 rownames2(x)
 }
@@ -15,7 +13,5 @@ rownames2(x)
 a string with multiple parentheses replaced with a single parenthesis
 }
 \description{
-robust rownames
-
 gives back character vector same number of rows of input regardless whether named or not
 }

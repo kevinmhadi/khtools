@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{ne}
 \alias{ne}
-\title{"no error"
-
-"no error"}
+\title{"no error"}
 \usage{
 ne(...)
 }
@@ -12,7 +10,5 @@ ne(...)
 NULL, if error
 }
 \description{
-"no error"
-
 "no error"
 }

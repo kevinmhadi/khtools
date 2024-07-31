@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_na2empty}
 \alias{dt_na2empty}
-\title{convert columns with NA to empty character
-
-coerce NA in columns of class "character" to ""}
+\title{convert columns with NA to empty character}
 \usage{
 dt_na2empty(dt)
 }
@@ -17,7 +15,5 @@ dt_na2empty(dt)
 A data.table
 }
 \description{
-convert columns with NA to empty character
-
 coerce NA in columns of class "character" to ""
 }

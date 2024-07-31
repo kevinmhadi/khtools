@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{getbp}
 \alias{getbp}
-\title{grab breakpoints from gGraph alt edges and mark with ecluster filters}
+\title{get breakpoints}
 \usage{
 getbp(
   gg,
@@ -14,5 +14,5 @@ getbp(
 )
 }
 \description{
-get breakpoints
+grab breakpoints from gGraph alt edges and mark with ecluster filters
 }

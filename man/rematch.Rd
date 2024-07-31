@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{rematch}
 \alias{rematch}
-\title{rematch
-
-reconstruct the original vector from a vmatch}
+\title{rematch}
 \usage{
 rematch(vmatch_out)
 }
 \description{
-rematch
-
 reconstruct the original vector from a vmatch
 }

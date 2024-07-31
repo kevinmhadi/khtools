@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{replace_na}
 \alias{replace_na}
-\title{replace NAs
-
-replace_na}
+\title{replace NAs}
 \usage{
 replace_na(data, replace)
 }
 \description{
-replace NAs
-
 replace_na
 }

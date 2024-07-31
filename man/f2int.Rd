@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{f2int}
 \alias{f2int}
-\title{factor to integer
-
-robustly convert a factor to integer}
+\title{factor to integer}
 \usage{
 f2int(this_factor)
 }
@@ -12,7 +10,5 @@ f2int(this_factor)
 factor
 }
 \description{
-factor to integer
-
 robustly convert a factor to integer
 }

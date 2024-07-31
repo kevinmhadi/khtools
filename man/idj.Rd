@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{idj}
 \alias{idj}
-\title{idj
-
-Match up ids to a job}
+\title{idj}
 \usage{
 idj(x, these.ids)
 }
@@ -12,7 +10,5 @@ idj(x, these.ids)
 A Flow job object
 }
 \description{
-idj
-
 Match up ids to a job
 }

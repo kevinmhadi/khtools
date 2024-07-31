@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dig_dir2}
 \alias{dig_dir2}
-\title{dig into a file path's directory
-
-Convenience wrapper around dir2() to pull out files from the same
-directory of a given file.}
+\title{dig into a file path's directory}
 \usage{
 dig_dir2(
   x,
@@ -18,8 +15,6 @@ dig_dir2(
 )
 }
 \description{
-dig into a file path's directory
-
 Convenience wrapper around dir2() to pull out files from the same
 directory of a given file.
 }

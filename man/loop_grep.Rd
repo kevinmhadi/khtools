@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{loop_grep}
 \alias{loop_grep}
-\title{wraps grep in for loop
-
-A wrapper around grep to identify string matches across multiple patterns}
+\title{wraps grep in for loop}
 \usage{
 loop_grep(pattern, x, ignore.case = FALSE)
 }
@@ -12,7 +10,5 @@ loop_grep(pattern, x, ignore.case = FALSE)
 integer vector of indices
 }
 \description{
-wraps grep in for loop
-
 A wrapper around grep to identify string matches across multiple patterns
 }

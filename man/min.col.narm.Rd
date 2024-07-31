@@ -2,15 +2,11 @@
 % Please edit documentation in R/package.R
 \name{min.col.narm}
 \alias{min.col.narm}
-\title{minimum column per row (removing NA)
-
-Return the index of the minimum column per row while removing NA}
+\title{minimum column per row (removing NA)}
 \usage{
 \method{min}{col.narm}(mat, ties.method = "first")
 }
 \description{
-minimum column per row (removing NA)
-
 Return the index of the minimum column per row while removing NA
 }
 \author{

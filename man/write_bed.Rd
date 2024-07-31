@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{write_bed}
 \alias{write_bed}
-\title{write bed or bedpe into canonical formatted table
-
-Write a table into  a bed oe bedpe formatted file
-Ensures the header is commented out}
+\title{write bed or bedpe into canonical formatted table}
 \usage{
 write_bed(bed, outpath)
 }
@@ -13,8 +10,6 @@ write_bed(bed, outpath)
 A data.table
 }
 \description{
-write bed or bedpe into canonical formatted table
-
 Write a table into  a bed oe bedpe formatted file
 Ensures the header is commented out
 }

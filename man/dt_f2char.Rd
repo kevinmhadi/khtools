@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_f2char}
 \alias{dt_f2char}
-\title{convert factor columns to character
-
-coerce factor columns to character}
+\title{convert factor columns to character}
 \usage{
 dt_f2char(dt, cols = NULL)
 }
@@ -17,7 +15,5 @@ dt_f2char(dt, cols = NULL)
 A data.table
 }
 \description{
-convert factor columns to character
-
 coerce factor columns to character
 }

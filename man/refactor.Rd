@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{refactor}
 \alias{refactor}
-\title{refactor
-
-Keep one level of a factor and set all others to a specified level}
+\title{refactor}
 \usage{
 refactor(fac, keep, ref_level = "OTHER")
 }
@@ -12,7 +10,5 @@ refactor(fac, keep, ref_level = "OTHER")
 A factor
 }
 \description{
-refactor
-
 Keep one level of a factor and set all others to a specified level
 }

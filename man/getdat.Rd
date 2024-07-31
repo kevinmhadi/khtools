@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{getdat}
 \alias{getdat}
-\title{a method to get the "data" argument from a with/within expression
-
-to be used within "with()" within the expression}
+\title{a method to get the "data" argument from a with/within expression}
 \usage{
 getdat(n = 0L)
 }
@@ -12,7 +10,5 @@ getdat(n = 0L)
 data.frame/data.table
 }
 \description{
-a method to get the "data" argument from a with/within expression
-
 to be used within "with()" within the expression
 }

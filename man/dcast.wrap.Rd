@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dcast.wrap}
 \alias{dcast.wrap}
-\title{wrapper around dcast or dcast2
-
-A convenience wrapper around dcast to make formula generation more
-programmatic}
+\title{wrapper around dcast or dcast2}
 \usage{
 dcast.wrap(x, lh, rh, dcast.fun, ...)
 }
@@ -13,8 +10,6 @@ dcast.wrap(x, lh, rh, dcast.fun, ...)
 A data frame or data.table
 }
 \description{
-wrapper around dcast or dcast2
-
 A convenience wrapper around dcast to make formula generation more
 programmatic
 }

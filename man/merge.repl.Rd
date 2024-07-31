@@ -2,11 +2,7 @@
 % Please edit documentation in R/package.R
 \name{merge.repl}
 \alias{merge.repl}
-\title{merging data tables with collapsing columns with the same name
-
-Merge two data tables with various replacing strategies
-for columns common between x and y that are not used to merge
-(i.e. not specified in the "by" argument)}
+\title{merging data tables with collapsing columns with the same name}
 \usage{
 \method{merge}{repl}(
   dt.x,
@@ -32,8 +28,6 @@ for columns common between x and y that are not used to merge
 A data.table
 }
 \description{
-merging data tables with collapsing columns with the same name
-
 Merge two data tables with various replacing strategies
 for columns common between x and y that are not used to merge
 (i.e. not specified in the "by" argument)

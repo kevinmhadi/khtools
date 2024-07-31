@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{read_bed}
 \alias{read_bed}
-\title{read bed or bedpe as a table
-
-Read in a bed oe bedpe formatted file into tabular format}
+\title{read bed or bedpe as a table}
 \usage{
 read_bed(bedpath)
 }
@@ -12,7 +10,5 @@ read_bed(bedpath)
 A data.table
 }
 \description{
-read bed or bedpe as a table
-
 Read in a bed oe bedpe formatted file into tabular format
 }

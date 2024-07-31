@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{withx}
 \alias{withx}
-\title{withx
-
-to be used for quick interactive programming
-withx(toolongtotypemeagain, x * sum(x))}
+\title{withx}
 \usage{
 withx(x, expr)
 }
 \description{
-withx
-
 to be used for quick interactive programming
 withx(toolongtotypemeagain, x * sum(x))
 }

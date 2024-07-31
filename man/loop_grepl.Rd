@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{loop_grepl}
 \alias{loop_grepl}
-\title{wrapper around loop_grep
-
-Generating a logical vector from loop_grep}
+\title{wrapper around loop_grep}
 \usage{
 loop_grepl(patterns, vec_char, ignore.case = FALSE)
 }
@@ -12,7 +10,5 @@ loop_grepl(patterns, vec_char, ignore.case = FALSE)
 logical vector of all matches
 }
 \description{
-wrapper around loop_grep
-
 Generating a logical vector from loop_grep
 }

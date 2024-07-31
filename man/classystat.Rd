@@ -2,12 +2,7 @@
 % Please edit documentation in R/package.R
 \name{classystat}
 \alias{classystat}
-\title{calculates various scores from actual classes and predicted classes
-
-Scores calculated from a classification task with known true labels:
-precision, recall
-F1, mean f1, weighted mean f1, mean precision,
-mean recall, weighted mean recall, accuracy}
+\title{calculates various scores from actual classes and predicted classes}
 \usage{
 classystat(real, pred)
 }
@@ -20,8 +15,6 @@ classystat(real, pred)
 a list of various statistics for clasification task
 }
 \description{
-calculates various scores from actual classes and predicted classes
-
 Scores calculated from a classification task with known true labels:
 precision, recall
 F1, mean f1, weighted mean f1, mean precision,

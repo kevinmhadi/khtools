@@ -2,17 +2,11 @@
 % Please edit documentation in R/package.R
 \name{subset2}
 \alias{subset2}
-\title{function to subset on a variable by using "x" as surrogate variable in expression
-
-convenience function to subset without having to type excessively
-if the variable is arrived at through nested functions or long
-variable names}
+\title{function to subset on a variable by using "x" as surrogate variable in expression}
 \usage{
 subset2(x, sub.expr, ...)
 }
 \description{
-function to subset on a variable by using "x" as surrogate variable in expression
-
 convenience function to subset without having to type excessively
 if the variable is arrived at through nested functions or long
 variable names

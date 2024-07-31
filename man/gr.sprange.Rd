@@ -2,11 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gr.sprange}
 \alias{gr.sprange}
-\title{get range based on a field(s) to split by in elementMetadata of GRanges, or given vector
-
-split and get range of GRanges by field(s)
-if providing a variable not already within the GRanges,
-may need to use dynget(variable_name)}
+\title{get range based on a field(s) to split by in elementMetadata of GRanges, or given vector}
 \usage{
 gr.sprange(
   gr,
@@ -21,8 +17,6 @@ gr.sprange(
 GRanges
 }
 \description{
-get range based on a field(s) to split by in elementMetadata of GRanges, or given vector
-
 split and get range of GRanges by field(s)
 if providing a variable not already within the GRanges,
 may need to use dynget(variable_name)

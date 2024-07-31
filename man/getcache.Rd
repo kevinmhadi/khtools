@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{getcache}
 \alias{getcache}
-\title{getcache
-
-Get the path of a Flow job object's cache.}
+\title{getcache}
 \usage{
 getcache(object)
 }
@@ -12,7 +10,5 @@ getcache(object)
 A character
 }
 \description{
-getcache
-
 Get the path of a Flow job object's cache.
 }

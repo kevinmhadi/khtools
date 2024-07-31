@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{colnames2}
 \alias{colnames2}
-\title{robust colnames
-
-gives back character vector same number of columns of input regardless whether named or not}
+\title{robust colnames}
 \usage{
 colnames2(x)
 }
@@ -15,7 +13,5 @@ colnames2(x)
 a string with multiple parentheses replaced with a single parenthesis
 }
 \description{
-robust colnames
-
 gives back character vector same number of columns of input regardless whether named or not
 }

@@ -2,12 +2,7 @@
 % Please edit documentation in R/package.R
 \name{pinch}
 \alias{pinch}
-\title{pinch a vector
-
-A convenience function to transform proportions.
-Useful for beta regression (library(betareg))
-Can be used on any numeric values to squeeze between
-an interval.}
+\title{pinch a vector}
 \usage{
 pinch(x, fmin = 0.01, fmax = 0.99)
 }
@@ -15,8 +10,6 @@ pinch(x, fmin = 0.01, fmax = 0.99)
 A vector
 }
 \description{
-pinch a vector
-
 A convenience function to transform proportions.
 Useful for beta regression (library(betareg))
 Can be used on any numeric values to squeeze between

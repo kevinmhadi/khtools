@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{ave3}
 \alias{ave3}
-\title{modification of ave
-
-slight update of ave}
+\title{modification of ave}
 \usage{
 ave3(x, ..., FUN = mean)
 }
 \description{
-modification of ave
-
 slight update of ave
 }

@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dedup.cols}
 \alias{dedup.cols}
-\title{applies dedup to colnames
-
-dedup the column names of a data.frame/data.table}
+\title{applies dedup to colnames}
 \usage{
 dedup.cols(tbl, remove = FALSE)
 }
@@ -12,7 +10,5 @@ dedup.cols(tbl, remove = FALSE)
 A data.table or data.frame
 }
 \description{
-applies dedup to colnames
-
 dedup the column names of a data.frame/data.table
 }

@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{column_to_rownames}
 \alias{column_to_rownames}
-\title{making column into rownames
-
-internal version that doesn't require library(tibble)}
+\title{making column into rownames}
 \usage{
 column_to_rownames(.data, var = "rowname", force = T, sep = " ")
 }
@@ -15,7 +13,5 @@ column_to_rownames(.data, var = "rowname", force = T, sep = " ")
 a data frame/table with rownames from a column
 }
 \description{
-making column into rownames
-
 internal version that doesn't require library(tibble)
 }

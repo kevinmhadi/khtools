@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{glm.nb2}
 \alias{glm.nb2}
-\title{glm.nb2
-
-Run a negative binomial regression.
-If it fails, run a poisson regression}
+\title{glm.nb2}
 \usage{
 glm.nb2(...)
 }
@@ -13,8 +10,6 @@ glm.nb2(...)
 A GLM model
 }
 \description{
-glm.nb2
-
 Run a negative binomial regression.
 If it fails, run a poisson regression
 }

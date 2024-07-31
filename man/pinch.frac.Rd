@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{pinch.frac}
 \alias{pinch.frac}
-\title{pinch a vector
-
-A convenience function to transform proportions.
-Useful for beta regression (library(betareg))}
+\title{pinch a vector}
 \usage{
 pinch.frac(x, fmin = 0.01, fmax = 0.99)
 }
@@ -13,8 +10,6 @@ pinch.frac(x, fmin = 0.01, fmax = 0.99)
 A vector
 }
 \description{
-pinch a vector
-
 A convenience function to transform proportions.
 Useful for beta regression (library(betareg))
 }

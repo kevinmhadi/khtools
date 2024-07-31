@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{gg_mytheme}
 \alias{gg_mytheme}
-\title{custom theme for ggplot
-
-A custom theme for ggplots}
+\title{custom theme for ggplot}
 \usage{
 gg_mytheme(
   gg,
@@ -27,7 +25,5 @@ gg_mytheme(
 A ggplot object
 }
 \description{
-custom theme for ggplot
-
 A custom theme for ggplots
 }

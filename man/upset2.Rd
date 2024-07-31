@@ -13,5 +13,5 @@ upset2(
 )
 }
 \description{
-wrapper around UpSetR::upset()
+convenience function for better UpSetR defaults
 }

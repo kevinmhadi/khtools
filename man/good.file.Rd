@@ -2,10 +2,7 @@
 % Please edit documentation in R/package.R
 \name{good.file}
 \alias{good.file}
-\title{Does File exists and is file size greater than threshold
-
-Queries a set of file paths for whether the file exists AND
-if the file is greater than a size threshold}
+\title{Does File exists and is file size greater than threshold}
 \usage{
 good.file(x, size.thresh = 0)
 }
@@ -18,8 +15,6 @@ good.file(x, size.thresh = 0)
 logical
 }
 \description{
-Does File exists and is file size greater than threshold
-
 Queries a set of file paths for whether the file exists AND
 if the file is greater than a size threshold
 }

@@ -2,17 +2,11 @@
 % Please edit documentation in R/package.R
 \name{grabhjab}
 \alias{grabhjab}
-\title{convenience function to pull out jabba model with allelic cn
-
-Convenience function uses a pairs table entry
-and hunts for jabba. If allelic cn fields aren't present,
-will look for hetpileups data and run JaBbA:::jabba.alleles}
+\title{convenience function to pull out jabba model with allelic cn}
 \usage{
 grabhjab(pairs, id = NULL)
 }
 \description{
-convenience function to pull out jabba model with allelic cn
-
 Convenience function uses a pairs table entry
 and hunts for jabba. If allelic cn fields aren't present,
 will look for hetpileups data and run JaBbA:::jabba.alleles

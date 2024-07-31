@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{normv}
 \alias{normv}
-\title{normalize a vector
-
-i.e. rescale to have values between 0 and 1}
+\title{normalize a vector}
 \usage{
 normv(x)
 }
@@ -12,7 +10,5 @@ normv(x)
 vector
 }
 \description{
-normalize a vector
-
 i.e. rescale to have values between 0 and 1
 }

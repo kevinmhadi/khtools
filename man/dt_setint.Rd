@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_setint}
 \alias{dt_setint}
-\title{convert column to integer
-
-coerce column of type "numeric" by default to "integer"}
+\title{convert column to integer}
 \usage{
 dt_setint(dt, cols = NULL)
 }
@@ -17,7 +15,5 @@ dt_setint(dt, cols = NULL)
 A data.table
 }
 \description{
-convert column to integer
-
 coerce column of type "numeric" by default to "integer"
 }

@@ -7,5 +7,5 @@
 DIM2(x)
 }
 \description{
-extending NROW and NCOL2
+convenience wrapper
 }

@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_na2false}
 \alias{dt_na2false}
-\title{convert columns with NA to false
-
-coerce NA in columns of class "logical" to FALSE}
+\title{convert columns with NA to false}
 \usage{
 dt_na2false(dt, these_cols = NULL)
 }
@@ -17,7 +15,5 @@ dt_na2false(dt, these_cols = NULL)
 A data.table
 }
 \description{
-convert columns with NA to false
-
 coerce NA in columns of class "logical" to FALSE
 }

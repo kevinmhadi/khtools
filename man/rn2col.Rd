@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{rn2col}
 \alias{rn2col}
-\title{alias for rownames_to_column
-
-internal version that doesn't require library(tibble)}
+\title{alias for rownames_to_column}
 \usage{
 rn2col(
   .data,
@@ -21,7 +19,5 @@ rn2col(
 a data frame/table with rownames from a column
 }
 \description{
-alias for rownames_to_column
-
 internal version that doesn't require library(tibble)
 }

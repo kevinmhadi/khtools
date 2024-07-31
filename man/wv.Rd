@@ -2,16 +2,11 @@
 % Please edit documentation in R/package.R
 \name{wv}
 \alias{wv}
-\title{alias for withv
-
-to be used for quick interactive programming
-withv(toolongtotypemeagain, x * sum(x))}
+\title{alias for withv}
 \usage{
 wv(x, expr)
 }
 \description{
-alias for withv
-
 to be used for quick interactive programming
 withv(toolongtotypemeagain, x * sum(x))
 }

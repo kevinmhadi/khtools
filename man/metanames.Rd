@@ -7,5 +7,5 @@
 metanames(x)
 }
 \description{
-metanames
+get colnames or metadata colnames (if S4 object)
 }

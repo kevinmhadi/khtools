@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_lg2int}
 \alias{dt_lg2int}
-\title{logical to integer in data tables
-
-coerce logical columns to integers in data table}
+\title{logical to integer in data tables}
 \usage{
 dt_lg2int(dt)
 }
@@ -15,7 +13,5 @@ dt_lg2int(dt)
 A data.table
 }
 \description{
-logical to integer in data tables
-
 coerce logical columns to integers in data table
 }

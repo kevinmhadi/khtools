@@ -2,17 +2,11 @@
 % Please edit documentation in R/package.R
 \name{ss}
 \alias{ss}
-\title{same as subset2
-
-convenience function to subset without having to type excessively
-if the variable is arrived at through nested functions or long
-variable names}
+\title{same as subset2}
 \usage{
 ss(x, sub.expr, ...)
 }
 \description{
-same as subset2
-
 convenience function to subset without having to type excessively
 if the variable is arrived at through nested functions or long
 variable names

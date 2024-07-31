@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{read_vcf2}
 \alias{read_vcf2}
-\title{read_vcf2
-
-read in a vcf file to granges with additional processing with bcftools}
+\title{read_vcf2}
 \usage{
 read_vcf2(
   fn,
@@ -23,7 +21,5 @@ read_vcf2(
 GRanges
 }
 \description{
-read_vcf2
-
 read in a vcf file to granges with additional processing with bcftools
 }

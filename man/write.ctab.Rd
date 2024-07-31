@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{write.ctab}
 \alias{write.ctab}
-\title{writing a comma separated table with quotes
-
-comma-separated table with quotes around strings}
+\title{writing a comma separated table with quotes}
 \usage{
 write.ctab(x, ..., sep = ",", quote = T, row.names = F)
 }
 \description{
-writing a comma separated table with quotes
-
 comma-separated table with quotes around strings
 }

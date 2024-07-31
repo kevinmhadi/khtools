@@ -2,14 +2,10 @@
 % Please edit documentation in R/package.R
 \name{table3}
 \alias{table3}
-\title{wrapper around table, always show NA counts
-
-Convenience function to always show NA counts}
+\title{wrapper around table, always show NA counts}
 \usage{
 table3(...)
 }
 \description{
-wrapper around table, always show NA counts
-
 Convenience function to always show NA counts
 }

@@ -2,15 +2,15 @@
 % Please edit documentation in R/package.R
 \name{undebug.s4}
 \alias{undebug.s4}
-\title{undebug an S4 function
-
-wrapper around untrace}
+\title{undebug an S4 function}
 \usage{
 undebug.s4(what, signature, where)
 
 undebug.s4(what, signature, where)
 }
 \description{
+wrapper around untrace
+
 undebugging an S4 function when debug.s4/trace were
 called on an S4 method.
 }

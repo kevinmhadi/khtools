@@ -14,5 +14,5 @@ enframe_list(
 )
 }
 \description{
-data table-ize list elements and add name column
+make every element of list a data frame
 }

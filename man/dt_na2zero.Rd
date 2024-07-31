@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{dt_na2zero}
 \alias{dt_na2zero}
-\title{convert columns with NA to zeros
-
-coerce NA in columns of class "numeric"/"integer" to FALSE}
+\title{convert columns with NA to zeros}
 \usage{
 dt_na2zero(dt, these_cols = NULL)
 }
@@ -17,7 +15,5 @@ dt_na2zero(dt, these_cols = NULL)
 A data.table
 }
 \description{
-convert columns with NA to zeros
-
 coerce NA in columns of class "numeric"/"integer" to FALSE
 }

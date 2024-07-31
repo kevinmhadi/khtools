@@ -2,9 +2,7 @@
 % Please edit documentation in R/package.R
 \name{col2rn}
 \alias{col2rn}
-\title{alias for column_to_rownames
-
-internal version that doesn't require library(tibble)}
+\title{alias for column_to_rownames}
 \usage{
 col2rn(.data, var = "rowname", force = T, sep = " ")
 }
@@ -15,7 +13,5 @@ col2rn(.data, var = "rowname", force = T, sep = " ")
 a data frame/table with rownames from a column
 }
 \description{
-alias for column_to_rownames
-
 internal version that doesn't require library(tibble)
 }

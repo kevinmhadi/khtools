@@ -2,17 +2,11 @@
 % Please edit documentation in R/package.R
 \name{max.col.narm}
 \alias{max.col.narm}
-\title{maximum column per row (removing NA)
-
-
-Return the index of the maximum column per row while removing NA}
+\title{maximum column per row (removing NA)}
 \usage{
 \method{max}{col.narm}(mat, ties.method = "first")
 }
 \description{
-maximum column per row (removing NA)
-
-
 Return the index of the maximum column per row while removing NA
 }
 \author{
