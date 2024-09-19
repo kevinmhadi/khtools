@@ -1611,7 +1611,8 @@ metanames = function(x) {
 #'
 #' @name split_by
 #' @export
-split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE) {
+split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE, sep = " ") {
+    force(sep)
     in_type_is_granges = inherits(dt, c("GRanges", "IRanges", "GRangesList", "IRangesList"))
     if (in_type_is_granges) {
         out = dt
@@ -1626,9 +1627,9 @@ split_by = function(dt, fields, do.unname = FALSE, split_col_sort = FALSE) {
     expr = parse(text = sprintf("dt[,%s,drop=FALSE]", mkst(colix)))
     cols = eval(expr)
     if (!isTRUE(split_col_sort)) 
-        uf = dodo.call2(FUN = function(...) uniqf(..., sep = " "), as.list(cols))
+        uf = dodo.call2(FUN = function(...) uniqf(..., sep = sep), as.list(cols))
     else
-        uf = dodo.call2(FUN = function(...) paste(..., sep = " "), as.list(cols))
+        uf = dodo.call2(FUN = function(...) paste(..., sep = sep), as.list(cols))
     ## rles = dodo.call2(FUN = rleseq, as.list(cols))
     if (in_type_is_granges) {
         out = split(out, uf)
