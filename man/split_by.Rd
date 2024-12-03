@@ -4,7 +4,7 @@
 \alias{split_by}
 \title{split data frame-like object based on columns}
 \usage{
-split_by(dt, fields, do.unname = FALSE, split_col_sort = FALSE)
+split_by(dt, fields, do.unname = FALSE, split_col_sort = FALSE, sep = " ")
 }
 \description{
 split data frame for looping operations over splits

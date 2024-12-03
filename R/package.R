@@ -4048,7 +4048,6 @@ dg = dynget
 #'
 #' Same as %in% but keeps NA values as NA
 #'
-#' @name %inn%
 #' @return a logical vector
 #' @export
 `%inn%` = function(x, table) {
@@ -4954,8 +4953,7 @@ file.mat.exists = function(x, rm_col1 = FALSE) {
 #' Not match
 #'
 #' @export
-`%nin%` = function (x, table)
-{
+`%nin%` = function (x, table) {
     match(x, table, nomatch = 0L) == 0L
 }
 
@@ -5575,7 +5573,7 @@ sstat <- function (full = FALSE, numslots = TRUE, resources = T)
 {
     asp = "username,groupname,state,name,jobid,associd"
     if (resources) {
-        asp = paste0(asp, ",", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,nice,reason,reboot")
+        asp = paste0(asp, ",", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,prioritylong,nice,reason,reboot,partition")
     }
     cmd = paste(
         "squeue -O",
@@ -5591,9 +5589,9 @@ sstat <- function (full = FALSE, numslots = TRUE, resources = T)
     close(p)
     header = res[1]
     res = res[-1]
-    nms = strsplit(header, "\t")[[1]] %>% tolower
-    out = setnames(
-        do.call(data.table, data.table::tstrsplit(res, "\t")),
+    nms = tolower(strsplit(header, "\t")[[1]])
+    out = data.table::setnames(
+        do.call(data.table::data.table, data.table::tstrsplit(res, "\t")),
         nms
     )
     out$state = factor(out$state, unique(c(out$state, "RUNNING"))) %>% 
@@ -5607,7 +5605,49 @@ sstat <- function (full = FALSE, numslots = TRUE, resources = T)
             user ~ state, fill = 0, value.var = "N")[rev(order(RUNNING)), 
             ]
     }
+
+    out$memUnits = out$min_memory %>% gsub("[0-9]+\\.?([A-Z]+)?", "\\1", .)
+    out$mem = out$min_memory %>% gsub("([0-9]+\\.?)([A-Z]+)?", "\\1", .) %>% as.integer()
+    out$cpus = as.numeric(out$cpus)
+
+    invisible(out[, memBytes := mem * dplyr::case_when(memUnits == "G" ~ (1024^3), memUnits == "M" ~ (1024^2), memUnits == "K" ~ (1024), memUnits == "" ~ 1)])
+    invisible(out[, memGb := memBytes / (1024 ^ 3)])
+
+    out$submitTimePosix = as.POSIXct(out$submit_time, format="%Y-%m-%dT%H:%M:%S")
+    out$startTimePosix = as.POSIXct(out$start_time, format="%Y-%m-%dT%H:%M:%S")
+    names(out) = base::make.unique(names(out)) # priority.1 is priorityLong integer
+    out$timeLimitSecs = parse_slurm_time(out$time_limit)
     return(out)
+}
+
+#' Parse the slurm times into an R format
+#'
+#' Used with khtools sstat above
+#'
+#' @return character
+#' @export
+parse_slurm_time <- function(time_str) {
+  # Regex pattern to capture days, hours, minutes, and seconds
+  pattern <- "^(?:(\\d+)-)?(\\d+):(\\d+):(\\d+)$"
+  m = regexec(pattern, time_str, perl = TRUE)
+  lstmatches = regmatches(time_str, m)
+  lstmatches[lengths(lstmatches) == 0] = rep_len("", 5)
+  matches = do.call(rbind, lstmatches)
+  matches = matches[,2:5]
+  matches[matches == ""] = "0"
+  mode(matches) = "numeric"
+  
+  days = matches[,1]
+  hours = matches[,2]
+  minutes = matches[,3]
+  seconds = matches[,4]
+  total_seconds <- days * 86400 + hours * 3600 + minutes * 60 + seconds
+    
+  # Return total time in seconds or as a difftime object
+  # parsed_times = as.difftime(total_seconds, units = "secs")
+  parsed_times = total_seconds
+  
+  return(parsed_times)
 }
 
 
@@ -9689,13 +9729,13 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
     if (!altpipe) 
         out = grok_vcf(tmp.path, long = TRUE, geno = geno, gr = gr)
     else {
-        vcf = readVcf(tmp.path)
+        vcf = VariantAnnotation::readVcf(tmp.path)
         vcf = S4Vectors::expand(vcf)
         rr = within(rowRanges(vcf), {
             REF = as.character(REF)
             ALT = as.character(ALT)
         })
-        ann = as.data.table(tstrsplit(unlist(info(vcf)$ANN), 
+        ann = data.table::as.data.table(data.table::tstrsplit(unlist(info(vcf)$ANN), 
             "\\|"))[, 1:15, with = FALSE, drop = FALSE]
         fn = c("allele", "annotation", "impact", "gene", "gene_id", 
             "feature_type", "feature_id", "transcript_type", 
@@ -9703,20 +9743,20 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
             "protein_pos", "distance")
         data.table::setnames(ann, fn)
         if ("AD" %in% names(geno(vcf))) {
-            adep = setnames(as.data.table(geno(vcf)$AD[, , 1:2]), 
+            adep = data.table::setnames(data.table::as.data.table(geno(vcf)$AD[, , 1:2]), 
                 c("ref", "alt"))
-            gt = geno(vcf)$GT
+            gt = VariantAnnotation::geno(vcf)$GT
         }
         else if (all(c("AU", "GU", "CU", "TU", "TAR", "TIR") %in% 
-            c(names(geno(vcf))))) {
-            this.col = dim(geno(vcf)[["AU"]])[2]
-            d.a = geno(vcf)[["AU"]][, , 1, drop = F][, this.col, 
+            c(names(VariantAnnotation::geno(vcf))))) {
+            this.col = dim(VariantAnnotation::geno(vcf)[["AU"]])[2]
+            d.a = VariantAnnotation::geno(vcf)[["AU"]][, , 1, drop = F][, this.col, 
                 1]
-            d.g = geno(vcf)[["GU"]][, , 1, drop = F][, this.col, 
+            d.g = VariantAnnotation::geno(vcf)[["GU"]][, , 1, drop = F][, this.col, 
                 1]
-            d.t = geno(vcf)[["TU"]][, , 1, drop = F][, this.col, 
+            d.t = VariantAnnotation::geno(vcf)[["TU"]][, , 1, drop = F][, this.col, 
                 1]
-            d.c = geno(vcf)[["CU"]][, , 1, drop = F][, this.col, 
+            d.c = VariantAnnotation::geno(vcf)[["CU"]][, , 1, drop = F][, this.col, 
                 1]
             mat = cbind(A = d.a, G = d.g, T = d.t, C = d.c)
             rm("d.a", "d.g", "d.t", "d.c")
@@ -9726,10 +9766,10 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
             altid = ifelse(!isSNV(vcf), NA_integer_, altid)
             refsnv = mat[cbind(seq_len(nrow(mat)), refid)]
             altsnv = mat[cbind(seq_len(nrow(mat)), altid)]
-            this.icol = dim(geno(vcf)[["TAR"]])[2]
-            refindel = d.tar = geno(vcf)[["TAR"]][, , 1, drop = F][, 
+            this.icol = dim(VariantAnnotation::geno(vcf)[["TAR"]])[2]
+            refindel = d.tar = VariantAnnotation::geno(vcf)[["TAR"]][, , 1, drop = F][, 
                 this.icol, 1]
-            altindel = d.tir = geno(vcf)[["TIR"]][, , 1, drop = F][, 
+            altindel = d.tir = VariantAnnotation::geno(vcf)[["TIR"]][, , 1, drop = F][, 
                 this.icol, 1]
             adep = data.table(ref = coalesce(refsnv, refindel), 
                 alt = coalesce(altsnv, altindel))
@@ -9851,13 +9891,13 @@ parsesnpeff = function (vcf, id = NULL, filterpass = TRUE, coding_alt_only = TRU
 #' @return GRanges
 #' @author Marcin Imielinski
 #' @export
-grok_vcf <- function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner = FALSE, verbose = FALSE, geno = NULL, tmp.dir = tempdir(), gr = NULL)
+grok_vcf = function(x, label = NA, keep.modifier = TRUE, long = FALSE, oneliner = FALSE, verbose = FALSE, geno = NULL, tmp.dir = tempdir(), gr = NULL)
 {
   fn = c('allele', 'annotation', 'impact', 'gene', 'gene_id', 'feature_type', 'feature_id', 'transcript_type', 'rank', 'variant.c', 'variant.p', 'cdna_pos', 'cds_pos', 'protein_pos', 'distance')
 
   if (is.character(x))
     {
-        out = suppressWarnings(read_vcf(x, tmp.dir = tmp.dir, geno = geno, gr = gr))
+        out = suppressWarnings(skidb::read_vcf(x, tmp.dir = tmp.dir, geno = geno, gr = gr))
         if (length(out) == 0) {
             return(out)
         }
