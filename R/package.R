@@ -11,7 +11,7 @@
 #' @importFrom methods setClass setGeneric setMethod setRefClass
 #' @importFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
 #' @importMethodsFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
-#' @importFrom data.table key `:=` rbindlist
+#' @importFrom data.table key `:=` rbindlist dcast.data.table
 #' @importFrom dplyr `%>%`
 #' @importFrom ggplot2 ggplot aes scale_fill_manual scale_colour_manual scale_color_manual geom_histogram geom_hex geom_point geom_path geom_bar geom_errorbar geom_smooth facet_wrap facet_grid xlab ylab scale_y_continuous scale_x_continuous theme theme_bw element_blank element_line element_text rel position_dodge
 
@@ -5604,6 +5604,7 @@ sstat <- function (full = FALSE, numslots = TRUE, resources = T)
         else out = dcast.data.table(out[, .N, by = .(user, state)], 
             user ~ state, fill = 0, value.var = "N")[rev(order(RUNNING)), 
             ]
+        return(out)
     }
 
     out$memUnits = out$min_memory %>% gsub("[0-9]+\\.?([A-Z]+)?", "\\1", .)
