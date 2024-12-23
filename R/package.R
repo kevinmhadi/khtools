@@ -3040,6 +3040,15 @@ copy3 = function (x, recurse_list = TRUE) {
     }
 }
 
+#' make deep copy, recursively
+#'
+#' useful for dev
+#' makes deep copy of R6 object, S4 object, or anything else really
+#'
+#' @name copy
+#' @export copy
+copy = copy3
+
 #' peepr6
 #'
 #' useful for dev
@@ -3207,50 +3216,85 @@ qmat = function(mat, rid = NULL, cid = NULL) {
 #' but for general/interactive use
 #'
 #' @export
-match3 = function(x, table, nomatch = NA_integer_, old = TRUE, use.data.table = TRUE) {
+match3 = function(x, table, nomatch = NA_integer_, old = FALSE, use.data.table = TRUE, return_match = TRUE) {
   out = if (use.data.table) {
     tryCatch({
       dx = data.table(x = x)[, id.x := seq_len(.N)]
       dtb = data.table(table = table)[, id.tb := seq_len(.N)]
-      ## setkey(dx, x)[list(dtb$table)]$id.x
-      setkey(dtb, table)[list(dx$x)]$id.tb
+      ## setkey(dtb, table)[list(dx$x)]$id.tb
+      mtbl = setkey(dtb, table)[dx]
+      if (identical(return_match, TRUE))
+          return(mtbl$id.tb)
+      return(mtbl)
     }, error = function(e) structure("err", class = "err"))
   }
   if (!is.null(out) && !inherits(out, "err")) return(out)
-  if (old) {
+  if (!identical(use.data.table, TRUE) || identical(old, TRUE) || inherits(out, "err")) {
     dx = within(data.frame(x = x), {id.x = seq_along(x)})
     dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
-    res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
-      allow.cartesian = TRUE)
-    return(res$id.tb[order(res$id.x)])
-  } else  {
-    m = match(table,x)
-    mat = cbind(m, seq_along(m))
-    mat = mat[!is.na(mat[,1]),,drop=FALSE]
-    mat = mat[order(mat[,1], na.last = FALSE),,drop = FALSE]
-    mat = cbind(mat, seq_len(dim(mat)[1]))
-    m2 = match(x,table)
-    ix = which(!duplicated(m2) & !is.na(m2))
-    mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
-    ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
-    ix = rep(1, length.out = length(m2))
-    ## original line
-    ## ix[!is.na(m2)] = base::tabulate(m)[!is.na(m2)]
-    ix[!is.na(m2)] = base::tabulate(m)[m][m2][!is.na(m2)]
-    out = rep(m2, ix)
-    out[!is.na(out)] = mat[mat_rix,,drop=F][,2]
-    return(out)
-    ## m = match(table, x)
-    ## mat = cbind(m, seq_along(m))
-    ## mat = mat[!is.na(mat[, 1]), , drop = FALSE]
-    ## mat = mat[order(mat[, 1]), , drop = FALSE]
-    ## mat = cbind(mat, seq_len(dim(mat)[1]))
-    ## m2 = match(x, table)
-    ## ix = which(!duplicated(m2))
-    ## mat_rix = unlist(rep(split(mat[, 3], mat[, 1]), base::tabulate(m2)[m2][ix]))
-    ## mat[mat_rix, , drop = F][, 2]
+    mtbl = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+                allow.cartesian = TRUE)
+    mtbl = mtbl[order(res$id.x),]
+    if (identical(return_match, TRUE))
+        return(mtbl$id.tb)
+    return(mtbl)
+    ## return(res$id.tb[order(res$id.x)])
   }
 }
+
+#' similar to setkey except a general use utility
+#'
+#' very slow version of keying a la data.table
+#' but for general/interactive use
+#'
+#' @export
+match = match3
+
+
+# match3 = function(x, table, nomatch = NA_integer_, old = TRUE, use.data.table = TRUE) {
+#   out = if (use.data.table) {
+#     tryCatch({
+#       dx = data.table(x = x)[, id.x := seq_len(.N)]
+#       dtb = data.table(table = table)[, id.tb := seq_len(.N)]
+#       ## setkey(dx, x)[list(dtb$table)]$id.x
+#       setkey(dtb, table)[list(dx$x)]$id.tb
+#     }, error = function(e) structure("err", class = "err"))
+#   }
+#   if (!is.null(out) && !inherits(out, "err")) return(out)
+#   if (old) {
+#     dx = within(data.frame(x = x), {id.x = seq_along(x)})
+#     dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
+#     res = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
+#       allow.cartesian = TRUE)
+#     return(res$id.tb[order(res$id.x)])
+#   } else  {
+#     m = match(table,x)
+#     mat = cbind(m, seq_along(m))
+#     mat = mat[!is.na(mat[,1]),,drop=FALSE]
+#     mat = mat[order(mat[,1], na.last = FALSE),,drop = FALSE]
+#     mat = cbind(mat, seq_len(dim(mat)[1]))
+#     m2 = match(x,table)
+#     ix = which(!duplicated(m2) & !is.na(m2))
+#     mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+#     ## mat_rix = unlist(rep(split(mat[,3], mat[,1]), base::tabulate(m2)[m2][ix]))
+#     ix = rep(1, length.out = length(m2))
+#     ## original line
+#     ## ix[!is.na(m2)] = base::tabulate(m)[!is.na(m2)]
+#     ix[!is.na(m2)] = base::tabulate(m)[m][m2][!is.na(m2)]
+#     out = rep(m2, ix)
+#     out[!is.na(out)] = mat[mat_rix,,drop=F][,2]
+#     return(out)
+#     ## m = match(table, x)
+#     ## mat = cbind(m, seq_along(m))
+#     ## mat = mat[!is.na(mat[, 1]), , drop = FALSE]
+#     ## mat = mat[order(mat[, 1]), , drop = FALSE]
+#     ## mat = cbind(mat, seq_len(dim(mat)[1]))
+#     ## m2 = match(x, table)
+#     ## ix = which(!duplicated(m2))
+#     ## mat_rix = unlist(rep(split(mat[, 3], mat[, 1]), base::tabulate(m2)[m2][ix]))
+#     ## mat[mat_rix, , drop = F][, 2]
+#   }
+# }
 
 
 #' similar to setkey except a general use utility
