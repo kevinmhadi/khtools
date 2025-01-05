@@ -3234,7 +3234,7 @@ match3 = function(x, table, nomatch = NA_integer_, old = FALSE, use.data.table =
     dtb = within(data.frame(table = table), {id.tb = seq_along(table)})
     mtbl = merge(dx, dtb, by.x = "x", by.y = "table", all.x = TRUE,
                 allow.cartesian = TRUE)
-    mtbl = mtbl[order(res$id.x),]
+    mtbl = mtbl[order(mtbl$id.x),]
     if (identical(return_match, TRUE))
         return(mtbl$id.tb)
     return(mtbl)
