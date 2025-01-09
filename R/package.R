@@ -5617,7 +5617,7 @@ sstat <- function (full = FALSE, numslots = TRUE, resources = T)
 {
     asp = "username,groupname,state,name,jobid,associd"
     if (resources) {
-        asp = paste0(asp, ",", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,prioritylong,nice,reason,reboot,partition")
+        asp = paste0(asp, ",", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,prioritylong,nice,reason,reboot,partition,nodelist")
     }
     cmd = paste(
         "squeue -O",
