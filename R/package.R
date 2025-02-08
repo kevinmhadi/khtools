@@ -1,20 +1,3 @@
-## #' @importMethodsFrom S4Vectors with
-## #' @importMethodsFrom gUtils %&%
-## #' @importMethodsFrom S4Vectors as.data.frame
-## #' @importMethodsFrom S4Vectors split
-## #' @importMethodsFrom S4Vectors mcols
-
-## #' @import tools
-
-#' @importFrom S4Vectors with as.data.frame split mcols `mcols<-`
-#' @importFrom gUtils `%&%`
-#' @importFrom methods setClass setGeneric setMethod setRefClass
-#' @importFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
-#' @importMethodsFrom GenomeInfoDb `seqlevels<-` `seqlengths<-` `seqnames<-`
-#' @importFrom data.table key `:=` rbindlist dcast.data.table
-#' @importFrom dplyr `%>%`
-#' @importFrom ggplot2 ggplot aes scale_fill_manual scale_colour_manual scale_color_manual geom_histogram geom_hex geom_point geom_path geom_bar geom_errorbar geom_smooth facet_wrap facet_grid xlab ylab scale_y_continuous scale_x_continuous theme theme_bw element_blank element_line element_text rel position_dodge
-
 #' @export 
 mysep = "__ss__"
 
@@ -1432,10 +1415,9 @@ upset2 = function(data, text.scale = 1.5, mb.ratio = c(0.7, 0.3), empty.intersec
 }
 
 
-#' @name sampler
-#' @title sample elements of vector or rows of table
-#'
-#' @description
+#' sampler
+#' 
+#' sample elements of vector or rows of table
 #'
 #' @export
 sampler = function(x, n = NROW(x), seed = 10, rngkind = "L'Ecuyer-CMRG", verbose = FALSE, replace = FALSE, prob = NULL) {
@@ -11006,7 +10988,6 @@ forcefun = function(envir = globalenv(), evalenvir = globalenv()) {
 #' @param invisible logical whether to print the objects in the environmnet or not
 #' @param envir environment with objects to evaluate
 #' @param evalenvir environment to evaluate in (probably doesn't matter)
-#'
 #' @export
 forceall = function(invisible = TRUE, envir = parent.frame(), evalenvir = parent.frame()) {
     if (invisible)  {

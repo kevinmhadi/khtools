@@ -2,7 +2,7 @@
 % Please edit documentation in R/package.R
 \name{sampler}
 \alias{sampler}
-\title{sample elements of vector or rows of table}
+\title{sampler}
 \usage{
 sampler(
   x,

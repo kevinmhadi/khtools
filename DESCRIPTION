@@ -21,6 +21,8 @@ Imports:
     rlang,
     rtracklayer,
     GenomicRanges,
+    BiocGenerics,
+    S4Vectors,
     IRanges,
     gUtils,
     data.table,
@@ -34,12 +36,13 @@ Suggests:
     XML,
     testthat
 Remotes:
-    kevinmhadi/Flow,
-    mskilab/gUtils,
+    github::mskilab-org/Flow,
+    github::mskilab-org/gUtils,
     bioc::IRanges,
     bioc::GenomicRanges,
     bioc::S4Vectors,
-    bioc::rtracklayer
+    bioc::rtracklayer,
+    bioc::BiocGenerics
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
