@@ -5,7 +5,7 @@
 \alias{gaps,GRangesList-method}
 \title{gaps on GRangesList}
 \usage{
-gaps(x, start = NA, end = NA)
+gaps(x, start = NA, end = NA, ...)
 }
 \value{
 GRangesList

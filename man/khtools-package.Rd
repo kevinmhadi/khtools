@@ -9,6 +9,6 @@
 This is a collection of miscellaneous wrappers for pipelining and processing genomic data. In addition there are utilities for quick interactive programming.
 }
 \author{
-\strong{Maintainer}: Kevin Hadi \email{keh2019@med.cornell.edu}
+\strong{Maintainer}: Kevin Hadi \email{kevinmhadi@gmail.com}
 
 }
