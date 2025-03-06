@@ -5,7 +5,7 @@ Authors@R:
     person(given = "Kevin",
            family = "Hadi",
            role = c("aut", "cre"),
-           email = "keh2019@med.cornell.edu")
+           email = "kevinmhadi@gmail.com")
 Description: This is a collection of miscellaneous wrappers for
     pipelining and processing genomic data. In addition there are
     utilities for quick interactive programming.
